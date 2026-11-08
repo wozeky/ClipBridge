@@ -8,7 +8,7 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs args)
     {
-        if (args.Args is not ["--smoke-test", _])
+        if (args.Args is not ["--smoke-test" or "--capture-smoke", _])
         {
             _instance = new Mutex(initiallyOwned: false, @"Local\ClipBridge.Desktop", out bool created);
             if (!created)

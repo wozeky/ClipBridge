@@ -13,7 +13,7 @@
 
     <DockPanel Grid.Row="0" LastChildFill="True" Margin="0,0,0,15">
       <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center">
-        <Button x:Name="ArmButton" Content="Replay Buffer'ı başlat" Click="Arm_Click" Padding="13,8" Margin="0,0,8,0" />
+        <Button x:Name="ArmButton" Content="Kaydı başlat" Click="Arm_Click" Padding="13,8" Margin="0,0,8,0" />
         <Button x:Name="SaveReplayButton" Content="Klip al · F8" Click="SaveReplay_Click" Padding="13,8"
                 Margin="0,0,8,0" IsEnabled="False" />
         <Button Content="MP4 içe aktar" Click="Import_Click" Padding="13,8" />
@@ -38,11 +38,16 @@
         <WrapPanel Margin="0,9,0,0">
           <TextBlock Text="Replay (sn)" VerticalAlignment="Center" Margin="0,0,8,0" />
           <ComboBox x:Name="ReplayLength" Width="70" Margin="0,0,16,0" />
-          <TextBlock Text="OBS WebSocket parolası" VerticalAlignment="Center" Margin="0,0,8,0" />
-          <PasswordBox x:Name="ObsPassword" Width="130" Margin="0,0,16,0" />
           <TextBlock Text="Oyun etiketi" VerticalAlignment="Center" Margin="0,0,8,0" />
           <TextBox x:Name="GameName" Width="140" MaxLength="80" />
         </WrapPanel>
+        <WrapPanel Margin="0,9,0,0">
+          <ComboBox x:Name="CaptureTarget" DisplayMemberPath="Title" Width="290" Margin="0,0,8,0"
+                    AutomationProperties.Name="Kaydedilecek pencere" />
+          <Button Content="Pencereleri yenile" Click="RefreshWindows_Click" />
+        </WrapPanel>
+        <CheckBox x:Name="DesktopAudio" Content="Sistem sesi (Discord dahil)" Margin="0,7,0,0" />
+        <CheckBox x:Name="Microphone" Content="Mikrofonu da kaydet" Margin="0,7,0,0" />
         <CheckBox x:Name="AutoUpload" Content="Yeni klipleri otomatik yükle" Margin="0,9,0,0" />
         <CheckBox x:Name="AutoFallback" Content="Dosya limiti reddinde diğer ücretsiz servisi dene" Margin="0,7,0,0" />
         <CheckBox x:Name="AutoCopy" Content="Hazır bağlantıları otomatik panoya kopyala" Margin="0,7,0,0" />

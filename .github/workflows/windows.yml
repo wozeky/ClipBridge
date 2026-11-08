@@ -27,6 +27,14 @@ jobs:
         run: dotnet test ClipBridge.slnx -c Release --no-build --verbosity normal
       - name: Publish Windows x64
         run: dotnet publish src/ClipBridge.App -c Release -r win-x64 --self-contained true -o artifacts/win-x64
+      - name: Bundle pinned Windows Graphics Capture engine
+        shell: pwsh
+        run: ./tools/Install-CaptureEngine.ps1 -Destination artifacts/win-x64/ffmpeg
+      - name: Verify rolling buffer and MP4 export with synthetic input
+        shell: pwsh
+        run: |
+          $ffmpeg = (Resolve-Path ./artifacts/win-x64/ffmpeg/bin/ffmpeg.exe).Path
+          dotnet run --project tools/ClipBridge.Bench -c Release --no-build -- replay-smoke $ffmpeg (Join-Path $env:RUNNER_TEMP "clipbridge-replay")
       - name: Launch and render the WPF window
         shell: pwsh
         run: |
@@ -39,6 +47,20 @@ jobs:
           }
           if ($app.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $marker)) {
             throw "ClipBridge did not render the window successfully. Exit code: $($app.ExitCode)"
+          }
+      - name: Probe Windows Graphics Capture on the hosted desktop
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $marker = Join-Path $env:RUNNER_TEMP "clipbridge-capture.txt"
+          $app = Start-Process -FilePath "./artifacts/win-x64/ClipBridge.exe" -ArgumentList "--capture-smoke", "`"$marker`"" -PassThru
+          if (-not $app.WaitForExit(55000)) {
+            Stop-Process -Id $app.Id -Force
+            throw "The hosted desktop capture timed out."
+          }
+          if (Test-Path -LiteralPath $marker) { Get-Content -LiteralPath $marker }
+          if ($app.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $marker)) {
+            throw "Windows Graphics Capture is unavailable or failed on this runner."
           }
       - uses: actions/upload-artifact@v4
         with:

@@ -1,6 +1,6 @@
 # ClipBridge
 
-Windows 11 x64 için ücretsiz, MIT lisanslı klip arşivi ve paylaşım uygulaması. Yerel bir MP4'ü içe aktarabilir veya OBS Studio'nun Replay Buffer'ından F8 ile klip alabilirsiniz.
+Windows 11 x64 için ücretsiz, MIT lisanslı klip arşivi ve paylaşım uygulaması. Windows'un pencere yakalama API'siyle F8 klipleri alabilir veya hazır bir MP4'ü içe aktarabilirsiniz. Kayıt motoru ZIP paketinin içindedir.
 
 ## İndir ve çalıştır
 
@@ -16,12 +16,13 @@ Kütüphane ve ayarlar `%LOCALAPPDATA%\ClipBridge` altında saklanır. Uygulama 
 
 ## F8 ile replay
 
-1. [Güncel OBS Studio'yu](https://obsproject.com/download) kurun. OBS'de **Profil → Yeni** menüsünden tam olarak `ClipBridge` adlı ayrı bir profil oluşturup seçin.
-2. Bir sahneye Windows Graphics Capture kullanan **Pencere Yakalama** veya **Ekran Yakalama** kaynağı ekleyin. Ekran yakalama masaüstündeki diğer pencereleri de kaydedebilir. Oyun sesini ve isterseniz mikrofonu OBS ses karıştırıcısından ayarlayın.
-3. OBS'nin **Çıkış** ayarlarında Replay Buffer'ı açın. Kayıt için **Hybrid MP4**, **NVIDIA NVENC H.264** ve **AAC** seçin. Video ayarlarında 1920×1080, 60 FPS ile başlayın. 2560×1440 seçeneğini OBS'den değiştirebilirsiniz.
-4. OBS'de **Araçlar → obs-websocket Ayarları** bölümünde sunucuyu varsayılan 4455 portunda açın ve parola doğrulamasını etkinleştirin. ClipBridge ayarlarına bu parolayı girin. Parola Windows kullanıcı hesabına bağlı DPAPI ile korunur. ClipBridge yalnızca yerel IPv4 adresindeki OBS sunucusuna bağlanır.
-5. ClipBridge'de **Replay Buffer'ı başlat** düğmesine basın. Varsayılan süre 60 saniyedir. 15, 30, 60, 120 ve 180 saniye arasından seçim yapabilirsiniz. Tam süreyi alabilmek için tamponun dolmasını bekleyin ve **F8**'e basın. OBS'de de F8 için ikinci bir kısayol tanımlamaktan kaçının.
-6. Süreyi değiştirmek veya yakalamayı durdurmak için OBS'de Replay Buffer'ı durdurun. ClipBridge, seçili OBS profilinin kayıt klasörünü Windows Videolar altındaki ClipBridge klasörüne yönlendirir. OBS'nin kullandığı kodlama ayarları ve tampon belleği, yakalanan gerçek süreyi etkiler. ClipBridge, OBS profilindeki tampon belleğini 512 MB olarak ayarlar. OBS bazı sabit bit hızlı ayarlarda bellek alanını süre ve bit hızından hesaplar. ClipBridge OBS'yi açık bırakır.
+1. Oyunu açın. ClipBridge'de **Ayarlar → Pencereleri yenile** ile oyun penceresini seçin.
+2. İstiyorsanız **Yeni klipleri otomatik yükle** seçeneğini açın. **Sistem sesi** açıkken Discord ve diğer uygulamaların sesi de kayda girebilir. Mikrofon ayrı bir seçenektir.
+3. **Kaydı başlat** düğmesine basın. Varsayılan hedef 60 saniyedir. Tampon doldukça daha uzun klip alabilirsiniz.
+4. **F8** ile son tamamlanan parçalar MP4'e kaydolur. Kesim yaklaşık bir saniyelik parçalara göre yapılır. Otomatik yükleme açıksa bağlantı arşive eklenir ve pano ayarı açıksa panoya kopyalanır.
+5. **Kaydı durdur** ile geçici tamponu kapatın. Kalıcı MP4 dosyaları Videolar altındaki `ClipBridge` klasöründe kalır.
+
+Yakalama yalnızca seçilen pencereyi hedefler. Kayıt modu 1080p60 hedefler ve önce NVIDIA NVENC, sonra Windows Media Foundation H.264 dener. Oyunun sunduğu kareler, sürücü ve kodlayıcı kapasitesi gerçek sonucu etkiler.
 
 ## Yükleme sağlayıcıları
 
@@ -41,6 +42,6 @@ Paylaşım bağlantısına sahip kişiler yüklenen klibe erişebilir. İsteğe 
 
 `dotnet run --project tools/ClipBridge.Bench -- test.mp4 litterbox` komutu gerçek bir yükleme yapar. `gofile` ikinci seçenektir. Paylaşabileceğiniz sentetik MP4 kullanın. Araç gövdenin istemcide yazılmasını, sunucu yanıtı beklemesini ve bağlantının hazır oluşunu ayrı ölçer. Paylaşım bağlantısını geçici bir yerel arşivden yeniden okur. Litterbox için ilk video baytlarına kadar geçen süreyi ve dosya bütünlüğünü de kontrol eder. Gofile paylaşım sayfası için izlenebilirlik ölçümü yoktur.
 
-WPF, Windows'a özel ve .NET SDK ile doğrudan dağıtılabildiği için seçildi. WinUI 3 ek Windows App SDK dağıtım gereksinimleri, Avalonia ise çapraz platform UI bağımlılıkları getiriyor. OBS Studio, Replay Buffer, ses senkronizasyonu ve NVENC'i ayrı uygulama olarak sağlıyor. Yerel Windows Graphics Capture ve DXGI Desktop Duplication alternatifleri yakalama karelerini sağlar. Bunlarla ayrı bir replay motoru için kodlayıcı, ses, zamanlama ve mux altyapısı gerekir. ClipBridge paketinde OBS, libobs veya ayrı bir FFmpeg ikilisi bulunmaz. OBS Studio, [kendi GPL lisansı](https://github.com/obsproject/obs-studio/blob/master/COPYING) kapsamında ayrı kurulur. Pakete giren .NET bileşenlerinin lisans bildirimleri ZIP içindeki `licenses` klasöründedir.
+Kayıt mimarisi ve kaynak incelemesi için [Windows kayıt motoru notlarına](docs/recording.md) bakın. Windows CI, sentetik görüntü ve sesle ardışık MP4 dışa aktarmayı sınar. Ayrıca barındırılan Windows oturumunda gerçek pencere yakalama adımı çalıştırılır. Bu adımın sonucunu workflow logundan kontrol edin.
 
-Donanım doğrulaması için gerçek bir oyunda F8, arka arkaya klip, ses senkronu, NVENC, FPS etkisi ve anti-cheat davranışı ölçülmelidir. CI'deki OBS WebSocket testleri protokolü doğrular.
+Gerçek oyunda F8, NVENC, FPS etkisi, ses senkronu ve anti-cheat davranışı fiziksel Windows testinde ölçülmelidir.

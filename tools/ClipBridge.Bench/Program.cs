@@ -4,8 +4,26 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using ClipBridge.Core;
 
-if (args is ["obs-smoke", var outputDirectory])
-    return await ObsSmoke.RunAsync(outputDirectory);
+if (args is ["replay-smoke", var executable, var outputDirectory])
+{
+    Directory.CreateDirectory(outputDirectory);
+    using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+    await using var recorder = new ReplayRecorder(executable, outputDirectory, 3,
+        ["-re", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=30", "-f", "lavfi", "-i", "sine=frequency=440"],
+        ["-c:v", OperatingSystem.IsWindows() ? "mpeg2video" : "libx264", "-c:a", "aac", "-g", "30",
+        "-bf", "0", "-force_key_frames", "expr:gte(t,n_forced)"]);
+    await recorder.WaitUntilReadyAsync(stop.Token);
+    await Task.Delay(4500, stop.Token);
+    for (var i = 0; i < 2; i++)
+    {
+        var clip = await recorder.SaveAsync(Path.Combine(outputDirectory, $"replay-{i}.mp4"), stop.Token);
+        if (Mp4.ReadDuration(clip) is not { TotalSeconds: >= 2.9 and < 3.25 } duration)
+            throw new InvalidDataException("Replay duration is outside the rolling-buffer interval.");
+        Console.WriteLine($"{clip} · {duration.TotalSeconds:F2}s");
+        await Task.Delay(1200, stop.Token);
+    }
+    return 0;
+}
 
 if (args is not [var path, var choice] || !File.Exists(path) || Mp4.ReadDuration(path) is null
     || !Enum.TryParse<Provider>(choice, true, out var provider) || !Enum.IsDefined(provider))

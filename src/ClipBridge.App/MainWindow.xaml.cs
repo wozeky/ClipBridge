@@ -3,10 +3,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Net.Http;
-using System.Net.WebSockets;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Interop;
@@ -31,7 +28,7 @@ public partial class MainWindow : Window
     };
     private const int ReplayHotkey = 1;
     private const int WmHotkey = 0x0312;
-    private readonly ObsReplay _replay = new();
+    private WindowsCapture? _capture;
     private HwndSource? _windowSource;
     private bool _hotkeyRegistered;
     private bool _armed;
@@ -49,12 +46,13 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        if (Environment.GetCommandLineArgs() is [_, "--smoke-test", var marker])
+        if (Environment.GetCommandLineArgs() is [_, "--smoke-test" or "--capture-smoke", var marker])
         {
             _smokeMarker = marker;
+            var smokeCapture = Environment.GetCommandLineArgs()[1] == "--capture-smoke";
             _root = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(marker))!, "clipbridge-smoke-" + Guid.NewGuid().ToString("N"));
             _clipsPath = Path.Combine(_root, "videos");
-            ContentRendered += OnSmokeRendered;
+            ContentRendered += smokeCapture ? OnSmokeCaptureRendered : OnSmokeRendered;
         }
         Loaded += OnLoaded;
     }
@@ -68,6 +66,35 @@ public partial class MainWindow : Window
         }
         File.WriteAllText(_smokeMarker!, "ClipBridge window and library initialized");
         Application.Current.Shutdown();
+    }
+
+    private async void OnSmokeCaptureRendered(object? sender, EventArgs args)
+    {
+        ContentRendered -= OnSmokeCaptureRendered;
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(35));
+        var redraw = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+        redraw.Tick += (_, _) => StatusMessage.Text = DateTime.UtcNow.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
+        redraw.Start();
+        int result = 0;
+        try
+        {
+            await using var capture = new WindowsCapture();
+            await capture.StartAsync(new WindowInteropHelper(this).Handle, _root, 3, false, false, timeout.Token);
+            await Task.Delay(3500, timeout.Token);
+            var clip = await capture.SaveAsync(Path.Combine(_clipsPath, "window.mp4"), timeout.Token);
+            var duration = Mp4.ReadDuration(clip) ?? throw new CaptureException("No window capture MP4.");
+            File.WriteAllText(_smokeMarker!, $"Windows Graphics Capture · {capture.Encoder} · {duration.TotalSeconds:F2}s");
+        }
+        catch (Exception error) when (IsReplayError(error))
+        {
+            File.WriteAllText(_smokeMarker!, error.Message);
+            result = 1;
+        }
+        finally
+        {
+            redraw.Stop();
+            Application.Current.Shutdown(result);
+        }
     }
 
     private void OnLoaded(object sender, RoutedEventArgs args)
@@ -87,7 +114,8 @@ public partial class MainWindow : Window
             StartWithWindows.IsChecked = _smokeMarker is null && IsStartupEnabled();
             ReplayLength.ItemsSource = ReplayDurations.Options;
             ReplayLength.SelectedItem = _settings.ReplaySeconds;
-            ObsPassword.Password = ReadObsPassword(_settings.ProtectedObsPassword);
+            DesktopAudio.IsChecked = _settings.DesktopAudio;
+            Microphone.IsChecked = _settings.Microphone;
             GameName.Text = _settings.Game ?? "";
             _store = new ClipStore(Path.Combine(_root, "library.json"));
             _queue = new UploadQueue(_store,
@@ -105,12 +133,13 @@ public partial class MainWindow : Window
             CreateTrayIcon();
             _windowSource = PresentationSource.FromVisual(this) as HwndSource;
             _windowSource?.AddHook(WindowMessage);
+            RefreshWindows_Click(this, new RoutedEventArgs());
             _ = RunQueueAsync(_queue);
             if (Environment.GetCommandLineArgs().Contains("--tray"))
                 Hide();
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException
-            or CryptographicException or FormatException or System.Security.SecurityException)
+            or FormatException or System.Security.SecurityException)
         {
             StatusMessage.Text = "Klip arşivi veya ayarlar açılamadı. " + error.Message;
             RefreshButtons();
@@ -180,28 +209,55 @@ public partial class MainWindow : Window
         return 0;
     }
 
+    private void RefreshWindows_Click(object sender, RoutedEventArgs args)
+    {
+        var previous = (CaptureTarget.SelectedItem as WindowsCapture.CaptureWindow)?.Handle;
+        var windows = WindowsCapture.Windows(_windowSource?.Handle ?? 0);
+        CaptureTarget.ItemsSource = windows;
+        CaptureTarget.SelectedItem = windows.FirstOrDefault(window => window.Handle == previous);
+    }
+
     private async void Arm_Click(object sender, RoutedEventArgs args)
     {
         if (_captureBusy || _store is null)
             return;
-        if (!SaveSettings())
-            return;
-        if (ObsPassword.Password.Length == 0)
+        if (_capture is { } active)
         {
-            StatusMessage.Text = "OBS WebSocket parolasını Ayarlar'a girin.";
+            _capture = null;
+            SetReplayArmed(false);
+            SetCaptureBusy(true);
+            try
+            {
+                await active.DisposeAsync();
+                StatusMessage.Text = "Pencere kaydı durdu.";
+            }
+            catch (Exception error) when (IsReplayError(error))
+            {
+                ShowReplayStatus(error.Message, Forms.ToolTipIcon.Warning);
+            }
+            finally { SetCaptureBusy(false); }
             return;
         }
+        if (CaptureTarget.SelectedItem is not WindowsCapture.CaptureWindow target)
+        {
+            StatusMessage.Text = "Ayarlar'dan kaydedilecek oyun penceresini seçin.";
+            return;
+        }
+        if (!SaveSettings())
+            return;
 
         SetCaptureBusy(true);
-        SetReplayArmed(false);
+        var capture = new WindowsCapture();
         try
         {
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(_shutdown.Token);
-            timeout.CancelAfter(TimeSpan.FromSeconds(12));
-            await _replay.StartAsync(ObsPassword.Password, _clipsPath, _settings.ReplaySeconds, timeout.Token);
+            StatusMessage.Text = "Windows pencere kaydı başlatılıyor…";
+            await capture.StartAsync(target.Handle, Path.Combine(_root, "replay"), _settings.ReplaySeconds,
+                _settings.DesktopAudio, _settings.Microphone, _shutdown.Token);
+            _capture = capture;
             SetReplayArmed(true);
-            StatusMessage.Text = $"Replay Buffer başlatıldı · {_settings.ReplaySeconds} sn. " +
+            StatusMessage.Text = $"Kayıt hazır · {capture.Encoder} · hedef {_settings.ReplaySeconds} sn. " +
                 (_hotkeyRegistered ? "Klip için F8." : "Klip al düğmesini kullanın.");
+            _ = WatchCaptureAsync(capture);
         }
         catch (Exception error) when (IsReplayError(error))
         {
@@ -211,27 +267,37 @@ public partial class MainWindow : Window
         finally { SetCaptureBusy(false); }
     }
 
+    private async Task WatchCaptureAsync(WindowsCapture capture)
+    {
+        try { await capture.Completion; }
+        catch (Exception error) when (IsReplayError(error))
+        {
+            if (_capture != capture)
+                return;
+            _capture = null;
+            SetReplayArmed(false);
+            ShowReplayStatus("Pencere kaydı durdu. " + ReplayErrorMessage(error), Forms.ToolTipIcon.Warning);
+            try { await capture.DisposeAsync(); }
+            catch (Exception cleanupError) when (IsReplayError(cleanupError)) { }
+        }
+    }
+
     private async void SaveReplay_Click(object sender, RoutedEventArgs args) => await SaveReplayAsync();
 
     private async Task SaveReplayAsync()
     {
-        if (!_armed || _captureBusy || _store is null)
+        if (!_armed || _captureBusy || _store is null || _capture is not { } capture)
             return;
         SetCaptureBusy(true);
         try
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(_shutdown.Token);
             timeout.CancelAfter(TimeSpan.FromSeconds(25));
-            var path = await _replay.SaveAsync(ReadObsPassword(_settings.ProtectedObsPassword), _clipsPath, timeout.Token);
-            if (_store.Snapshot().Any(clip => string.Equals(clip.FilePath, path, StringComparison.OrdinalIgnoreCase)))
-                throw new ObsException("OBS yeni bir klip üretmedi. Tekrar deneyin.");
-            if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
-                throw new ObsException("OBS klip dosyası geçerli değil.");
-            using (var file = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read))
-                if (file.Length == 0)
-                    throw new ObsException("OBS boş bir klip oluşturdu. Replay Buffer'ın dolmasını bekleyin.");
-
-            await AddClipAsync(path, Path.GetFileNameWithoutExtension(path), Guid.NewGuid(), _settings.Game);
+            var id = Guid.NewGuid();
+            var name = "Klip " + DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss", CultureInfo.InvariantCulture);
+            var destination = Path.Combine(_clipsPath, $"{name}-{id:N}.mp4");
+            var path = await capture.SaveAsync(destination, timeout.Token);
+            await AddClipAsync(path, name, id, _settings.Game);
             if (!IsVisible)
                 _tray?.ShowBalloonTip(1500, "ClipBridge", StatusMessage.Text, Forms.ToolTipIcon.Info);
         }
@@ -246,6 +312,7 @@ public partial class MainWindow : Window
     private void SetReplayArmed(bool armed)
     {
         _armed = armed;
+        ArmButton.Content = armed ? "Kaydı durdur" : "Kaydı başlat";
         if (_windowSource is not null)
         {
             if (armed && !_hotkeyRegistered)
@@ -266,17 +333,14 @@ public partial class MainWindow : Window
         SaveReplayButton.IsEnabled = !busy && _armed;
     }
 
-    private static bool IsReplayError(Exception error) => error is ObsException or WebSocketException
-        or OperationCanceledException or IOException or UnauthorizedAccessException or CryptographicException
-        or FormatException or JsonException or ArgumentException or InvalidOperationException or KeyNotFoundException;
+    private static bool IsReplayError(Exception error) => error is CaptureException or COMException
+        or OperationCanceledException or IOException or UnauthorizedAccessException or Win32Exception
+        or ArgumentException or InvalidOperationException;
 
     private static string ReplayErrorMessage(Exception error) => error switch
     {
-        WebSocketException => "OBS'ye bağlanılamadı. OBS WebSocket sunucusunu ve parolayı kontrol edin.",
-        OperationCanceledException => "OBS zamanında yanıt vermedi. OBS ve Replay Buffer durumunu kontrol edin.",
-        ObsException => error.Message,
-        IOException or UnauthorizedAccessException => "Klip dosyası veya yerel arşiv açılamadı.",
-        _ => "OBS yanıtı ya da kayıt ayarları geçersiz."
+        OperationCanceledException => "Kayıt işlemi zaman aşımına uğradı.",
+        _ => error.Message
     };
 
     private void ShowReplayStatus(string message, Forms.ToolTipIcon icon)
@@ -346,14 +410,12 @@ public partial class MainWindow : Window
         }
         try
         {
-            var password = ObsPassword.Password;
             var seconds = ReplayLength.SelectedItem as int? ?? ReplayDurations.Default;
             var game = GameName.Text.Trim();
             var settings = new ClipSettings(ProviderChoice.SelectedIndex == 1 ? Provider.Gofile : Provider.Litterbox,
                 AutoUpload.IsChecked == true, AutoCopy.IsChecked == true, limit, seconds,
-                ProtectObsPassword(password), game.Length == 0 ? null : game, AutoFallback.IsChecked == true);
-            if (_settings.ReplaySeconds != seconds || ReadObsPassword(_settings.ProtectedObsPassword) != password)
-                SetReplayArmed(false);
+                game.Length == 0 ? null : game, AutoFallback.IsChecked == true, DesktopAudio.IsChecked == true,
+                Microphone.IsChecked == true);
             AtomicJson.Write(Path.Combine(_root, "settings.json"), settings);
             Volatile.Write(ref _settings, settings);
             using var startup = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run");
@@ -361,23 +423,17 @@ public partial class MainWindow : Window
                 startup.SetValue("ClipBridge", $"\"{Environment.ProcessPath}\" --tray");
             else
                 startup.DeleteValue("ClipBridge", throwOnMissingValue: false);
-            StatusMessage.Text = "Ayarlar kaydedildi.";
+            StatusMessage.Text = _armed ? "Ayarlar kaydedildi. Ses ve süre değişiklikleri sonraki kayıtta uygulanır."
+                : "Ayarlar kaydedildi.";
             return true;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Security.SecurityException
-            or CryptographicException or FormatException)
+            or FormatException)
         {
             StatusMessage.Text = "Ayarlar kaydedilirken hata oluştu. " + error.Message;
             return false;
         }
     }
-
-    private static string? ProtectObsPassword(string password) => password.Length == 0 ? null :
-        Convert.ToBase64String(ProtectedData.Protect(Encoding.UTF8.GetBytes(password), null, DataProtectionScope.CurrentUser));
-
-    private static string ReadObsPassword(string? encrypted) => encrypted is null ? "" :
-        Encoding.UTF8.GetString(ProtectedData.Unprotect(Convert.FromBase64String(encrypted), null,
-            DataProtectionScope.CurrentUser));
 
     private static bool IsStartupEnabled()
     {
@@ -517,6 +573,13 @@ public partial class MainWindow : Window
     protected override void OnClosed(EventArgs args)
     {
         _shutdown.Cancel();
+        var capture = _capture;
+        _capture = null;
+        if (capture is not null)
+        {
+            try { Task.Run(async () => await capture.DisposeAsync()).GetAwaiter().GetResult(); }
+            catch (Exception error) when (IsReplayError(error)) { }
+        }
         _tray?.ContextMenuStrip?.Dispose();
         _tray?.Dispose();
         _http.Dispose();
@@ -525,7 +588,7 @@ public partial class MainWindow : Window
 
     private sealed record ClipSettings(Provider Provider = Provider.Litterbox, bool AutoUpload = false,
         bool AutoCopy = true, int SpeedLimit = 0, int ReplaySeconds = ReplayDurations.Default,
-        string? ProtectedObsPassword = null, string? Game = null, bool AutoFallback = false)
+        string? Game = null, bool AutoFallback = false, bool DesktopAudio = true, bool Microphone = false)
     {
         [System.Text.Json.Serialization.JsonIgnore]
         public Provider? FallbackProvider => AutoFallback
