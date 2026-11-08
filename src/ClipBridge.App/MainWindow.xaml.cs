@@ -9,6 +9,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 using ClipBridge.Core;
 using Microsoft.Win32;
 using Forms = System.Windows.Forms;
@@ -134,6 +135,21 @@ public partial class MainWindow : Window
         {
             Application.Current.Shutdown(1);
             return;
+        }
+        // Capture the actual rendered WPF view for visual review, rather than producing a mockup.
+        // Run only in the isolated --smoke-test mode; no user clips or settings are touched.
+        if (Content is FrameworkElement root)
+        {
+            var dpi = VisualTreeHelper.GetDpi(root);
+            var width = Math.Max(1, (int)Math.Ceiling(root.ActualWidth * dpi.DpiScaleX));
+            var height = Math.Max(1, (int)Math.Ceiling(root.ActualHeight * dpi.DpiScaleY));
+            var screenshot = new RenderTargetBitmap(width, height,
+                dpi.PixelsPerInchX, dpi.PixelsPerInchY, PixelFormats.Pbgra32);
+            screenshot.Render(root);
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(screenshot));
+            using var output = File.Create(Path.ChangeExtension(_smokeMarker!, ".png"));
+            encoder.Save(output);
         }
         File.WriteAllText(_smokeMarker!, "ClipBridge window, library and diagnostics clipboard initialized");
         Application.Current.Shutdown();
