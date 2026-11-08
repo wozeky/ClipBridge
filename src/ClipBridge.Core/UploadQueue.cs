@@ -18,12 +18,13 @@ public sealed class UploadQueue
     public event Action<Clip>? Changed;
     public event Action<Guid, double>? Progress;
 
-    public Clip? Enqueue(Guid id, Provider provider)
+    public Clip? Enqueue(Guid id, Provider provider, Provider? fallback = null)
     {
-        if (!_providers.ContainsKey(provider))
+        if (!_providers.ContainsKey(provider) || (fallback is { } other && (other == provider || !_providers.ContainsKey(other))))
             throw new ArgumentOutOfRangeException(nameof(provider));
         var clip = _store.Change(id, current => current.State is UploadState.Local or UploadState.Failed
-            ? current with { State = UploadState.Queued, Provider = provider, Attempts = 0, NextAttempt = null, Error = null }
+            ? current with { State = UploadState.Queued, Provider = provider, Attempts = 0, NextAttempt = null, Error = null,
+                FallbackProvider = fallback }
             : null);
         if (clip is not null)
         {
@@ -72,7 +73,7 @@ public sealed class UploadQueue
                 throw new UploadException("Yükleme servisi bulunamadı.");
             var progress = new CallbackProgress(percent => Progress?.Invoke(id, percent));
             var uploaded = await provider.UploadAsync(clip.FilePath, _speedLimit(), progress, cancellationToken);
-            Update(id, current => current with { State = UploadState.Uploaded, ShareUrl = uploaded.ShareUrl.AbsoluteUri,
+            Update(id, current => current with { State = UploadState.Uploaded, ShareUrl = uploaded.ShareUrl.AbsoluteUri, FallbackProvider = null,
                 Timing = uploaded.Timing, Error = null, NextAttempt = null });
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -80,6 +81,14 @@ public sealed class UploadQueue
             Update(id, current => current with { State = UploadState.Failed, NextAttempt = null,
                 Error = "Uygulama kapatılırken yükleme kesildi." });
             throw;
+        }
+        catch (UploadException error) when (error.RejectedForCapacity && clip.FallbackProvider is not null)
+        {
+            Update(id, current => current with
+            {
+                State = UploadState.Queued, Provider = clip.FallbackProvider.Value, FallbackProvider = null,
+                Attempts = 0, NextAttempt = null, Error = error.Message + " Alternatif servis sıraya alındı."
+            });
         }
         catch (Exception error) when (error is UploadException or HttpRequestException or IOException
             or UnauthorizedAccessException or OperationCanceledException)

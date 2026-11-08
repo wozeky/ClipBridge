@@ -98,6 +98,36 @@ public sealed class UploadTests : IDisposable
     }
 
     [Fact]
+    public async Task CapacityRejectionMovesOptedInClipToTheOtherProvider()
+    {
+        var clip = await CreateLocalClip();
+        var store = new ClipStore(Path.Combine(_directory, "library.json"));
+        store.Add(clip);
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+        var finished = new TaskCompletionSource<Clip>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var link = new Uri("https://gofile.io/d/fallback");
+        var queue = new UploadQueue(store,
+        [
+            new StubProvider(Provider.Litterbox, () => throw new UploadException("Too large", rejectedForCapacity: true)),
+            new StubProvider(Provider.Gofile, () => new UploadResult(link, new UploadTiming(default, default)))
+        ], () => 0);
+        queue.Changed += item =>
+        {
+            if (item.State == UploadState.Uploaded)
+                finished.TrySetResult(item);
+        };
+        queue.Enqueue(clip.Id, Provider.Litterbox, Provider.Gofile);
+        var worker = queue.RunAsync(stop.Token);
+        var result = await finished.Task.WaitAsync(stop.Token);
+        Assert.Equal(Provider.Gofile, result.Provider);
+        Assert.Null(result.FallbackProvider);
+        Assert.Equal(link.AbsoluteUri, result.ShareUrl);
+        Assert.True(File.Exists(result.FilePath));
+        await stop.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => worker);
+    }
+
+    [Fact]
     public async Task RestartKeepsWaitingItemsAndRecoversInterruptedUploadsWithoutRepeatingThem()
     {
         var clip = await CreateLocalClip();

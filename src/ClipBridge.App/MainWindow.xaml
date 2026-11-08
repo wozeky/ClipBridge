@@ -12,8 +12,12 @@
     </Grid.RowDefinitions>
 
     <DockPanel Grid.Row="0" LastChildFill="True" Margin="0,0,0,15">
-      <Button DockPanel.Dock="Right" Content="MP4 içe aktar" Click="Import_Click" Padding="16,8"
-              VerticalAlignment="Center" />
+      <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center">
+        <Button x:Name="ArmButton" Content="Replay Buffer'ı başlat" Click="Arm_Click" Padding="13,8" Margin="0,0,8,0" />
+        <Button x:Name="SaveReplayButton" Content="Klip al · F8" Click="SaveReplay_Click" Padding="13,8"
+                Margin="0,0,8,0" IsEnabled="False" />
+        <Button Content="MP4 içe aktar" Click="Import_Click" Padding="13,8" />
+      </WrapPanel>
       <StackPanel>
         <TextBlock Text="ClipBridge" FontSize="34" FontWeight="SemiBold" />
         <TextBlock Text="Yerel klip arşivi ve hızlı paylaşım" Margin="0,2,0,0" Opacity=".75" />
@@ -31,7 +35,16 @@
           <TextBlock Text="Hız sınırı (KiB/sn, 0 sınırsız)" VerticalAlignment="Center" Margin="0,0,8,0" />
           <TextBox x:Name="SpeedLimit" Width="80" />
         </WrapPanel>
+        <WrapPanel Margin="0,9,0,0">
+          <TextBlock Text="Replay (sn)" VerticalAlignment="Center" Margin="0,0,8,0" />
+          <ComboBox x:Name="ReplayLength" Width="70" Margin="0,0,16,0" />
+          <TextBlock Text="OBS WebSocket parolası" VerticalAlignment="Center" Margin="0,0,8,0" />
+          <PasswordBox x:Name="ObsPassword" Width="130" Margin="0,0,16,0" />
+          <TextBlock Text="Oyun etiketi" VerticalAlignment="Center" Margin="0,0,8,0" />
+          <TextBox x:Name="GameName" Width="140" MaxLength="80" />
+        </WrapPanel>
         <CheckBox x:Name="AutoUpload" Content="Yeni klipleri otomatik yükle" Margin="0,9,0,0" />
+        <CheckBox x:Name="AutoFallback" Content="Dosya limiti reddinde diğer ücretsiz servisi dene" Margin="0,7,0,0" />
         <CheckBox x:Name="AutoCopy" Content="Hazır bağlantıları otomatik panoya kopyala" Margin="0,7,0,0" />
         <CheckBox x:Name="StartWithWindows" Content="Windows oturumunda tepside başlat" Margin="0,7,0,0" />
         <TextBlock Text="Paylaşım bağlantısına sahip kişiler yüklenen klipleri görebilir."
@@ -44,7 +57,7 @@
               SelectionMode="Single" IsReadOnly="True" HeadersVisibility="Column" RowHeaderWidth="0"
               SelectionChanged="Library_SelectionChanged" MouseDoubleClick="Open_Click">
       <DataGrid.Columns>
-        <DataGridTextColumn Header="Klip" Binding="{Binding Clip.Name}" Width="2*" />
+        <DataGridTextColumn Header="Klip" Binding="{Binding Title}" Width="2*" />
         <DataGridTextColumn Header="Tarih" Binding="{Binding Date}" Width="130" />
         <DataGridTextColumn Header="Süre" Binding="{Binding Duration}" Width="65" />
         <DataGridTextColumn Header="Boyut" Binding="{Binding Size}" Width="75" />
@@ -53,17 +66,24 @@
       </DataGrid.Columns>
     </DataGrid>
 
-    <StackPanel Grid.Row="3" Margin="0,12,0,0">
-      <WrapPanel>
-        <Button x:Name="OpenButton" Content="Videoyu aç" Click="Open_Click" Margin="0,0,8,0" />
-        <Button x:Name="CopyButton" Content="Bağlantıyı kopyala" Click="Copy_Click" Margin="0,0,8,0" />
-        <Button x:Name="UploadButton" Content="Yükle / yeniden dene" Click="Upload_Click" Margin="0,0,8,0" />
-        <Button Content="Klip klasörü" Click="Folder_Click" />
-      </WrapPanel>
-      <ProgressBar x:Name="UploadProgress" Height="4" Margin="0,9,0,0" Minimum="0" Maximum="100"
-                   Visibility="Collapsed" />
-      <TextBlock x:Name="StatusMessage" Text="MP4 içe aktararak başlayabilirsiniz." TextWrapping="Wrap"
-                 Margin="0,7,0,0" AutomationProperties.LiveSetting="Polite" />
-    </StackPanel>
+    <DockPanel Grid.Row="3" Margin="0,12,0,0">
+      <Image x:Name="Thumbnail" DockPanel.Dock="Right" Width="120" Height="68" Visibility="Collapsed"
+             Margin="10,0,0,0" Stretch="Uniform" AutomationProperties.Name="Klip küçük resmi" />
+      <StackPanel>
+        <WrapPanel>
+          <Button x:Name="OpenButton" Content="Videoyu aç" Click="Open_Click" Margin="0,0,8,0" />
+          <Button x:Name="CopyButton" Content="Bağlantıyı kopyala" Click="Copy_Click" Margin="0,0,8,0" />
+          <Button x:Name="UploadButton" Content="Yükle / yeniden dene" Click="Upload_Click" Margin="0,0,8,0" />
+          <Button Content="Klip klasörü" Click="Folder_Click" />
+        </WrapPanel>
+        <ProgressBar x:Name="UploadProgress" Height="4" Margin="0,9,0,0" Minimum="0" Maximum="100"
+                     Visibility="Collapsed" />
+        <TextBlock Text="{Binding ElementName=Library, Path=SelectedItem.Clip.ShareUrl}"
+                   ToolTip="{Binding ElementName=Library, Path=SelectedItem.Clip.ShareUrl}"
+                   TextTrimming="CharacterEllipsis" Opacity=".8" />
+        <TextBlock x:Name="StatusMessage" Text="MP4 içe aktararak başlayabilirsiniz." TextWrapping="Wrap"
+                   Margin="0,7,0,0" AutomationProperties.LiveSetting="Polite" />
+      </StackPanel>
+    </DockPanel>
   </Grid>
 </Window>

@@ -16,10 +16,36 @@ using var client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = fa
     Timeout = TimeSpan.FromMinutes(15),
     MaxResponseContentBufferSize = 128 * 1024
 };
+var dataDirectory = Directory.CreateTempSubdirectory("clipbridge-bench-");
 var watch = Stopwatch.StartNew();
 try
 {
-    var result = await new FreeUploadProvider(client, provider).UploadAsync(path, 0, null, CancellationToken.None);
+    using var stop = new CancellationTokenSource(TimeSpan.FromMinutes(15));
+    var databasePath = Path.Combine(dataDirectory.FullName, "library.json");
+    var store = new ClipStore(databasePath);
+    var clip = new Clip(Guid.NewGuid(), Path.GetFullPath(path), "Synthetic test", DateTimeOffset.UtcNow,
+        new FileInfo(path).Length, Mp4.ReadDuration(path));
+    store.Add(clip);
+    var queue = new UploadQueue(store, [new FreeUploadProvider(client, provider)], () => 0);
+    var completion = new TaskCompletionSource<Clip>(TaskCreationOptions.RunContinuationsAsynchronously);
+    queue.Changed += updated =>
+    {
+        if (updated.State is UploadState.Uploaded or UploadState.Failed)
+            completion.TrySetResult(updated);
+    };
+    queue.Enqueue(clip.Id, provider);
+    var worker = queue.RunAsync(stop.Token);
+    try { await completion.Task.WaitAsync(stop.Token); }
+    finally
+    {
+        await stop.CancelAsync();
+        try { await worker; }
+        catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
+    }
+    var saved = new ClipStore(databasePath).Find(clip.Id);
+    if (saved is not { State: UploadState.Uploaded, ShareUrl: { } shareUrl, Timing: { } timing })
+        throw new UploadException(saved?.Error ?? "Paylaşım bağlantısı arşivden okunamadı.");
+    var result = new UploadResult(new Uri(shareUrl), timing);
     double? playbackReadyMs = null;
     bool? matches = null;
     if (provider == Provider.Litterbox)
@@ -52,6 +78,7 @@ try
         linkReadyMs = result.Timing.LinkReady.TotalMilliseconds,
         firstVideoBytesMs = playbackReadyMs,
         downloadMatches = matches,
+        archivePersisted = true,
         shareUrl = result.ShareUrl
     }));
     return matches == false ? 1 : 0;
@@ -60,4 +87,8 @@ catch (Exception error) when (error is HttpRequestException or UploadException o
 {
     Console.Error.WriteLine(error.Message);
     return 1;
+}
+finally
+{
+    dataDirectory.Delete(recursive: true);
 }

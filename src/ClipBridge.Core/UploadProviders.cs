@@ -12,11 +12,13 @@ public interface IUploadProvider
         CancellationToken cancellationToken);
 }
 
-public sealed class UploadException(string message, bool retryable = false, TimeSpan? retryAfter = null)
+public sealed class UploadException(string message, bool retryable = false, TimeSpan? retryAfter = null,
+    bool rejectedForCapacity = false)
     : Exception(message)
 {
     public bool Retryable { get; } = retryable;
     public TimeSpan? RetryAfter { get; } = retryAfter;
+    public bool RejectedForCapacity { get; } = rejectedForCapacity;
 }
 
 public sealed class FreeUploadProvider(HttpClient http, Provider provider) : IUploadProvider
@@ -33,8 +35,10 @@ public sealed class FreeUploadProvider(HttpClient http, Provider provider) : IUp
             : "https://upload.gofile.io/uploadfile";
         await using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
             65536, FileOptions.Asynchronous | FileOptions.SequentialScan);
-        if (file.Length == 0 || (isLitterbox && file.Length > LitterboxMaximumBytes))
-            throw new UploadException("Dosya boş veya Litterbox'ın 1 GB dosya sınırını aşıyor.");
+        if (file.Length == 0)
+            throw new UploadException("Dosya boş.");
+        if (isLitterbox && file.Length > LitterboxMaximumBytes)
+            throw new UploadException("Litterbox'ın 1 GB dosya sınırı aşıldı.", rejectedForCapacity: true);
 
         // Use a neutral name for the upload. Imported filenames stay on the local device.
         using var multipart = new MultipartFormDataContent();
@@ -44,7 +48,7 @@ public sealed class FreeUploadProvider(HttpClient http, Provider provider) : IUp
             multipart.Add(new StringContent("24h"), "time");
         }
         var watch = Stopwatch.StartNew();
-        var video = new VideoContent(file, Math.Max(0, limitKibPerSecond), progress);
+        var video = new VideoContent(file, Math.Max(0, limitKibPerSecond), progress, watch);
         video.Headers.ContentType = new MediaTypeHeaderValue("video/mp4");
         multipart.Add(video, isLitterbox ? "fileToUpload" : "file", "clipbridge.mp4");
 
@@ -55,7 +59,7 @@ public sealed class FreeUploadProvider(HttpClient http, Provider provider) : IUp
             var retry = response.Headers.RetryAfter;
             var wait = retry?.Delta ?? (retry?.Date - DateTimeOffset.UtcNow);
             throw new UploadException($"{Id} HTTP {status} döndürdü.",
-                status is 408 or 429 or >= 500 and <= 599, wait);
+                status is 408 or 429 or >= 500 and <= 599, wait, rejectedForCapacity: status == 413);
         }
 
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -74,7 +78,7 @@ public sealed class FreeUploadProvider(HttpClient http, Provider provider) : IUp
             var status = root.GetProperty("status").GetString();
             if (status != "ok")
                 throw new UploadException("Gofile yüklemeyi kabul etmedi.",
-                    status is "error-notAvail" or "error-rateLimit");
+                    status is "error-notAvail" or "error-rateLimit", rejectedForCapacity: status == "error-limits");
             return ValidateLink(root.GetProperty("data").GetProperty("downloadPage").GetString(),
                 "gofile.io", "/d/");
         }
@@ -94,10 +98,9 @@ public sealed class FreeUploadProvider(HttpClient http, Provider provider) : IUp
         return uri;
     }
 
-    private sealed class VideoContent(FileStream input, int limitKibPerSecond, IProgress<double>? progress)
+    private sealed class VideoContent(FileStream input, int limitKibPerSecond, IProgress<double>? progress, Stopwatch transfer)
         : HttpContent
     {
-        private readonly Stopwatch _transfer = Stopwatch.StartNew();
         public TimeSpan? BodyWrittenAt { get; private set; }
 
         protected override bool TryComputeLength(out long length)
@@ -135,7 +138,7 @@ public sealed class FreeUploadProvider(HttpClient http, Provider provider) : IUp
                     progress?.Report(100d * sent / input.Length);
                 }
             }
-            BodyWrittenAt = _transfer.Elapsed;
+            BodyWrittenAt = transfer.Elapsed;
         }
     }
 }
