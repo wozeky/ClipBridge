@@ -1,0 +1,48 @@
+name: Windows x64
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore
+        run: dotnet restore ClipBridge.slnx
+      - name: Build
+        run: dotnet build ClipBridge.slnx -c Release --no-restore
+      - name: Test
+        run: dotnet test ClipBridge.slnx -c Release --no-build --verbosity normal
+      - name: Publish Windows x64
+        run: dotnet publish src/ClipBridge.App -c Release -r win-x64 --self-contained true -o artifacts/win-x64
+      - name: Launch and render the WPF window
+        shell: pwsh
+        run: |
+          $marker = Join-Path $env:RUNNER_TEMP "clipbridge-window.txt"
+          Remove-Item -LiteralPath $marker -ErrorAction SilentlyContinue
+          $app = Start-Process -FilePath "./artifacts/win-x64/ClipBridge.exe" -ArgumentList "--smoke-test", "`"$marker`"" -PassThru
+          if (-not $app.WaitForExit(30000)) {
+            Stop-Process -Id $app.Id -Force
+            throw "ClipBridge did not exit after rendering the window."
+          }
+          if ($app.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $marker)) {
+            throw "ClipBridge did not render the window successfully. Exit code: $($app.ExitCode)"
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ClipBridge-win-x64
+          path: artifacts/win-x64/
+          if-no-files-found: error
+          retention-days: 30
