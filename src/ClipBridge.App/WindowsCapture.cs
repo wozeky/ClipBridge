@@ -18,6 +18,9 @@ internal sealed class WindowsCapture : IAsyncDisposable
     public string Encoder { get; private set; } = "";
     public string Source { get; private set; } = "";
     public string FallbackDetails { get; private set; } = "";
+    public (int Width, int Height, int Fps) VideoFormat { get; private set; }
+    public string FormatLabel => FormattableString.Invariant(
+        $"{VideoFormat.Width}x{VideoFormat.Height} @ {VideoFormat.Fps} FPS");
     public Task Completion => _recorder!.Completion;
 
     public async Task StartAsync(nint window, string cache, int seconds, bool desktopAudio, bool microphone,
@@ -31,11 +34,19 @@ internal sealed class WindowsCapture : IAsyncDisposable
 
         var errors = new List<string>();
         var handle = unchecked((ulong)(nuint)window).ToString(CultureInfo.InvariantCulture);
+        var wgcUnavailable = false;
         foreach (var (graphicsCapture, encoder) in new[]
         {
-            (true, "h264_nvenc"), (true, "h264_mf"), (false, "h264_mf")
+            (true, "h264_nvenc"), (true, "h264_amf"), (true, "h264_mf"), (false, "h264_mf")
         })
         {
+            if (graphicsCapture && wgcUnavailable)
+                continue;
+            var software = encoder == "h264_mf";
+            var (width, height, fps, bitrate, maxRate) = software
+                ? (1280, 720, 30, "6M", "8M")
+                : (1920, 1080, 60, "12M", "14M");
+            var fpsArg = fps.ToString(CultureInfo.InvariantCulture);
             using var startup = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             startup.CancelAfter(TimeSpan.FromSeconds(12));
             try
@@ -45,27 +56,31 @@ internal sealed class WindowsCapture : IAsyncDisposable
                 if (microphone)
                     _audio.Add(new AudioFeed(new WasapiCapture()));
 
-                var inputs = new List<string> { "-thread_queue_size", "64" };
+                // Video packets can own raw frames. Keep this queue short independently of audio buffering.
+                var inputs = new List<string> { "-thread_queue_size", "8" };
                 if (graphicsCapture)
                     inputs.AddRange(["-f", "lavfi", "-i",
-                        $"gfxcapture=hwnd={handle}:max_framerate=60:width=1920:height=1080:resize_mode=scale_aspect:display_border=1"]);
+                        FormattableString.Invariant(
+                            $"gfxcapture=hwnd={handle}:max_framerate={fps}:width={width}:height={height}:resize_mode=scale_aspect:display_border=1")]);
                 else
-                    inputs.AddRange(["-f", "gdigrab", "-framerate", "60", "-draw_mouse", "0", "-i", $"hwnd={handle}"]);
+                    inputs.AddRange(["-f", "gdigrab", "-framerate", fpsArg, "-draw_mouse", "0", "-i", $"hwnd={handle}"]);
                 foreach (var feed in _audio)
                     inputs.AddRange(feed.Arguments);
 
                 var args = new List<string> { "-map", "0:v:0" };
                 if (encoder == "h264_nvenc")
                     args.AddRange(["-c:v", encoder, "-preset", "p4", "-tune", "ll", "-rc", "cbr"]);
+                else if (encoder == "h264_amf")
+                    args.AddRange(["-c:v", encoder, "-usage", "lowlatency", "-quality", "speed", "-rc", "cbr"]);
                 else
                 {
                     var filter = graphicsCapture ? "hwdownload,format=bgra,format=nv12"
-                        : "scale=1920:1080:force_original_aspect_ratio=decrease:force_divisible_by=2,"
-                          + "pad=1920:1080:(ow-iw)/2:(oh-ih)/2,format=nv12";
+                        : FormattableString.Invariant(
+                            $"scale={width}:{height}:flags=bilinear:force_original_aspect_ratio=decrease:force_divisible_by=2,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,format=nv12");
                     args.AddRange(["-vf", filter, "-c:v", encoder, "-hw_encoding", "0"]);
                 }
-                args.AddRange(["-r", "60", "-fps_mode", "cfr", "-b:v", "12M", "-maxrate", "14M", "-bufsize", "14M",
-                    "-g", "60", "-bf", "0", "-force_key_frames", "expr:gte(t,n_forced)"]);
+                args.AddRange(["-r", fpsArg, "-fps_mode", "cfr", "-b:v", bitrate, "-maxrate", maxRate, "-bufsize", maxRate,
+                    "-g", fpsArg, "-bf", "0", "-force_key_frames", "expr:gte(t,n_forced)"]);
                 if (_audio.Count == 1)
                     args.AddRange(["-map", "1:a:0", "-c:a", "aac", "-b:a", "160k", "-ar", "48000"]);
                 if (_audio.Count == 2)
@@ -75,7 +90,13 @@ internal sealed class WindowsCapture : IAsyncDisposable
                 _recorder = new ReplayRecorder(executable, cache, seconds, inputs, args);
                 await _recorder.WaitUntilReadyAsync(startup.Token);
                 Source = graphicsCapture ? "Windows Graphics Capture" : "Windows GDI";
-                Encoder = encoder == "h264_nvenc" ? "NVIDIA NVENC" : "Media Foundation";
+                VideoFormat = (width, height, fps);
+                Encoder = encoder switch
+                {
+                    "h264_nvenc" => "NVIDIA NVENC",
+                    "h264_amf" => "AMD AMF",
+                    _ => "Media Foundation"
+                };
                 return;
             }
             catch (Exception error) when (error is CaptureException or OperationCanceledException)
@@ -85,6 +106,8 @@ internal sealed class WindowsCapture : IAsyncDisposable
                 var details = error is OperationCanceledException
                     ? "İlk kareler zamanında gelmedi. Seçilen pencereyi açık tutun."
                     : error.Message;
+                if (graphicsCapture && details.Contains("Failed to create D3D11VA device", StringComparison.Ordinal))
+                    wgcUnavailable = true;
                 var source = graphicsCapture ? "WGC" : "GDI";
                 errors.Add($"{source}/{encoder} · {details}");
                 FallbackDetails = string.Join(Environment.NewLine, errors);
@@ -97,6 +120,8 @@ internal sealed class WindowsCapture : IAsyncDisposable
         }
         throw new CaptureException("Windows kaydı başlatılamadı.\n" + string.Join("\n", errors));
     }
+
+    public (TimeSpan CpuTime, long WorkingSetBytes) SampleRecorderUsage() => _recorder!.SampleProcessUsage();
 
     public Task<string> SaveAsync(string destination, CancellationToken cancellationToken) =>
         _recorder!.SaveAsync(destination, cancellationToken);

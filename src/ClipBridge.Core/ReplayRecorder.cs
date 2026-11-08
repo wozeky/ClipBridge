@@ -44,6 +44,12 @@ public sealed class ReplayRecorder : IAsyncDisposable
 
     public Task Completion => _readSegments;
 
+    public (TimeSpan CpuTime, long WorkingSetBytes) SampleProcessUsage()
+    {
+        _process.Refresh();
+        return (_process.TotalProcessorTime, _process.WorkingSet64);
+    }
+
     public Task WaitUntilReadyAsync(CancellationToken cancellationToken) => _ready.Task.WaitAsync(cancellationToken);
 
     private async Task IndexSegmentsAsync()

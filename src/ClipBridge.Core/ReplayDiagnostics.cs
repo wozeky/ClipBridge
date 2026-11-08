@@ -12,6 +12,7 @@ public sealed class ReplayDiagnostics
     private string _captureStatus = "Henüz denenmedi";
     private string _source = "Belirlenmedi";
     private string _encoder = "Belirlenmedi";
+    private (int Width, int Height, int Fps)? _videoFormat;
     private string? _fallback;
     private string? _captureError;
     private string _saveStatus = "Henüz denenmedi";
@@ -30,13 +31,16 @@ public sealed class ReplayDiagnostics
         _captureStatus = "Başlatılıyor";
         _source = _encoder = "Belirlenmedi";
         _fallback = _captureError = null;
+        _videoFormat = null;
     }
 
-    public void CaptureStarted(string source, string encoder, string fallbackDetails)
+    public void CaptureStarted(string source, string encoder, string fallbackDetails,
+        (int Width, int Height, int Fps)? videoFormat = null)
     {
         _captureStatus = "Hazır";
         _source = source is "Windows Graphics Capture" or "Windows GDI" ? source : "Bilinmiyor";
-        _encoder = encoder is "NVIDIA NVENC" or "Media Foundation" ? encoder : "Bilinmiyor";
+        _encoder = encoder is "NVIDIA NVENC" or "AMD AMF" or "Media Foundation" ? encoder : "Bilinmiyor";
+        _videoFormat = videoFormat;
         _fallback = FallbackReason(fallbackDetails);
     }
 
@@ -97,11 +101,15 @@ public sealed class ReplayDiagnostics
             _ => "Yükleme bilgisi yok"
         };
 
+        var format = _videoFormat is { } video
+            ? FormattableString.Invariant($"{video.Width}x{video.Height} @ {video.Fps} FPS")
+            : "Belirlenmedi";
         return string.Join(Environment.NewLine,
             $"ClipBridge {version.ToString(3)} · Tanılama raporu",
             $"Kayıt durumu: {_captureStatus}",
             $"Yakalama yöntemi: {_source}",
             $"Kodlayıcı: {_encoder}",
+            $"Kayıt biçimi: {format}",
             $"Yedek yöntem nedeni: {_fallback ?? "Yok"}",
             $"Kayıt hatası: {_captureError ?? "Yok"}",
             $"F8 kısayolu: {(hotkeyRegistered ? "Etkin" : "Etkin değil")}",

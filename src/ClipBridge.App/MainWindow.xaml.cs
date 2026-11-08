@@ -102,10 +102,27 @@ public partial class MainWindow : Window
         {
             await using var capture = new WindowsCapture();
             await capture.StartAsync(new WindowInteropHelper(this).Handle, _root, 3, false, false, timeout.Token);
-            await Task.Delay(3500, timeout.Token);
+            using var app = Process.GetCurrentProcess();
+            var started = Stopwatch.GetTimestamp();
+            var appStart = app.TotalProcessorTime;
+            var recorderStart = capture.SampleRecorderUsage();
+            await Task.Delay(5000, timeout.Token);
+            var recorderEnd = capture.SampleRecorderUsage();
+            app.Refresh();
+            var appElapsed = app.TotalProcessorTime - appStart;
+            var appWorkingSet = app.WorkingSet64;
+            var sampleSeconds = Stopwatch.GetElapsedTime(started).TotalSeconds;
+            var machineCpuSeconds = sampleSeconds * Environment.ProcessorCount;
+            var recorderCpu = (recorderEnd.CpuTime - recorderStart.CpuTime).TotalSeconds / machineCpuSeconds;
+            var appCpu = appElapsed.TotalSeconds / machineCpuSeconds;
             var clip = await capture.SaveAsync(Path.Combine(_clipsPath, "window.mp4"), timeout.Token);
             var duration = Mp4.ReadDuration(clip) ?? throw new CaptureException("No window capture MP4.");
-            File.WriteAllLines(_smokeMarker!, [$"{capture.Source} · {capture.Encoder} · {duration.TotalSeconds:F2}s", clip, capture.FallbackDetails]);
+            File.WriteAllLines(_smokeMarker!,
+                [$"{capture.Source} · {capture.Encoder} · {capture.FormatLabel} · {duration.TotalSeconds:F2}s",
+                 clip, capture.FallbackDetails,
+                 FormattableString.Invariant($"Hosted capture sample {sampleSeconds:F1}s, {Environment.ProcessorCount} logical CPUs"),
+                 FormattableString.Invariant($"ClipBridge CPU {appCpu:P1} · working set {appWorkingSet / 1048576d:F1} MiB"),
+                 FormattableString.Invariant($"FFmpeg CPU {recorderCpu:P1} · working set {recorderEnd.WorkingSetBytes / 1048576d:F1} MiB")]);
         }
         catch (Exception error) when (IsReplayError(error))
         {
@@ -288,9 +305,9 @@ public partial class MainWindow : Window
             await capture.StartAsync(target.Handle, Path.Combine(_root, "replay"), _settings.ReplaySeconds,
                 _settings.DesktopAudio, _settings.Microphone, _shutdown.Token);
             _capture = capture;
-            _diagnostics.CaptureStarted(capture.Source, capture.Encoder, capture.FallbackDetails);
+            _diagnostics.CaptureStarted(capture.Source, capture.Encoder, capture.FallbackDetails, capture.VideoFormat);
             SetReplayArmed(true);
-            StatusMessage.Text = $"Kayıt hazır · {capture.Source} · {capture.Encoder} · hedef {_settings.ReplaySeconds} sn. " +
+            StatusMessage.Text = $"Kayıt hazır · {capture.Source} · {capture.Encoder} · {capture.FormatLabel} · hedef {_settings.ReplaySeconds} sn. " +
                 (_hotkeyRegistered ? "Klip için F8." : "Klip al düğmesini kullanın.");
             _ = WatchCaptureAsync(capture);
         }

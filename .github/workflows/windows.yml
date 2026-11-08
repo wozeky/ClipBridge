@@ -29,7 +29,14 @@ jobs:
         run: dotnet publish src/ClipBridge.App -c Release -r win-x64 --self-contained true -o artifacts/win-x64
       - name: Bundle pinned Windows Graphics Capture engine
         shell: pwsh
-        run: ./tools/Install-CaptureEngine.ps1 -Destination artifacts/win-x64/ffmpeg
+        run: |
+          ./tools/Install-CaptureEngine.ps1 -Destination artifacts/win-x64/ffmpeg
+          $ffmpeg = (Resolve-Path ./artifacts/win-x64/ffmpeg/bin/ffmpeg.exe).Path
+          $encoders = & $ffmpeg -hide_banner -encoders
+          foreach ($encoder in 'h264_nvenc', 'h264_amf', 'h264_mf') {
+            if (-not ($encoders -match "\b$encoder\b")) { throw "Missing H.264 encoder: $encoder" }
+          }
+          $encoders -match '\bh264_(nvenc|amf|mf)\b'
       - name: Verify rolling buffer and MP4 export with synthetic input
         shell: pwsh
         run: |
@@ -68,6 +75,12 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or ($decoded -match "black_start:")) {
             $decoded
             throw "The captured window clip did not decode into visible frames."
+          }
+          $captureMode = (Get-Content -LiteralPath $marker)[0]
+          if ($captureMode -match 'Media Foundation') {
+            $video = $decoded -match 'Video:.*1280x720.*30 fps'
+            if (-not $video) { throw "Software fallback did not produce 720p at 30 FPS." }
+            $video
           }
       - uses: actions/upload-artifact@v4
         with:

@@ -15,7 +15,7 @@ public class ReplayDiagnosticsTests
         var startedAt = Stopwatch.GetTimestamp();
         var readyAt = startedAt + Stopwatch.Frequency;
         report.BeginCapture();
-        report.CaptureStarted("Windows Graphics Capture", "NVIDIA NVENC", "");
+        report.CaptureStarted("Windows Graphics Capture", "AMD AMF", "", (1920, 1080, 60));
         report.BeginSave(viaHotkey: true);
         report.Mp4Ready(clip.Id, startedAt, readyAt);
         report.ClipChanged(clip, readyAt);
@@ -28,6 +28,8 @@ public class ReplayDiagnosticsTests
             readyAt + 4 * Stopwatch.Frequency);
         var result = report.BuildReport(Version, true);
         Assert.Contains("ClipBridge 1.2.3", result);
+        Assert.Contains("Kodlayıcı: AMD AMF", result);
+        Assert.Contains("Kayıt biçimi: 1920x1080 @ 60 FPS", result);
         Assert.Contains("Tetikleyici: F8", result);
         Assert.Contains("Tetikleme → MP4 hazır: 1.00 sn", result);
         Assert.Contains("Son kaydedilen klibin süresi: 59.00 sn", result);
