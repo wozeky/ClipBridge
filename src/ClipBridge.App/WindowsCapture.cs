@@ -17,6 +17,7 @@ internal sealed class WindowsCapture : IAsyncDisposable
     private readonly List<AudioFeed> _audio = [];
     public string Encoder { get; private set; } = "";
     public string Source { get; private set; } = "";
+    public string FallbackDetails { get; private set; } = "";
     public Task Completion => _recorder!.Completion;
 
     public async Task StartAsync(nint window, string cache, int seconds, bool desktopAudio, bool microphone,
@@ -73,6 +74,7 @@ internal sealed class WindowsCapture : IAsyncDisposable
 
                 _recorder = new ReplayRecorder(executable, cache, seconds, inputs, args);
                 await _recorder.WaitUntilReadyAsync(startup.Token);
+                FallbackDetails = string.Join(Environment.NewLine, errors);
                 Source = graphicsCapture ? "Windows Graphics Capture" : "Windows GDI";
                 Encoder = encoder == "h264_nvenc" ? "NVIDIA NVENC" : "Media Foundation";
                 return;

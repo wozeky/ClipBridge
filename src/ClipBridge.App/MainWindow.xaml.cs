@@ -72,8 +72,23 @@ public partial class MainWindow : Window
     {
         ContentRendered -= OnSmokeCaptureRendered;
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+        var label = new System.Windows.Controls.TextBlock
+        {
+            FontSize = 40, HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center, Foreground = System.Windows.Media.Brushes.Black
+        };
+        var sample = new System.Windows.Controls.Border
+        {
+            Background = System.Windows.Media.Brushes.Gold, Child = label
+        };
+        Content = sample;
         var redraw = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
-        redraw.Tick += (_, _) => StatusMessage.Text = DateTime.UtcNow.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
+        redraw.Tick += (_, _) =>
+        {
+            var now = DateTime.UtcNow;
+            label.Text = now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
+            sample.Background = now.Millisecond < 500 ? System.Windows.Media.Brushes.Gold : System.Windows.Media.Brushes.Cyan;
+        };
         redraw.Start();
         int result = 0;
         try
@@ -83,7 +98,7 @@ public partial class MainWindow : Window
             await Task.Delay(3500, timeout.Token);
             var clip = await capture.SaveAsync(Path.Combine(_clipsPath, "window.mp4"), timeout.Token);
             var duration = Mp4.ReadDuration(clip) ?? throw new CaptureException("No window capture MP4.");
-            File.WriteAllLines(_smokeMarker!, [$"{capture.Source} · {capture.Encoder} · {duration.TotalSeconds:F2}s", clip]);
+            File.WriteAllLines(_smokeMarker!, [$"{capture.Source} · {capture.Encoder} · {duration.TotalSeconds:F2}s", clip, capture.FallbackDetails]);
         }
         catch (Exception error) when (IsReplayError(error))
         {
