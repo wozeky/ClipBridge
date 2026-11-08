@@ -4,6 +4,9 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using ClipBridge.Core;
 
+if (args is ["obs-smoke", var outputDirectory])
+    return await ObsSmoke.RunAsync(outputDirectory);
+
 if (args is not [var path, var choice] || !File.Exists(path) || Mp4.ReadDuration(path) is null
     || !Enum.TryParse<Provider>(choice, true, out var provider) || !Enum.IsDefined(provider))
 {
