@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="src/ClipBridge.App/ClipBridge.App.csproj" />
+  <Project Path="src/ClipBridge.Core/ClipBridge.Core.csproj" />
+  <Project Path="tests/ClipBridge.Tests/ClipBridge.Tests.csproj" />
+</Solution>
