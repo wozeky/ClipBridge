@@ -17,7 +17,13 @@ public sealed class ReplayRecorder : IAsyncDisposable
     private readonly Task _readSegments;
     private readonly Task<string> _errors;
     private readonly int _seconds;
-    private long _lastSegment;
+    private BufferSnapshot? _buffer;
+    private sealed record BufferSnapshot(long UpdatedAt, TimeSpan Duration);
+
+    public TimeSpan? BufferedDuration =>
+        Volatile.Read(ref _buffer) is { } buffer &&
+        Stopwatch.GetElapsedTime(buffer.UpdatedAt) <= TimeSpan.FromSeconds(4)
+            ? buffer.Duration : null;
 
     public ReplayRecorder(string ffmpeg, string cache, int seconds, IEnumerable<string> inputs,
         IEnumerable<string> encoding)
@@ -62,13 +68,14 @@ public sealed class ReplayRecorder : IAsyncDisposable
                 await _gate.WaitAsync();
                 try
                 {
-                    _lastSegment = Stopwatch.GetTimestamp();
                     _segments.Enqueue(segment);
                     while (_segments.TryPeek(out var first) && first.End <= segment.End - _seconds + 0.05)
                     {
                         File.Delete(Path.Combine(_directory, first.File));
                         _segments.Dequeue();
                     }
+                    Volatile.Write(ref _buffer, new BufferSnapshot(Stopwatch.GetTimestamp(),
+                        TimeSpan.FromSeconds(segment.End - _segments.Peek().Start)));
                 }
                 finally { _gate.Release(); }
                 _ready.TrySetResult();
@@ -90,7 +97,7 @@ public sealed class ReplayRecorder : IAsyncDisposable
         {
             if (_segments.Count == 0)
                 throw new CaptureException("İlk kayıt parçasının tamamlanmasını bekleyin.");
-            if (Stopwatch.GetElapsedTime(_lastSegment) > TimeSpan.FromSeconds(4))
+            if (BufferedDuration is null)
                 throw new CaptureException("Pencereden yeni görüntü gelmiyor. Pencereyi geri açın.");
             var manifest = new StringBuilder("ffconcat version 1.0\n");
             foreach (var part in _segments)

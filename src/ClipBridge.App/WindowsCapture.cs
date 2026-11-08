@@ -22,6 +22,7 @@ internal sealed class WindowsCapture : IAsyncDisposable
     public string FormatLabel => FormattableString.Invariant(
         $"{VideoFormat.Width}x{VideoFormat.Height} @ {VideoFormat.Fps} FPS");
     public Task Completion => _recorder!.Completion;
+    public TimeSpan? BufferedDuration => _recorder?.BufferedDuration;
 
     public async Task StartAsync(nint window, string cache, int seconds, bool desktopAudio, bool microphone,
         CancellationToken cancellationToken)

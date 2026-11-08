@@ -14,6 +14,8 @@ if (args is ["replay-smoke", var executable, var outputDirectory])
         "-bf", "0", "-force_key_frames", "expr:gte(t,n_forced)"]);
     await recorder.WaitUntilReadyAsync(stop.Token);
     await Task.Delay(4500, stop.Token);
+    if (recorder.BufferedDuration is not { TotalSeconds: >= 2.9 and < 3.25 })
+        throw new InvalidDataException("Replay buffer did not report a fresh three-second window.");
     for (var i = 0; i < 2; i++)
     {
         var clip = await recorder.SaveAsync(Path.Combine(outputDirectory, $"replay-{i}.mp4"), stop.Token);

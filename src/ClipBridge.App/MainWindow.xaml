@@ -20,7 +20,7 @@
       </WrapPanel>
       <StackPanel>
         <TextBlock Text="ClipBridge" FontSize="34" FontWeight="SemiBold" />
-        <TextBlock Text="Yerel klip arşivi ve hızlı paylaşım" Margin="0,2,0,0" Opacity=".75" />
+        <TextBlock x:Name="CaptureStatus" Text="Kayıt kapalı" Margin="0,2,0,0" Opacity=".75" />
       </StackPanel>
     </DockPanel>
 
@@ -80,12 +80,13 @@
           <Button x:Name="CopyButton" Content="Bağlantıyı kopyala" Click="Copy_Click" Margin="0,0,8,0" />
           <Button x:Name="UploadButton" Content="Yükle / yeniden dene" Click="Upload_Click" Margin="0,0,8,0" />
           <Button Content="Klip klasörü" Click="Folder_Click" Margin="0,0,8,0" />
+          <Button x:Name="RecoverClipsButton" Content="Klip klasörünü tara" Click="RecoverClips_Click" Margin="0,0,8,0" />
           <Button x:Name="DiagnosticsButton" Content="Tanılama raporunu kopyala" Click="CopyDiagnostics_Click" />
         </WrapPanel>
         <ProgressBar x:Name="UploadProgress" Height="4" Margin="0,9,0,0" Minimum="0" Maximum="100"
                      Visibility="Collapsed" />
-        <TextBlock Text="{Binding ElementName=Library, Path=SelectedItem.Clip.ShareUrl}"
-                   ToolTip="{Binding ElementName=Library, Path=SelectedItem.Clip.ShareUrl}"
+        <TextBlock Text="{Binding ElementName=Library, Path=SelectedItem.ShareLabel}"
+                   ToolTip="{Binding ElementName=Library, Path=SelectedItem.ShareLabel}"
                    TextTrimming="CharacterEllipsis" Opacity=".8" />
         <TextBlock x:Name="StatusMessage" Text="MP4 içe aktararak başlayabilirsiniz." TextWrapping="Wrap"
                    Margin="0,7,0,0" AutomationProperties.LiveSetting="Polite" />

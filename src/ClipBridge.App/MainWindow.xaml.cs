@@ -33,6 +33,10 @@ public partial class MainWindow : Window
     private HwndSource? _windowSource;
     private bool _hotkeyRegistered;
     private bool _armed;
+    private readonly System.Windows.Threading.DispatcherTimer _bufferTimer = new()
+    {
+        Interval = TimeSpan.FromSeconds(1)
+    };
     private bool _captureBusy;
     private ClipStore? _store;
     private UploadQueue? _queue;
@@ -40,6 +44,7 @@ public partial class MainWindow : Window
     private ClipSettings _settings = new();
     private bool _exit;
     private bool _busy;
+    private bool _recovering;
     private Guid? _progressId;
     private Guid? _thumbnailId;
     private bool _refreshingLibrary;
@@ -55,6 +60,7 @@ public partial class MainWindow : Window
             _clipsPath = Path.Combine(_root, "videos");
             ContentRendered += smokeCapture ? OnSmokeCaptureRendered : OnSmokeRendered;
         }
+        _bufferTimer.Tick += (_, _) => RefreshCaptureStatus();
         Loaded += OnLoaded;
     }
 
@@ -167,8 +173,11 @@ public partial class MainWindow : Window
             };
             _queue.Progress += (id, percent) => _ = Dispatcher.InvokeAsync(() =>
             {
-                if (_progressId == id)
-                    UploadProgress.Value = percent;
+                if (_progressId != id)
+                    return;
+                UploadProgress.Value = percent;
+                if (percent >= 100)
+                    StatusMessage.Text = "Dosya gönderildi. Servisten bağlantı bekleniyor…";
             });
             RefreshLibrary();
             if (_smokeMarker is not null)
@@ -263,7 +272,7 @@ public partial class MainWindow : Window
 
     private async void Arm_Click(object sender, RoutedEventArgs args)
     {
-        if (_captureBusy || _store is null)
+        if (_captureBusy || _recovering || _store is null)
             return;
         if (_capture is { } active)
         {
@@ -340,7 +349,13 @@ public partial class MainWindow : Window
 
     private async Task SaveReplayAsync(bool viaHotkey = false)
     {
-        if (!_armed || _captureBusy || _store is null || _capture is not { } capture)
+        if (_captureBusy)
+        {
+            if (viaHotkey)
+                ShowReplayStatus("Önceki klip hâlâ hazırlanıyor.", Forms.ToolTipIcon.Info);
+            return;
+        }
+        if (!_armed || _store is null || _capture is not { } capture)
             return;
         var saveStartedAt = Stopwatch.GetTimestamp();
         _diagnostics.BeginSave(viaHotkey);
@@ -356,15 +371,15 @@ public partial class MainWindow : Window
             var path = await capture.SaveAsync(destination, timeout.Token);
             _diagnostics.Mp4Ready(id, saveStartedAt, Stopwatch.GetTimestamp());
             mp4Ready = true;
+            ShowReplayStatus("MP4 hazır. Klip diske kaydedildi.", Forms.ToolTipIcon.Info);
             await AddClipAsync(path, name, id, _settings.Game);
-            if (!IsVisible)
-                _tray?.ShowBalloonTip(1500, "ClipBridge", StatusMessage.Text, Forms.ToolTipIcon.Info);
         }
         catch (Exception error) when (IsReplayError(error))
         {
             _diagnostics.SaveFailed(error, mp4Ready);
             if (!_shutdown.IsCancellationRequested)
-                ShowReplayStatus(ReplayErrorMessage(error), Forms.ToolTipIcon.Warning);
+                ShowReplayStatus(mp4Ready ? "MP4 diskte, arşive eklenemedi. Klip klasörünü tarayın."
+                    : ReplayErrorMessage(error), Forms.ToolTipIcon.Warning);
         }
         finally { SetCaptureBusy(false); }
     }
@@ -384,6 +399,24 @@ public partial class MainWindow : Window
             }
         }
         SaveReplayButton.IsEnabled = !_captureBusy && _armed;
+        if (armed)
+            _bufferTimer.Start();
+        else
+            _bufferTimer.Stop();
+        RefreshCaptureStatus();
+    }
+
+    private void RefreshCaptureStatus()
+    {
+        var status = !_armed ? "Kayıt kapalı" : _capture?.BufferedDuration is { } duration
+            ? $"Hazır · Tampon: {Math.Floor(duration.TotalSeconds):0} sn"
+            : "Yeni görüntü gelmiyor";
+        if (_armed && !_hotkeyRegistered)
+            status += " · F8 kullanılamıyor";
+        CaptureStatus.Text = status;
+        var trayText = "ClipBridge · " + status;
+        if (_tray is not null && _tray.Text != trayText)
+            _tray.Text = trayText;
     }
 
     private void SetCaptureBusy(bool busy)
@@ -443,6 +476,7 @@ public partial class MainWindow : Window
             _progressId = clip.Id;
             UploadProgress.Value = 0;
             UploadProgress.Visibility = Visibility.Visible;
+            StatusMessage.Text = "Yerel MP4 hazır. Yükleniyor…";
         }
         else if (_progressId == clip.Id)
         {
@@ -454,7 +488,8 @@ public partial class MainWindow : Window
         {
             var copied = _settings.AutoCopy && TryCopy(clip.ShareUrl);
             var timing = clip.Timing is null ? "" : $" · {clip.Timing.LinkReady.TotalSeconds:F1} sn";
-            StatusMessage.Text = (copied ? "Bağlantı panoya kopyalandı" : "Paylaşım bağlantısı hazır") + timing;
+            var lifetime = clip.Provider == Provider.Litterbox ? " · Litterbox: 24 saat" : "";
+            StatusMessage.Text = (copied ? "Bağlantı panoya kopyalandı" : "Paylaşım bağlantısı hazır") + timing + lifetime;
             if (!IsVisible)
                 _tray?.ShowBalloonTip(2500, "ClipBridge", StatusMessage.Text, Forms.ToolTipIcon.Info);
         }
@@ -569,6 +604,39 @@ public partial class MainWindow : Window
 
     private void Folder_Click(object sender, RoutedEventArgs args) => OpenPath(_clipsPath);
 
+    private async void RecoverClips_Click(object sender, RoutedEventArgs args)
+    {
+        if (_busy || _store is not { } store)
+            return;
+        if (_armed || _captureBusy)
+        {
+            StatusMessage.Text = "Klip klasörünü taramak için önce kaydı durdurun.";
+            return;
+        }
+        _busy = _recovering = true;
+        ArmButton.IsEnabled = false;
+        RecoverClipsButton.IsEnabled = false;
+        try
+        {
+            StatusMessage.Text = "Klip klasörü taranıyor…";
+            var added = await Task.Run(() => store.RecoverLocalClips(_clipsPath, _shutdown.Token));
+            RefreshLibrary();
+            StatusMessage.Text = added == 0 ? "Arşiv dışında yeni klip bulunamadı."
+                : $"{added} klip yerel arşive eklendi.";
+        }
+        catch (OperationCanceledException) when (_shutdown.IsCancellationRequested) { }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            StatusMessage.Text = "Klip klasörü taranamadı. " + error.Message;
+        }
+        finally
+        {
+            _busy = _recovering = false;
+            ArmButton.IsEnabled = true;
+            RecoverClipsButton.IsEnabled = true;
+        }
+    }
+
     private void OpenPath(string path)
     {
         try { Process.Start(new ProcessStartInfo(path) { UseShellExecute = true }); }
@@ -617,6 +685,7 @@ public partial class MainWindow : Window
         _tray = new Forms.NotifyIcon { Icon = System.Drawing.SystemIcons.Application, Text = "ClipBridge",
             ContextMenuStrip = menu, Visible = true };
         _tray.DoubleClick += (_, _) => ShowWindow();
+        RefreshCaptureStatus();
     }
 
     private void ShowWindow()
@@ -679,6 +748,8 @@ public partial class MainWindow : Window
         public string Date => Clip.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm");
         public string Duration => Clip.Duration?.ToString(@"m\:ss") ?? "—";
         public string Size => $"{Clip.Bytes / 1_000_000d:F1} MB";
+        public string? ShareLabel => Clip.ShareUrl is { } url && Clip.Provider == Provider.Litterbox
+            ? $"Litterbox · 24 saatlik bağlantı · {url}" : Clip.ShareUrl;
         public string Status => Clip.State switch
         {
             UploadState.Local => "Yerel",

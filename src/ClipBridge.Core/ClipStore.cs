@@ -48,6 +48,45 @@ public sealed class ClipStore
         }
     }
 
+    public int RecoverLocalClips(string directory, CancellationToken cancellationToken = default)
+    {
+        var knownIds = Snapshot().Select(clip => clip.Id).ToHashSet();
+        var recovered = new List<Clip>();
+        foreach (var path in Directory.EnumerateFiles(Path.GetFullPath(directory), "*.mp4"))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var name = Path.GetFileNameWithoutExtension(path);
+            var suffixStart = name.LastIndexOf('-') + 1;
+            if (!Guid.TryParseExact(name.AsSpan(suffixStart), "N", out var id) || knownIds.Contains(id))
+                continue;
+            try
+            {
+                if (Mp4.ReadDuration(path) is { } duration)
+                {
+                    var info = new FileInfo(path);
+                    var title = suffixStart == 0 ? "Kurtarılan klip" : name[..(suffixStart - 1)];
+                    recovered.Add(new Clip(id, path, title, info.LastWriteTimeUtc, info.Length, duration));
+                }
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+            {
+                // A file may be in use, moved, or inaccessible while the directory is scanned.
+            }
+        }
+
+        lock (_gate)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var updated = new Dictionary<Guid, Clip>(_clips);
+            foreach (var clip in recovered)
+                updated.TryAdd(clip.Id, clip);
+            var added = updated.Count - _clips.Count;
+            if (added > 0)
+                Save(updated);
+            return added;
+        }
+    }
+
     public Clip? Change(Guid id, Func<Clip, Clip?> update)
     {
         lock (_gate)
