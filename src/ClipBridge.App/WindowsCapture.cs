@@ -74,7 +74,6 @@ internal sealed class WindowsCapture : IAsyncDisposable
 
                 _recorder = new ReplayRecorder(executable, cache, seconds, inputs, args);
                 await _recorder.WaitUntilReadyAsync(startup.Token);
-                FallbackDetails = string.Join(Environment.NewLine, errors);
                 Source = graphicsCapture ? "Windows Graphics Capture" : "Windows GDI";
                 Encoder = encoder == "h264_nvenc" ? "NVIDIA NVENC" : "Media Foundation";
                 return;
@@ -88,6 +87,7 @@ internal sealed class WindowsCapture : IAsyncDisposable
                     : error.Message;
                 var source = graphicsCapture ? "WGC" : "GDI";
                 errors.Add($"{source}/{encoder} · {details}");
+                FallbackDetails = string.Join(Environment.NewLine, errors);
             }
             catch
             {

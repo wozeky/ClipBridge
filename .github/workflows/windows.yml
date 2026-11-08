@@ -35,7 +35,7 @@ jobs:
         run: |
           $ffmpeg = (Resolve-Path ./artifacts/win-x64/ffmpeg/bin/ffmpeg.exe).Path
           dotnet run --project tools/ClipBridge.Bench -c Release --no-build -- replay-smoke $ffmpeg (Join-Path $env:RUNNER_TEMP "clipbridge-replay")
-      - name: Launch and render the WPF window
+      - name: Verify WPF startup and diagnostics clipboard
         shell: pwsh
         run: |
           $marker = Join-Path $env:RUNNER_TEMP "clipbridge-window.txt"

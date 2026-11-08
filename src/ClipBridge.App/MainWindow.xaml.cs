@@ -29,6 +29,7 @@ public partial class MainWindow : Window
     private const int ReplayHotkey = 1;
     private const int WmHotkey = 0x0312;
     private WindowsCapture? _capture;
+    private readonly ReplayDiagnostics _diagnostics = new();
     private HwndSource? _windowSource;
     private bool _hotkeyRegistered;
     private bool _armed;
@@ -64,7 +65,13 @@ public partial class MainWindow : Window
             Application.Current.Shutdown(1);
             return;
         }
-        File.WriteAllText(_smokeMarker!, "ClipBridge window and library initialized");
+        DiagnosticsButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
+        if (!Clipboard.GetText().Contains("Tanılama raporu", StringComparison.Ordinal))
+        {
+            Application.Current.Shutdown(1);
+            return;
+        }
+        File.WriteAllText(_smokeMarker!, "ClipBridge window, library and diagnostics clipboard initialized");
         Application.Current.Shutdown();
     }
 
@@ -136,7 +143,11 @@ public partial class MainWindow : Window
             _queue = new UploadQueue(_store,
                 [new FreeUploadProvider(_http, Provider.Litterbox), new FreeUploadProvider(_http, Provider.Gofile)],
                 () => Volatile.Read(ref _settings).SpeedLimit);
-            _queue.Changed += clip => _ = Dispatcher.InvokeAsync(() => OnClipChanged(clip));
+            _queue.Changed += clip =>
+            {
+                var changedAt = Stopwatch.GetTimestamp();
+                _ = Dispatcher.InvokeAsync(() => OnClipChanged(clip, changedAt));
+            };
             _queue.Progress += (id, percent) => _ = Dispatcher.InvokeAsync(() =>
             {
                 if (_progressId == id)
@@ -156,6 +167,7 @@ public partial class MainWindow : Window
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException
             or FormatException or System.Security.SecurityException)
         {
+            _diagnostics.CaptureFailed(error);
             StatusMessage.Text = "Klip arşivi veya ayarlar açılamadı. " + error.Message;
             RefreshButtons();
         }
@@ -219,7 +231,7 @@ public partial class MainWindow : Window
         if (message == WmHotkey && parameter == ReplayHotkey && _armed)
         {
             handled = true;
-            _ = SaveReplayAsync();
+            _ = SaveReplayAsync(viaHotkey: true);
         }
         return 0;
     }
@@ -244,22 +256,29 @@ public partial class MainWindow : Window
             try
             {
                 await active.DisposeAsync();
+                _diagnostics.CaptureStopped();
                 StatusMessage.Text = "Pencere kaydı durdu.";
             }
             catch (Exception error) when (IsReplayError(error))
             {
+                _diagnostics.CaptureFailed(error);
                 ShowReplayStatus(error.Message, Forms.ToolTipIcon.Warning);
             }
             finally { SetCaptureBusy(false); }
             return;
         }
+        _diagnostics.BeginCapture();
         if (CaptureTarget.SelectedItem is not WindowsCapture.CaptureWindow target)
         {
+            _diagnostics.CaptureFailed(new CaptureException("Açık ve küçültülmemiş bir pencere seçin."));
             StatusMessage.Text = "Ayarlar'dan kaydedilecek oyun penceresini seçin.";
             return;
         }
         if (!SaveSettings())
+        {
+            _diagnostics.CaptureFailed(new CaptureException("Kayıt ayarları kaydedilemedi."));
             return;
+        }
 
         SetCaptureBusy(true);
         var capture = new WindowsCapture();
@@ -269,6 +288,7 @@ public partial class MainWindow : Window
             await capture.StartAsync(target.Handle, Path.Combine(_root, "replay"), _settings.ReplaySeconds,
                 _settings.DesktopAudio, _settings.Microphone, _shutdown.Token);
             _capture = capture;
+            _diagnostics.CaptureStarted(capture.Source, capture.Encoder, capture.FallbackDetails);
             SetReplayArmed(true);
             StatusMessage.Text = $"Kayıt hazır · {capture.Source} · {capture.Encoder} · hedef {_settings.ReplaySeconds} sn. " +
                 (_hotkeyRegistered ? "Klip için F8." : "Klip al düğmesini kullanın.");
@@ -276,6 +296,7 @@ public partial class MainWindow : Window
         }
         catch (Exception error) when (IsReplayError(error))
         {
+            _diagnostics.CaptureFailed(error, capture.FallbackDetails);
             if (!_shutdown.IsCancellationRequested)
                 ShowReplayStatus(ReplayErrorMessage(error), Forms.ToolTipIcon.Warning);
         }
@@ -290,6 +311,7 @@ public partial class MainWindow : Window
             if (_capture != capture)
                 return;
             _capture = null;
+            _diagnostics.CaptureFailed(error);
             SetReplayArmed(false);
             ShowReplayStatus("Pencere kaydı durdu. " + ReplayErrorMessage(error), Forms.ToolTipIcon.Warning);
             try { await capture.DisposeAsync(); }
@@ -299,10 +321,13 @@ public partial class MainWindow : Window
 
     private async void SaveReplay_Click(object sender, RoutedEventArgs args) => await SaveReplayAsync();
 
-    private async Task SaveReplayAsync()
+    private async Task SaveReplayAsync(bool viaHotkey = false)
     {
         if (!_armed || _captureBusy || _store is null || _capture is not { } capture)
             return;
+        var saveStartedAt = Stopwatch.GetTimestamp();
+        _diagnostics.BeginSave(viaHotkey);
+        var mp4Ready = false;
         SetCaptureBusy(true);
         try
         {
@@ -312,12 +337,15 @@ public partial class MainWindow : Window
             var name = "Klip " + DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss", CultureInfo.InvariantCulture);
             var destination = Path.Combine(_clipsPath, $"{name}-{id:N}.mp4");
             var path = await capture.SaveAsync(destination, timeout.Token);
+            _diagnostics.Mp4Ready(id, saveStartedAt, Stopwatch.GetTimestamp());
+            mp4Ready = true;
             await AddClipAsync(path, name, id, _settings.Game);
             if (!IsVisible)
                 _tray?.ShowBalloonTip(1500, "ClipBridge", StatusMessage.Text, Forms.ToolTipIcon.Info);
         }
         catch (Exception error) when (IsReplayError(error))
         {
+            _diagnostics.SaveFailed(error, mp4Ready);
             if (!_shutdown.IsCancellationRequested)
                 ShowReplayStatus(ReplayErrorMessage(error), Forms.ToolTipIcon.Warning);
         }
@@ -382,14 +410,16 @@ public partial class MainWindow : Window
         var clip = new Clip(id, path, name, DateTimeOffset.UtcNow, info.Length, duration, Game: game, Provider: _settings.Provider,
             State: _settings.AutoUpload ? UploadState.Queued : UploadState.Local, FallbackProvider: _settings.FallbackProvider);
         _store!.Add(clip);
+        _diagnostics.ClipChanged(clip, Stopwatch.GetTimestamp());
         RefreshLibrary(clip.Id);
         StatusMessage.Text = _settings.AutoUpload ? "Klip kaydedildi, yükleme sıraya alındı." : "Klip yerel arşive kaydedildi.";
         if (_settings.AutoUpload)
             _queue?.Signal();
     }
 
-    private void OnClipChanged(Clip clip)
+    private void OnClipChanged(Clip clip, long changedAt)
     {
+        _diagnostics.ClipChanged(clip, changedAt);
         RefreshLibrary();
         if (clip.State == UploadState.Uploading)
         {
@@ -530,6 +560,13 @@ public partial class MainWindow : Window
 
     private void Copy_Click(object sender, RoutedEventArgs args) =>
         StatusMessage.Text = TryCopy(SelectedClip?.ShareUrl) ? "Bağlantı panoya kopyalandı." : "Panoya erişilemedi.";
+
+    private void CopyDiagnostics_Click(object sender, RoutedEventArgs args)
+    {
+        var version = typeof(MainWindow).Assembly.GetName().Version ?? new Version(0, 0, 0);
+        StatusMessage.Text = TryCopy(_diagnostics.BuildReport(version, _hotkeyRegistered))
+            ? "Tanılama raporu panoya kopyalandı." : "Tanılama raporu kopyalanamadı.";
+    }
 
     private static bool TryCopy(string? text)
     {

@@ -79,7 +79,8 @@
           <Button x:Name="OpenButton" Content="Videoyu aç" Click="Open_Click" Margin="0,0,8,0" />
           <Button x:Name="CopyButton" Content="Bağlantıyı kopyala" Click="Copy_Click" Margin="0,0,8,0" />
           <Button x:Name="UploadButton" Content="Yükle / yeniden dene" Click="Upload_Click" Margin="0,0,8,0" />
-          <Button Content="Klip klasörü" Click="Folder_Click" />
+          <Button Content="Klip klasörü" Click="Folder_Click" Margin="0,0,8,0" />
+          <Button x:Name="DiagnosticsButton" Content="Tanılama raporunu kopyala" Click="CopyDiagnostics_Click" />
         </WrapPanel>
         <ProgressBar x:Name="UploadProgress" Height="4" Margin="0,9,0,0" Minimum="0" Maximum="100"
                      Visibility="Collapsed" />

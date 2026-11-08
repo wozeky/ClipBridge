@@ -24,6 +24,10 @@ Kütüphane ve ayarlar `%LOCALAPPDATA%\ClipBridge` altında saklanır. Uygulama 
 
 Yakalama yalnızca seçilen pencereyi hedefler. Kayıt modu 1080p60 hedefler ve önce NVIDIA NVENC, sonra Windows Media Foundation H.264 dener. Windows Graphics Capture başlatılamazsa aynı pencere için Windows GDI denenir. GDI, donanım hızlandırmalı bazı oyunlarda boş görüntü verebilir. Kullanılan yakalama yöntemi durum satırında görünür.
 
+## Tanılama raporu
+
+Kayıt denemesi bittikten sonra **Tanılama raporunu kopyala** düğmesine basın. Rapor bu oturumdaki son kayıt denemesini, son kaydedilen klibi ve paylaşım durumunu gösterir. MP4 hazır olduktan sonraki süre, varsa yükleme sırasını ve yeniden denemeleri de içerir. Rapor yerelde hazırlanır. Ham hata çıktısı yerine bilinen hata türlerini gösterir ve kişisel yolları, pencere adlarını veya paylaşım bağlantılarını içermez.
+
 ## Yükleme sağlayıcıları
 
 | Servis | Ücretsiz otomasyon | Paylaşım ve sınırlar |
