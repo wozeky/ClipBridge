@@ -1,11 +1,69 @@
 <Window x:Class="ClipBridge.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="ClipBridge" Height="500" Width="820">
-  <Grid Margin="28">
-    <StackPanel>
-      <TextBlock Text="ClipBridge" FontSize="34" FontWeight="SemiBold" />
-      <TextBlock Text="Windows masaüstü uygulaması" Margin="0,6,0,0" />
+        Title="ClipBridge" Height="700" Width="1050" MinHeight="490" MinWidth="760"
+        WindowStartupLocation="CenterScreen">
+  <Grid Margin="24">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <DockPanel Grid.Row="0" LastChildFill="True" Margin="0,0,0,15">
+      <Button DockPanel.Dock="Right" Content="MP4 içe aktar" Click="Import_Click" Padding="16,8"
+              VerticalAlignment="Center" />
+      <StackPanel>
+        <TextBlock Text="ClipBridge" FontSize="34" FontWeight="SemiBold" />
+        <TextBlock Text="Yerel klip arşivi ve hızlı paylaşım" Margin="0,2,0,0" Opacity=".75" />
+      </StackPanel>
+    </DockPanel>
+
+    <Expander Grid.Row="1" Header="Ayarlar" Margin="0,0,0,12">
+      <StackPanel Margin="0,8,0,3">
+        <WrapPanel>
+          <TextBlock Text="Yükleme servisi" VerticalAlignment="Center" Margin="0,0,8,0" />
+          <ComboBox x:Name="ProviderChoice" Width="180" Margin="0,0,16,0">
+            <ComboBoxItem Content="Litterbox · 24 saat" />
+            <ComboBoxItem Content="Gofile" />
+          </ComboBox>
+          <TextBlock Text="Hız sınırı (KiB/sn, 0 sınırsız)" VerticalAlignment="Center" Margin="0,0,8,0" />
+          <TextBox x:Name="SpeedLimit" Width="80" />
+        </WrapPanel>
+        <CheckBox x:Name="AutoUpload" Content="Yeni klipleri otomatik yükle" Margin="0,9,0,0" />
+        <CheckBox x:Name="AutoCopy" Content="Hazır bağlantıları otomatik panoya kopyala" Margin="0,7,0,0" />
+        <CheckBox x:Name="StartWithWindows" Content="Windows oturumunda tepside başlat" Margin="0,7,0,0" />
+        <TextBlock Text="Paylaşım bağlantısına sahip kişiler yüklenen klipleri görebilir."
+                   TextWrapping="Wrap" Opacity=".75" Margin="0,8,0,0" />
+        <Button Content="Ayarları kaydet" Click="SaveSettings_Click" HorizontalAlignment="Left" Margin="0,9,0,0" />
+      </StackPanel>
+    </Expander>
+
+    <DataGrid x:Name="Library" Grid.Row="2" AutoGenerateColumns="False" CanUserAddRows="False"
+              SelectionMode="Single" IsReadOnly="True" HeadersVisibility="Column" RowHeaderWidth="0"
+              SelectionChanged="Library_SelectionChanged" MouseDoubleClick="Open_Click">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="Klip" Binding="{Binding Clip.Name}" Width="2*" />
+        <DataGridTextColumn Header="Tarih" Binding="{Binding Date}" Width="130" />
+        <DataGridTextColumn Header="Süre" Binding="{Binding Duration}" Width="65" />
+        <DataGridTextColumn Header="Boyut" Binding="{Binding Size}" Width="75" />
+        <DataGridTextColumn Header="Servis" Binding="{Binding Clip.Provider}" Width="92" />
+        <DataGridTextColumn Header="Durum" Binding="{Binding Status}" Width="1.7*" />
+      </DataGrid.Columns>
+    </DataGrid>
+
+    <StackPanel Grid.Row="3" Margin="0,12,0,0">
+      <WrapPanel>
+        <Button x:Name="OpenButton" Content="Videoyu aç" Click="Open_Click" Margin="0,0,8,0" />
+        <Button x:Name="CopyButton" Content="Bağlantıyı kopyala" Click="Copy_Click" Margin="0,0,8,0" />
+        <Button x:Name="UploadButton" Content="Yükle / yeniden dene" Click="Upload_Click" Margin="0,0,8,0" />
+        <Button Content="Klip klasörü" Click="Folder_Click" />
+      </WrapPanel>
+      <ProgressBar x:Name="UploadProgress" Height="4" Margin="0,9,0,0" Minimum="0" Maximum="100"
+                   Visibility="Collapsed" />
+      <TextBlock x:Name="StatusMessage" Text="MP4 içe aktararak başlayabilirsiniz." TextWrapping="Wrap"
+                 Margin="0,7,0,0" AutomationProperties.LiveSetting="Polite" />
     </StackPanel>
   </Grid>
 </Window>
