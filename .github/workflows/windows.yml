@@ -63,7 +63,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ClipBridge-WPF-screenshot
-          path: ${{ runner.temp }}/clipbridge-window.png
+          path: ${{ runner.temp }}/clipbridge-window*.png
           if-no-files-found: error
       - name: Probe native window recording on the hosted desktop
         continue-on-error: true
