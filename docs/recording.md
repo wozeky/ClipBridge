@@ -10,7 +10,7 @@ ClipBridge bu desenleri kendi C# akışıyla uygular. Yukarıdaki klip uygulamal
 
 ## Uygulama
 
-`WindowsCapture` görünür ve küçültülmemiş pencereleri listeler. Kullanıcı bir pencere seçince paketle gelen FFmpeg, bu pencerenin HWND değerini Windows Graphics Capture'a iletir. 1920×1080 alanına en-boy oranı korunarak ölçeklenir. Önce H.264 NVENC, açılış başarısızsa Media Foundation denenir. Oyun sürecine kod yüklenmez.
+`WindowsCapture` görünür ve küçültülmemiş pencereleri listeler. Kullanıcı bir pencere seçince paketle gelen FFmpeg, bu pencerenin HWND değerini Windows Graphics Capture'a iletir. 1920×1080 alanına en-boy oranı korunarak ölçeklenir. Önce H.264 NVENC, açılış başarısızsa Media Foundation denenir. WGC ile kayıt açılmazsa aynı HWND için GDI ve Media Foundation denenir. GDI, bazı oyunlarda donanımla çizilen kareleri okuyamayabilir. Kullanılan yöntem durum satırında gösterilir. Oyun sürecine kod yüklenmez.
 
 `ReplayRecorder` yaklaşık bir saniyelik anahtar kareli MPEG-TS parçaları kullanır. Yalnızca FFmpeg'in tamamlandı diye bildirdiği parçalar kayda alınır. Zaman aralığının dışına düşen geçici parçalar silinir. F8, eldeki parçaları yeniden kodlamadan MP4 olarak birleştirir. Dışa aktarma bitmeden yerel arşive veya yükleme kuyruğuna giriş açılmaz. Gecikme ve süre sapması, son parçanın kapanması ve anahtar kare konumuna bağlıdır.
 

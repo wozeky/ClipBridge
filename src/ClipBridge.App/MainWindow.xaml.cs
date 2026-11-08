@@ -71,7 +71,7 @@ public partial class MainWindow : Window
     private async void OnSmokeCaptureRendered(object? sender, EventArgs args)
     {
         ContentRendered -= OnSmokeCaptureRendered;
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(35));
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
         var redraw = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
         redraw.Tick += (_, _) => StatusMessage.Text = DateTime.UtcNow.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
         redraw.Start();
@@ -83,7 +83,7 @@ public partial class MainWindow : Window
             await Task.Delay(3500, timeout.Token);
             var clip = await capture.SaveAsync(Path.Combine(_clipsPath, "window.mp4"), timeout.Token);
             var duration = Mp4.ReadDuration(clip) ?? throw new CaptureException("No window capture MP4.");
-            File.WriteAllText(_smokeMarker!, $"Windows Graphics Capture · {capture.Encoder} · {duration.TotalSeconds:F2}s");
+            File.WriteAllLines(_smokeMarker!, [$"{capture.Source} · {capture.Encoder} · {duration.TotalSeconds:F2}s", clip]);
         }
         catch (Exception error) when (IsReplayError(error))
         {
@@ -255,7 +255,7 @@ public partial class MainWindow : Window
                 _settings.DesktopAudio, _settings.Microphone, _shutdown.Token);
             _capture = capture;
             SetReplayArmed(true);
-            StatusMessage.Text = $"Kayıt hazır · {capture.Encoder} · hedef {_settings.ReplaySeconds} sn. " +
+            StatusMessage.Text = $"Kayıt hazır · {capture.Source} · {capture.Encoder} · hedef {_settings.ReplaySeconds} sn. " +
                 (_hotkeyRegistered ? "Klip için F8." : "Klip al düğmesini kullanın.");
             _ = WatchCaptureAsync(capture);
         }
@@ -331,6 +331,8 @@ public partial class MainWindow : Window
         _captureBusy = busy;
         ArmButton.IsEnabled = !busy;
         SaveReplayButton.IsEnabled = !busy && _armed;
+        if (!busy && _exit && _shutdown.IsCancellationRequested)
+            _ = Dispatcher.InvokeAsync(Close);
     }
 
     private static bool IsReplayError(Exception error) => error is CaptureException or COMException
@@ -560,6 +562,13 @@ public partial class MainWindow : Window
         if (!_exit && _tray is not null)
         {
             args.Cancel = true;
+            Hide();
+        }
+        if (!args.Cancel && _captureBusy)
+        {
+            args.Cancel = true;
+            _exit = true;
+            _shutdown.Cancel();
             Hide();
         }
         base.OnClosing(args);

@@ -22,7 +22,7 @@ Kütüphane ve ayarlar `%LOCALAPPDATA%\ClipBridge` altında saklanır. Uygulama 
 4. **F8** ile son tamamlanan parçalar MP4'e kaydolur. Kesim yaklaşık bir saniyelik parçalara göre yapılır. Otomatik yükleme açıksa bağlantı arşive eklenir ve pano ayarı açıksa panoya kopyalanır.
 5. **Kaydı durdur** ile geçici tamponu kapatın. Kalıcı MP4 dosyaları Videolar altındaki `ClipBridge` klasöründe kalır.
 
-Yakalama yalnızca seçilen pencereyi hedefler. Kayıt modu 1080p60 hedefler ve önce NVIDIA NVENC, sonra Windows Media Foundation H.264 dener. Oyunun sunduğu kareler, sürücü ve kodlayıcı kapasitesi gerçek sonucu etkiler.
+Yakalama yalnızca seçilen pencereyi hedefler. Kayıt modu 1080p60 hedefler ve önce NVIDIA NVENC, sonra Windows Media Foundation H.264 dener. Windows Graphics Capture başlatılamazsa aynı pencere için Windows GDI denenir. GDI, donanım hızlandırmalı bazı oyunlarda boş görüntü verebilir. Kullanılan yakalama yöntemi durum satırında görünür.
 
 ## Yükleme sağlayıcıları
 

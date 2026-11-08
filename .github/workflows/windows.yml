@@ -48,7 +48,7 @@ jobs:
           if ($app.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $marker)) {
             throw "ClipBridge did not render the window successfully. Exit code: $($app.ExitCode)"
           }
-      - name: Probe Windows Graphics Capture on the hosted desktop
+      - name: Probe native window recording on the hosted desktop
         continue-on-error: true
         shell: pwsh
         run: |
@@ -60,7 +60,14 @@ jobs:
           }
           if (Test-Path -LiteralPath $marker) { Get-Content -LiteralPath $marker }
           if ($app.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $marker)) {
-            throw "Windows Graphics Capture is unavailable or failed on this runner."
+            throw "Native window recording failed on this runner."
+          }
+          $clip = (Get-Content -LiteralPath $marker)[1]
+          $ffmpeg = (Resolve-Path ./artifacts/win-x64/ffmpeg/bin/ffmpeg.exe).Path
+          $decoded = & $ffmpeg -hide_banner -i $clip -vf "blackdetect=d=0.5:pix_th=0.1:pic_th=0.98" -an -f null - 2>&1
+          if ($LASTEXITCODE -ne 0 -or ($decoded -match "black_start:")) {
+            $decoded
+            throw "The captured window clip did not decode into visible frames."
           }
       - uses: actions/upload-artifact@v4
         with:

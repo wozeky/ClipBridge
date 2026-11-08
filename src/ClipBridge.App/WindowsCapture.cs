@@ -16,6 +16,7 @@ internal sealed class WindowsCapture : IAsyncDisposable
     private ReplayRecorder? _recorder;
     private readonly List<AudioFeed> _audio = [];
     public string Encoder { get; private set; } = "";
+    public string Source { get; private set; } = "";
     public Task Completion => _recorder!.Completion;
 
     public async Task StartAsync(nint window, string cache, int seconds, bool desktopAudio, bool microphone,
@@ -27,8 +28,12 @@ internal sealed class WindowsCapture : IAsyncDisposable
         if (!IsWindow(window) || IsIconic(window))
             throw new CaptureException("Açık ve küçültülmemiş bir pencere seçin.");
 
-        string? hardwareError = null;
-        foreach (var encoder in new[] { "h264_nvenc", "h264_mf" })
+        var errors = new List<string>();
+        var handle = unchecked((ulong)(nuint)window).ToString(CultureInfo.InvariantCulture);
+        foreach (var (graphicsCapture, encoder) in new[]
+        {
+            (true, "h264_nvenc"), (true, "h264_mf"), (false, "h264_mf")
+        })
         {
             using var startup = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             startup.CancelAfter(TimeSpan.FromSeconds(12));
@@ -39,12 +44,12 @@ internal sealed class WindowsCapture : IAsyncDisposable
                 if (microphone)
                     _audio.Add(new AudioFeed(new WasapiCapture()));
 
-                var handle = unchecked((ulong)(nuint)window).ToString(CultureInfo.InvariantCulture);
-                var inputs = new List<string>
-                {
-                    "-thread_queue_size", "64", "-f", "lavfi",
-                    "-i", $"gfxcapture=hwnd={handle}:max_framerate=60:width=1920:height=1080:resize_mode=scale_aspect:display_border=1"
-                };
+                var inputs = new List<string> { "-thread_queue_size", "64" };
+                if (graphicsCapture)
+                    inputs.AddRange(["-f", "lavfi", "-i",
+                        $"gfxcapture=hwnd={handle}:max_framerate=60:width=1920:height=1080:resize_mode=scale_aspect:display_border=1"]);
+                else
+                    inputs.AddRange(["-f", "gdigrab", "-framerate", "60", "-draw_mouse", "0", "-i", $"hwnd={handle}"]);
                 foreach (var feed in _audio)
                     inputs.AddRange(feed.Arguments);
 
@@ -52,7 +57,12 @@ internal sealed class WindowsCapture : IAsyncDisposable
                 if (encoder == "h264_nvenc")
                     args.AddRange(["-c:v", encoder, "-preset", "p4", "-tune", "ll", "-rc", "cbr"]);
                 else
-                    args.AddRange(["-vf", "hwdownload,format=bgra,format=nv12", "-c:v", encoder, "-hw_encoding", "0"]);
+                {
+                    var filter = graphicsCapture ? "hwdownload,format=bgra,format=nv12"
+                        : "scale=1920:1080:force_original_aspect_ratio=decrease:force_divisible_by=2,"
+                          + "pad=1920:1080:(ow-iw)/2:(oh-ih)/2,format=nv12";
+                    args.AddRange(["-vf", filter, "-c:v", encoder, "-hw_encoding", "0"]);
+                }
                 args.AddRange(["-r", "60", "-fps_mode", "cfr", "-b:v", "12M", "-maxrate", "14M", "-bufsize", "14M",
                     "-g", "60", "-bf", "0", "-force_key_frames", "expr:gte(t,n_forced)"]);
                 if (_audio.Count == 1)
@@ -63,6 +73,7 @@ internal sealed class WindowsCapture : IAsyncDisposable
 
                 _recorder = new ReplayRecorder(executable, cache, seconds, inputs, args);
                 await _recorder.WaitUntilReadyAsync(startup.Token);
+                Source = graphicsCapture ? "Windows Graphics Capture" : "Windows GDI";
                 Encoder = encoder == "h264_nvenc" ? "NVIDIA NVENC" : "Media Foundation";
                 return;
             }
@@ -73,9 +84,8 @@ internal sealed class WindowsCapture : IAsyncDisposable
                 var details = error is OperationCanceledException
                     ? "İlk kareler zamanında gelmedi. Seçilen pencereyi açık tutun."
                     : error.Message;
-                if (hardwareError is not null)
-                    throw new CaptureException($"Windows kaydı başlatılamadı. NVENC: {hardwareError} Media Foundation: {details}");
-                hardwareError = details;
+                var source = graphicsCapture ? "WGC" : "GDI";
+                errors.Add($"{source}/{encoder} · {details}");
             }
             catch
             {
@@ -83,6 +93,7 @@ internal sealed class WindowsCapture : IAsyncDisposable
                 throw;
             }
         }
+        throw new CaptureException("Windows kaydı başlatılamadı.\n" + string.Join("\n", errors));
     }
 
     public Task<string> SaveAsync(string destination, CancellationToken cancellationToken) =>
@@ -90,14 +101,20 @@ internal sealed class WindowsCapture : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        if (_recorder is { } recorder)
+        try
         {
-            _recorder = null;
-            await recorder.DisposeAsync();
+            if (_recorder is { } recorder)
+            {
+                _recorder = null;
+                await recorder.DisposeAsync();
+            }
         }
-        foreach (var feed in _audio)
-            await feed.DisposeAsync();
-        _audio.Clear();
+        finally
+        {
+            foreach (var feed in _audio)
+                await feed.DisposeAsync();
+            _audio.Clear();
+        }
     }
 
     public static IReadOnlyList<CaptureWindow> Windows(nint excluded)

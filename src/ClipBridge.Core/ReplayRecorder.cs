@@ -157,11 +157,15 @@ public sealed class ReplayRecorder : IAsyncDisposable
 
     private static async Task<string> ReadErrorsAsync(Process process)
     {
-        string? last = null;
+        var messages = new Queue<string>();
         while (await process.StandardError.ReadLineAsync() is { } line)
             if (!string.IsNullOrWhiteSpace(line))
-                last = line.Length <= 500 ? line : line[..500];
-        return last ?? "";
+            {
+                messages.Enqueue(line.Length <= 400 ? line : line[..400]);
+                if (messages.Count > 9)
+                    messages.Dequeue();
+            }
+        return string.Join(Environment.NewLine, messages);
     }
 
     private sealed record Segment(string File, double Start, double End)
