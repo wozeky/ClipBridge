@@ -7,6 +7,8 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using ClipBridge.Core;
 using Microsoft.Win32;
 using Forms = System.Windows.Forms;
@@ -52,6 +54,22 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Activated += (_, _) =>
+        {
+            if (CanAnimateInterface)
+                AnimateInterface(BrandMotion, ScaleTransform.ScaleXProperty, 0.5, 1);
+        };
+        Deactivated += (_, _) => StopInterfaceMotion();
+        IsVisibleChanged += (_, _) =>
+        {
+            if (!IsVisible)
+                StopInterfaceMotion();
+        };
+        StateChanged += (_, _) =>
+        {
+            if (WindowState == WindowState.Minimized)
+                StopInterfaceMotion();
+        };
         if (Environment.GetCommandLineArgs() is [_, "--smoke-test" or "--capture-smoke", var marker])
         {
             _smokeMarker = marker;
@@ -64,9 +82,49 @@ public partial class MainWindow : Window
         Loaded += OnLoaded;
     }
 
+    private bool CanAnimateInterface => _smokeMarker is null && !_captureBusy && !_armed
+        && IsVisible && IsActive && WindowState != WindowState.Minimized
+        && SystemParameters.ClientAreaAnimation && RenderCapability.Tier != 0;
+
+    private void Settings_Expanded(object sender, RoutedEventArgs args)
+    {
+        if (CanAnimateInterface)
+            AnimateInterface(SettingsMotion, TranslateTransform.YProperty, -5, 0);
+    }
+
+    private void Settings_Collapsed(object sender, RoutedEventArgs args) =>
+        SettingsMotion.BeginAnimation(TranslateTransform.YProperty, null);
+
+    private static void AnimateInterface(Animatable target, DependencyProperty property, double from, double to)
+    {
+        var animation = new DoubleAnimation(from, to, TimeSpan.FromMilliseconds(140))
+        {
+            DecelerationRatio = 0.75,
+            FillBehavior = FillBehavior.Stop
+        };
+        Timeline.SetDesiredFrameRate(animation, 30);
+        target.BeginAnimation(property, animation);
+    }
+
+    private void StopInterfaceMotion()
+    {
+        if (BrandMotion.HasAnimatedProperties)
+            BrandMotion.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+        if (SettingsMotion.HasAnimatedProperties)
+            SettingsMotion.BeginAnimation(TranslateTransform.YProperty, null);
+    }
+
     private void OnSmokeRendered(object? sender, EventArgs args)
     {
         if (_store is null || _queue is null || Library.Items.Count != 0 || !IsLoaded)
+        {
+            Application.Current.Shutdown(1);
+            return;
+        }
+        SettingsPanel.IsExpanded = true;
+        UpdateLayout();
+        if (!CaptureTarget.IsVisible || !ReplayLength.IsVisible || Library.ActualHeight <= 0
+            || SettingsMotion.HasAnimatedProperties || BrandMotion.HasAnimatedProperties)
         {
             Application.Current.Shutdown(1);
             return;
@@ -297,7 +355,8 @@ public partial class MainWindow : Window
         if (CaptureTarget.SelectedItem is not WindowsCapture.CaptureWindow target)
         {
             _diagnostics.CaptureFailed(new CaptureException("Açık ve küçültülmemiş bir pencere seçin."));
-            StatusMessage.Text = "Ayarlar'dan kaydedilecek oyun penceresini seçin.";
+            StatusMessage.Text = "Oyun yakalama bölümünden bir pencere seçin.";
+            CaptureTarget.Focus();
             return;
         }
         if (!SaveSettings())
@@ -413,7 +472,8 @@ public partial class MainWindow : Window
             : "Yeni görüntü gelmiyor";
         if (_armed && !_hotkeyRegistered)
             status += " · F8 kullanılamıyor";
-        CaptureStatus.Text = status;
+        if (CaptureStatus.Text != status)
+            CaptureStatus.Text = status;
         var trayText = "ClipBridge · " + status;
         if (_tray is not null && _tray.Text != trayText)
             _tray.Text = trayText;
@@ -422,6 +482,8 @@ public partial class MainWindow : Window
     private void SetCaptureBusy(bool busy)
     {
         _captureBusy = busy;
+        if (busy)
+            StopInterfaceMotion();
         ArmButton.IsEnabled = !busy;
         SaveReplayButton.IsEnabled = !busy && _armed;
         if (!busy && _exit && _shutdown.IsCancellationRequested)
