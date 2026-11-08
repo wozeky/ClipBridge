@@ -20,7 +20,7 @@
     <ItemGroup>
       <_RuntimeNotice Include="%(ResolvedRuntimePack.PackageDirectory)/LICENSE*;%(ResolvedRuntimePack.PackageDirectory)/THIRD-PARTY-NOTICES*"
                       Condition="'%(ResolvedRuntimePack.PackageDirectory)' != '' And
-                                 '%(ResolvedRuntimePack.RuntimeFrameworkName)' != 'Microsoft.AspNetCore.App'">
+                                 '%(ResolvedRuntimePack.NuGetPackageId)' != 'Microsoft.AspNetCore.App.Runtime.$(RuntimeIdentifier)'">
         <PackName>%(ResolvedRuntimePack.Identity)</PackName>
       </_RuntimeNotice>
       <_RuntimeNotice Include="$(PkgSystem_Security_Cryptography_ProtectedData)/THIRD-PARTY-NOTICES.TXT"
