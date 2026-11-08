@@ -1,0 +1,30 @@
+name: Publish ClipBridge v0.1.0
+
+on:
+  push:
+    branches: [release/publish-v0.1.0]
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Verify and publish the existing Windows ZIP
+        shell: bash
+        run: |
+          gh api "repos/$GH_REPO/actions/runs/42519213050" |
+            jq -e '.conclusion == "success" and .head_sha == "346e42f3920b226550b4d673eb60f69c8b1ee0d0"'
+          digest=$(gh api "repos/$GH_REPO/actions/artifacts/13633180639" |
+            jq -er 'select(.expired == false and .name == "ClipBridge-win-x64" and .workflow_run.id == 42519213050) | .digest | select(test("^sha256:[0-9a-f]{64}$")) | sub("^sha256:"; "")')
+          gh api "repos/$GH_REPO/actions/artifacts/13633180639/zip" > ClipBridge-win-x64.zip
+          printf '%s  ClipBridge-win-x64.zip\n' "$digest" | sha256sum --check
+          gh release create v0.1.0 ClipBridge-win-x64.zip \
+            --target "346e42f3920b226550b4d673eb60f69c8b1ee0d0" --title "ClipBridge v0.1.0" --prerelease \
+            --notes "Windows x64 test sürümü. ZIP'i çıkarıp ClipBridge.exe dosyasını açın. Windows CI: https://github.com/wozeky/ClipBridge/actions/runs/42519213050"
