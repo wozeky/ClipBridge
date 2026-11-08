@@ -55,6 +55,16 @@ jobs:
           if ($app.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $marker)) {
             throw "ClipBridge did not render the window successfully. Exit code: $($app.ExitCode)"
           }
+          $screenshot = [IO.Path]::ChangeExtension($marker, ".png")
+          if (-not (Test-Path -LiteralPath $screenshot)) {
+            throw "WPF did not export the real application screenshot."
+          }
+      - name: Upload real WPF screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClipBridge-WPF-screenshot
+          path: ${{ runner.temp }}/clipbridge-window.png
+          if-no-files-found: error
       - name: Probe native window recording on the hosted desktop
         continue-on-error: true
         shell: pwsh
