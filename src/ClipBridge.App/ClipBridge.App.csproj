@@ -13,7 +13,24 @@
     <Using Remove="System.Windows.Forms" />
     <Using Remove="System.Drawing" />
     <None Include="../../LICENSE" Link="LICENSE" CopyToPublishDirectory="PreserveNewest" />
-    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" GeneratePathProperty="true" />
     <ProjectReference Include="../ClipBridge.Core/ClipBridge.Core.csproj" />
   </ItemGroup>
+  <Target Name="IncludeRuntimeNotices" AfterTargets="ComputeFilesToPublish" Condition="'$(SelfContained)' == 'true'">
+    <ItemGroup>
+      <_RuntimeNotice Include="%(ResolvedRuntimePack.PackageDirectory)/LICENSE*;%(ResolvedRuntimePack.PackageDirectory)/THIRD-PARTY-NOTICES*"
+                      Condition="'%(ResolvedRuntimePack.PackageDirectory)' != '' And
+                                 '%(ResolvedRuntimePack.RuntimeFrameworkName)' != 'Microsoft.AspNetCore.App'">
+        <PackName>%(ResolvedRuntimePack.Identity)</PackName>
+      </_RuntimeNotice>
+      <_RuntimeNotice Include="$(PkgSystem_Security_Cryptography_ProtectedData)/THIRD-PARTY-NOTICES.TXT"
+                      Condition="Exists('$(PkgSystem_Security_Cryptography_ProtectedData)/THIRD-PARTY-NOTICES.TXT')">
+        <PackName>System.Security.Cryptography.ProtectedData</PackName>
+      </_RuntimeNotice>
+      <ResolvedFileToPublish Include="@(_RuntimeNotice)">
+        <RelativePath>licenses/%(_RuntimeNotice.PackName)/%(_RuntimeNotice.Filename)%(_RuntimeNotice.Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
 </Project>
