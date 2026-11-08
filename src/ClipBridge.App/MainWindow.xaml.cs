@@ -140,16 +140,32 @@ public partial class MainWindow : Window
         // Run only in the isolated --smoke-test mode; no user clips or settings are touched.
         if (Content is FrameworkElement root)
         {
-            var dpi = VisualTreeHelper.GetDpi(root);
-            var width = Math.Max(1, (int)Math.Ceiling(root.ActualWidth * dpi.DpiScaleX));
-            var height = Math.Max(1, (int)Math.Ceiling(root.ActualHeight * dpi.DpiScaleY));
-            var screenshot = new RenderTargetBitmap(width, height,
-                dpi.PixelsPerInchX, dpi.PixelsPerInchY, PixelFormats.Pbgra32);
-            screenshot.Render(root);
-            var encoder = new PngBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(screenshot));
-            using var output = File.Create(Path.ChangeExtension(_smokeMarker!, ".png"));
-            encoder.Save(output);
+            // Use an explicit desktop-sized layout to avoid the hosted CI screen resolution
+            // cropping native WPF elements. The pixels still come from the actual WPF tree.
+            const double captureWidth = 1240;
+            const double captureHeight = 830;
+
+            void ExportPng(string path)
+            {
+                root.Measure(new Size(captureWidth, captureHeight));
+                root.Arrange(new Rect(0, 0, captureWidth, captureHeight));
+                root.UpdateLayout();
+                var dpi = VisualTreeHelper.GetDpi(root);
+                var width = Math.Max(1, (int)Math.Ceiling(root.ActualWidth * dpi.DpiScaleX));
+                var height = Math.Max(1, (int)Math.Ceiling(root.ActualHeight * dpi.DpiScaleY));
+                var screenshot = new RenderTargetBitmap(width, height,
+                    dpi.PixelsPerInchX, dpi.PixelsPerInchY, PixelFormats.Pbgra32);
+                screenshot.Render(root);
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(screenshot));
+                using var output = File.Create(path);
+                encoder.Save(output);
+            }
+
+            // One inspection view for settings and one for the normal (collapsed) archive.
+            ExportPng(Path.ChangeExtension(_smokeMarker!, ".settings.png"));
+            SettingsPanel.IsExpanded = false;
+            ExportPng(Path.ChangeExtension(_smokeMarker!, ".png"));
         }
         File.WriteAllText(_smokeMarker!, "ClipBridge window, library and diagnostics clipboard initialized");
         Application.Current.Shutdown();
