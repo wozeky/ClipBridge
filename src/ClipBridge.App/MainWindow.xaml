@@ -11,7 +11,7 @@
   </Window.Resources>
 
   <!-- Preserve the native Windows title bar, resize, snap and DPI behavior. -->
-  <Grid Margin="22,18,22,18">
+  <Grid Margin="22,18,22,18" Background="{DynamicResource WindowBrush}">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
