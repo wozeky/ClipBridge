@@ -1,0 +1,75 @@
+name: Update the Windows download on v0.1.0
+on:
+  push:
+    branches: [release/refresh-windows-42662746068]
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: v0.1.0-windows-download
+
+jobs:
+  replace-asset:
+    if: github.repository == 'wozeky/RollClip'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Stage, verify and replace the Windows ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          release="repos/$GH_REPO/releases/438499607"
+          assets="repos/$GH_REPO/releases/assets"
+          ref="repos/$GH_REPO/git/ref/tags/v0.1.0"
+          tag_sha=$(gh api "$ref" --jq '.object.sha')
+          old_id=728254004
+          zip=RollClip-win-x64.zip
+          staged=RollClip-win-x64-42662746068-staged.zip
+          backup=RollClip-win-x64-728254004-backup.zip
+          digest=3df988daecddd5a51c4f445d34abc317c167758e6cfe84ac4a3bbcecb5ecf20e
+          gh api "$release" |
+            jq -e --arg zip "$zip" --argjson old "$old_id" '.tag_name == "v0.1.0" and .draft == false and .immutable != true and any(.assets[]; .id == $old and .name == $zip)' >/dev/null
+          gh api "repos/$GH_REPO/actions/runs/42662746068" |
+            jq -e '.conclusion == "success" and .head_sha == "b268a75585039196aec80e1c1ca68b50560a70ed"' >/dev/null
+          gh api "repos/$GH_REPO/actions/artifacts/13695267132" |
+            jq -e --arg digest "sha256:$digest" '.expired == false and .name == "RollClip-win-x64" and .workflow_run.id == 42662746068 and .digest == $digest' >/dev/null
+          gh api "repos/$GH_REPO/actions/artifacts/13695267132/zip" > "$staged"
+          printf '%s  %s\n' "$digest" "$staged" | sha256sum --check
+          unzip -tq "$staged"
+          unzip -Z1 "$staged" > entries.txt
+          grep -Fx RollClip.exe entries.txt
+          gh release upload v0.1.0 "$staged"
+
+          new_id=$(gh api "$release" |
+            jq -er --arg n "$staged" --arg d "sha256:$digest" '.assets[] | select(.name == $n and .digest == $d and .state == "uploaded") | .id')
+          moved_old=false
+          moved_new=false
+          rollback() {
+            rc=$?
+            if (( rc != 0 )) && [ "$moved_old" = true ]; then
+              if [ "$moved_new" = true ]; then
+                gh api --method PATCH "$assets/$new_id" -f "name=$staged" >/dev/null || true
+              fi
+              gh api --method PATCH "$assets/$old_id" -f "name=$zip" >/dev/null || true
+            fi
+          }
+          trap rollback EXIT
+          gh api --method PATCH "$assets/$old_id" -f "name=$backup" >/dev/null
+          moved_old=true
+          gh api --method PATCH "$assets/$new_id" -f "name=$zip" >/dev/null
+          moved_new=true
+
+          url=$(gh api "$assets/$new_id" --jq '.browser_download_url')
+          curl --fail --silent --show-error --location --retry 4 --max-time 120 "$url" -o verified.zip
+          printf '%s  verified.zip\n' "$digest" | sha256sum --check
+          test "$tag_sha" = "$(gh api "$ref" --jq '.object.sha')"
+          gh api --method DELETE "$assets/$old_id"
+          trap - EXIT
+          gh api "$release" |
+            jq -e --arg zip "$zip" --argjson new "$new_id" --argjson old "$old_id" 'any(.assets[]; .id == $new and .name == $zip) and all(.assets[]; .id != $old)' >/dev/null
+          printf 'Verified: %s\n' "$url"
