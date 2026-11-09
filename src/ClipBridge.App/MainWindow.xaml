@@ -17,6 +17,9 @@
       Stretch="Fill" MediaOpened="Chrome_Opened" MediaEnded="Chrome_Ended" MediaFailed="Chrome_Failed"/>
     </Grid>
     <Canvas x:Name="HomePanel">
+     <Ellipse x:Name="HomeGlow" Canvas.Left="620" Canvas.Top="512" Width="165" Height="90" Opacity=".7" IsHitTestVisible="False">
+      <Ellipse.Fill><RadialGradientBrush><GradientStop Color="#5B70FF26"/><GradientStop Color="#0070FF26" Offset="1"/></RadialGradientBrush></Ellipse.Fill>
+     </Ellipse>
      <!-- Coordinates measured from the 1600 × 1200 reference at 75% scale. -->
      <StackPanel Canvas.Left="178" Canvas.Top="295" Orientation="Horizontal">
       <Button Style="{StaticResource RoundButton}" Click="Home_Click" ToolTip="Ana ekran" AutomationProperties.Name="Ana ekran" Content="&#xE714;" Foreground="{StaticResource NeonBrush}"/>
@@ -37,10 +40,18 @@
       <Grid Margin="27,23,27,19"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
        <TextBlock Text="Klip süresi" FontWeight="SemiBold" FontSize="17"/>
        <TextBlock Grid.Row="1" Text="Son anları tek tuşla kaydet." Style="{StaticResource Caption}" Margin="0,6,0,0"/>
-       <Grid Grid.Row="2" VerticalAlignment="Bottom"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="110"/></Grid.ColumnDefinitions>
-        <TextBlock Text="SON" Style="{StaticResource Caption}" VerticalAlignment="Center"/>
-        <ComboBox x:Name="ReplayLength" Grid.Column="1" FontSize="25" AutomationProperties.Name="Klip süresi, saniye" ToolTip="15, 30, 60, 120 veya 180 saniye"/>
-       </Grid>
+       <ListBox x:Name="ReplayLength" Grid.Row="2" Background="Transparent" BorderThickness="0" VerticalAlignment="Bottom"
+        ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled"
+        HorizontalContentAlignment="Center" AutomationProperties.Name="Klip süresi, saniye">
+        <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate></ListBox.ItemsPanel>
+        <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem"><Setter Property="Foreground" Value="#7C837B"/><Setter Property="FontSize" Value="14"/>
+         <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem"><Border x:Name="DurationFace" Height="53" Background="Transparent">
+          <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+         </Border><ControlTemplate.Triggers><Trigger Property="IsSelected" Value="True"><Setter Property="FontSize" Value="29"/><Setter Property="Foreground" Value="#F1F5EF"/>
+          <Setter TargetName="DurationFace" Property="Background"><Setter.Value><LinearGradientBrush StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#00CDD5CE" Offset="0"/><GradientStop Color="#24CDD5CE" Offset="1"/></LinearGradientBrush></Setter.Value></Setter>
+         </Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="DurationFace" Property="BorderBrush" Value="{StaticResource NeonBrush}"/><Setter TargetName="DurationFace" Property="BorderThickness" Value="0,0,0,1"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+        </Style></ListBox.ItemContainerStyle>
+       </ListBox>
       </Grid>
      </local:ChromeGlass>
      <local:ChromeGlass Canvas.Left="620" Canvas.Top="305" Width="196" Height="196" Scene="{Binding ElementName=ChromeScene}" Region="620,305,196,196" Radius="36">

@@ -37,6 +37,12 @@ jobs:
             if (-not ($encoders -match "\b$encoder\b")) { throw "Missing H.264 encoder: $encoder" }
           }
           $encoders -match '\bh264_(nvenc|amf|mf)\b'
+      - name: Verify bundled material decodes completely
+        shell: pwsh
+        run: |
+          $ffmpeg = (Resolve-Path ./artifacts/win-x64/ffmpeg/bin/ffmpeg.exe).Path
+          & $ffmpeg -v error -xerror -i ./artifacts/win-x64/Assets/ChromeLoop.mp4 -f null -
+          if ($LASTEXITCODE -ne 0) { throw "Chrome loop decoding failed." }
       - name: Verify rolling buffer and MP4 export with synthetic input
         shell: pwsh
         run: |
@@ -60,12 +66,29 @@ jobs:
           if (-not (Test-Path -LiteralPath $screenshot)) {
             throw "WPF did not export the real application screenshot."
           }
-      - name: Upload real WPF screenshot
+      - name: Probe animated chrome and pause lifecycle on hosted Windows
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $marker = Join-Path $env:RUNNER_TEMP "clipbridge-material.txt"
+          $app = Start-Process -FilePath "./artifacts/win-x64/ClipBridge.exe" -ArgumentList "--material-smoke", "`"$marker`"" -PassThru
+          if (-not $app.WaitForExit(30000)) {
+            Stop-Process -Id $app.Id -Force
+            throw "Material probe timed out."
+          }
+          if (Test-Path $marker) { Get-Content $marker }
+          if ($app.ExitCode -ne 0 -or -not (Test-Path $marker)) { throw "Hosted video material playback was not verified." }
+      - name: Upload native WPF views and material probe
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ClipBridge-WPF-screenshot
-          path: ${{ runner.temp }}/clipbridge-window*.png
-          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/clipbridge-window*.png
+            ${{ runner.temp }}/clipbridge-material*.png
+            ${{ runner.temp }}/clipbridge-material.txt
+            ${{ runner.temp }}/clipbridge-window.txt
+          if-no-files-found: warn
       - name: Probe native window recording on the hosted desktop
         continue-on-error: true
         shell: pwsh

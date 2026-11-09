@@ -20,7 +20,7 @@
   <Setter Property="BorderBrush" Value="{StaticResource MetalRim}"/><Setter Property="BorderThickness" Value="1"/>
   <Setter Property="Cursor" Value="Hand"/><Setter Property="MinHeight" Value="34"/>
   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
-   <Grid RenderTransformOrigin=".5,.5"><Grid.RenderTransform><ScaleTransform x:Name="Press"/></Grid.RenderTransform>
+   <Grid x:Name="ButtonRoot" RenderTransformOrigin=".5,.5">
     <Border x:Name="Face" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
      BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="28" Padding="{TemplateBinding Padding}">
      <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -33,7 +33,7 @@
     </Storyboard></BeginStoryboard></Trigger.EnterActions><Trigger.ExitActions><BeginStoryboard><Storyboard>
      <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:.2"/>
     </Storyboard></BeginStoryboard></Trigger.ExitActions></Trigger>
-    <Trigger Property="IsPressed" Value="True"><Setter TargetName="Press" Property="ScaleX" Value=".96"/><Setter TargetName="Press" Property="ScaleY" Value=".96"/></Trigger>
+    <Trigger Property="IsPressed" Value="True"><Setter TargetName="ButtonRoot" Property="RenderTransform"><Setter.Value><ScaleTransform ScaleX=".96" ScaleY=".96"/></Setter.Value></Setter></Trigger>
     <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Face" Property="BorderBrush" Value="{StaticResource NeonBrush}"/></Trigger>
     <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value=".38"/></Trigger>
    </ControlTemplate.Triggers>

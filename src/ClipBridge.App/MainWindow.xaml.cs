@@ -60,13 +60,13 @@ public partial class MainWindow : Window
         IsVisibleChanged += (_, _) => UpdateInterfaceMotion();
         StateChanged += (_, _) => UpdateInterfaceMotion();
         SystemParameters.StaticPropertyChanged += OnSystemParametersChanged;
-        if (Environment.GetCommandLineArgs() is [_, "--smoke-test" or "--capture-smoke", var marker])
+        if (Environment.GetCommandLineArgs() is [_, "--smoke-test" or "--capture-smoke" or "--material-smoke", var marker])
         {
             _smokeMarker = marker;
             var smokeCapture = Environment.GetCommandLineArgs()[1] == "--capture-smoke";
             _root = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(marker))!, "clipbridge-smoke-" + Guid.NewGuid().ToString("N"));
             _clipsPath = Path.Combine(_root, "videos");
-            ContentRendered += smokeCapture ? OnSmokeCaptureRendered : OnSmokeRendered;
+            ContentRendered += smokeCapture ? OnSmokeCaptureRendered : _materialSmoke ? OnMaterialSmokeRendered : OnSmokeRendered;
         }
         _bufferTimer.Tick += (_, _) => RefreshCaptureStatus();
         Loaded += OnLoaded;
@@ -75,9 +75,9 @@ public partial class MainWindow : Window
     private bool _movieReady;
     private bool _movieFailed;
     private bool _moviePlaying;
-    private bool CanAnimateInterface => _smokeMarker is null && !_captureBusy
+    private bool CanAnimateInterface => (_smokeMarker is null || _materialSmoke) && !_captureBusy
         && _settings.Motion && IsVisible && IsActive && WindowState != WindowState.Minimized
-        && SystemParameters.ClientAreaAnimation && RenderCapability.Tier != 0;
+        && SystemParameters.ClientAreaAnimation && (RenderCapability.Tier != 0 || _materialSmoke);
 
     private void OnSystemParametersChanged(object? sender, PropertyChangedEventArgs args) =>
         Dispatcher.InvokeAsync(UpdateInterfaceMotion);
@@ -86,7 +86,14 @@ public partial class MainWindow : Window
     {
         if (_movieReady && !_movieFailed && CanAnimateInterface)
         {
-            if (!_moviePlaying) { ChromeMovie.Play(); _moviePlaying = true; }
+            if (!_moviePlaying)
+            {
+                ChromeMovie.Play(); _moviePlaying = true;
+                var pulse = new DoubleAnimation(.55, .85, TimeSpan.FromSeconds(2.4))
+                    { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever };
+                Timeline.SetDesiredFrameRate(pulse, 30);
+                HomeGlow.BeginAnimation(OpacityProperty, pulse);
+            }
         }
         else StopInterfaceMotion();
     }
@@ -94,6 +101,7 @@ public partial class MainWindow : Window
     private void StopInterfaceMotion()
     {
         if (_moviePlaying) { ChromeMovie.Pause(); _moviePlaying = false; }
+        HomeGlow.BeginAnimation(OpacityProperty, null);
         SettingsMotion.BeginAnimation(TranslateTransform.YProperty, null);
     }
 
