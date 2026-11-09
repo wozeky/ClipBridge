@@ -46,6 +46,8 @@ public partial class MainWindow : Window
     };
     private bool _captureBusy;
     private ClipStore? _store;
+    private readonly SemaphoreSlim _archiveGate = new(1, 1);
+    private bool _archiveBulkRunning;
     private UploadQueue? _queue;
     private Forms.NotifyIcon? _tray;
     private ClipSettings _settings = new();
@@ -284,16 +286,20 @@ public partial class MainWindow : Window
             SettingsNav.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
             ExportPng("settings");
             if (!ProviderChoice.IsVisible || !MotionEnabled.IsVisible || !RecordingQualityChoice.IsVisible
-                || !ReplayKeyChoice.IsVisible || SettingsPanel.HasAnimatedProperties || SettingsPanel.RenderTransform.HasAnimatedProperties)
+                || !ReplayKeyChoice.IsVisible || !ArchiveFolderBox.IsVisible || SettingsPanel.HasAnimatedProperties || SettingsPanel.RenderTransform.HasAnimatedProperties)
                 throw new InvalidOperationException("Settings navigation failed.");
             ReplayKeyChoice.SelectedIndex = 3; // F9
             RecordingQualityChoice.SelectedIndex = (int)RecordingQuality.Light;
+            var backupFolder = Path.Combine(_root, "backup");
+            ArchiveFolderBox.Text = backupFolder;
             if (!SaveSettings() || SaveReplayButton.Content as string != "F9"
                 || AtomicJson.Read<ClipSettings>(Path.Combine(_root, "settings.json")) is not
-                    { ReplayKey: 9, Quality: RecordingQuality.Light, Motion: false })
+                    { ReplayKey: 9, Quality: RecordingQuality.Light, Motion: false } saved
+                || saved.ArchiveFolder != backupFolder || !ArchiveExistingButton.IsEnabled)
                 throw new InvalidOperationException("Recording controls did not persist or update the hotkey label.");
             ReplayKeyChoice.SelectedIndex = 2;
             RecordingQualityChoice.SelectedIndex = 0;
+            ArchiveFolderBox.Text = "";
             if (!SaveSettings())
                 throw new InvalidOperationException("Could not restore default settings in the isolated smoke profile.");
             StatusMessage.Text = "";
@@ -406,6 +412,8 @@ public partial class MainWindow : Window
             Microphone.IsChecked = _settings.Microphone;
             GameName.Text = _settings.Game ?? "";
             MotionEnabled.IsChecked = _settings.Motion;
+            ArchiveFolderBox.Text = _settings.ArchiveFolder ?? "";
+            ArchiveExistingButton.IsEnabled = _settings.ArchiveFolder is not null;
             RecordingQualityChoice.SelectedIndex = Enum.IsDefined(_settings.Quality) ? (int)_settings.Quality : 0;
             ReplayKeyChoice.ItemsSource = Enumerable.Range(6, 6).Select(key => $"F{key}").ToArray();
             ReplayKeyChoice.SelectedIndex = _settings.ReplayKey is >= 6 and <= 11 ? _settings.ReplayKey - 6 : 2;
@@ -730,6 +738,8 @@ public partial class MainWindow : Window
         StatusMessage.Text = _settings.AutoUpload ? "Klip kaydedildi, yükleme sıraya alındı." : "Klip yerel arşive kaydedildi.";
         if (_settings.AutoUpload)
             _queue?.Signal();
+        if (_settings.ArchiveFolder is { } folder)
+            _ = BackupClipsAsync([clip], folder);
     }
 
     private void OnClipChanged(Clip clip, long changedAt)
@@ -762,6 +772,75 @@ public partial class MainWindow : Window
             StatusMessage.Text = clip.Error + (clip.NextAttempt is null ? "" : " Otomatik yeniden denenecek.");
     }
 
+    private void ChooseArchiveFolder_Click(object sender, RoutedEventArgs args)
+    {
+        var dialog = new OpenFolderDialog { Title = "Drive ile eşitlenen arşiv klasörünü seçin" };
+        if (dialog.ShowDialog(this) == true)
+        {
+            ArchiveFolderBox.Text = dialog.FolderName;
+            ArchiveStatus.Text = "Otomatik yedeklemeyi açmak için ayarları kaydedin.";
+        }
+    }
+
+    private void ClearArchiveFolder_Click(object sender, RoutedEventArgs args)
+    {
+        ArchiveFolderBox.Text = "";
+        ArchiveStatus.Text = "Otomatik yedeklemeyi kapatmak için ayarları kaydedin.";
+    }
+
+    private async void ArchiveExisting_Click(object sender, RoutedEventArgs args)
+    {
+        if (_archiveBulkRunning || _store is null || _settings.ArchiveFolder is not { } folder)
+            return;
+        _archiveBulkRunning = true;
+        ArchiveExistingButton.IsEnabled = false;
+        try { await BackupClipsAsync(_store.Snapshot(), folder); }
+        finally
+        {
+            _archiveBulkRunning = false;
+            ArchiveExistingButton.IsEnabled = _settings.ArchiveFolder is not null;
+        }
+    }
+
+    private async Task BackupClipsAsync(IReadOnlyList<Clip> clips, string folder)
+    {
+        var token = _shutdown.Token;
+        try
+        {
+            await _archiveGate.WaitAsync(token);
+            try
+            {
+                ArchiveStatus.Text = "Klipler arşiv klasörüne kopyalanıyor…";
+                var (copied, existing, failed) = await Task.Run(async () =>
+                {
+                    var copied = 0;
+                    var existing = 0;
+                    var failed = 0;
+                    foreach (var clip in clips)
+                    {
+                        try
+                        {
+                            if (await ClipArchive.CopyAsync(folder, clip, token))
+                                copied++;
+                            else
+                                existing++;
+                        }
+                        catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or System.Security.SecurityException)
+                        {
+                            failed++;
+                        }
+                    }
+                    return (copied, existing, failed);
+                }, token);
+                ArchiveStatus.Text = $"{copied} kopyalandı · {existing} zaten var · {failed} başarısız.";
+                if (failed > 0)
+                    StatusMessage.Text = "Bazı klipler yedeklenemedi. Klasörü kontrol edip yeniden deneyin.";
+            }
+            finally { _archiveGate.Release(); }
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+    }
+
     private void SaveSettings_Click(object sender, RoutedEventArgs args) => SaveSettings();
 
     private bool SaveSettings()
@@ -782,9 +861,11 @@ public partial class MainWindow : Window
                 Microphone.IsChecked == true, MotionEnabled.IsChecked == true,
                 RecordingQualityChoice.SelectedIndex is >= 0 and <= 2
                     ? (RecordingQuality)RecordingQualityChoice.SelectedIndex : RecordingQuality.High,
-                ReplayKeyChoice.SelectedIndex is >= 0 and <= 5 ? ReplayKeyChoice.SelectedIndex + 6 : 8);
+                ReplayKeyChoice.SelectedIndex is >= 0 and <= 5 ? ReplayKeyChoice.SelectedIndex + 6 : 8,
+                string.IsNullOrWhiteSpace(ArchiveFolderBox.Text) ? null : ArchiveFolderBox.Text);
             AtomicJson.Write(Path.Combine(_root, "settings.json"), settings);
             Volatile.Write(ref _settings, settings);
+            ArchiveExistingButton.IsEnabled = settings.ArchiveFolder is not null && !_archiveBulkRunning;
             if (!_armed)
                 UpdateReplayKeyLabel();
             UpdateInterfaceMotion();
@@ -1032,7 +1113,7 @@ public partial class MainWindow : Window
     private sealed record ClipSettings(Provider Provider = Provider.Litterbox, bool AutoUpload = false,
         bool AutoCopy = true, int SpeedLimit = 0, int ReplaySeconds = ReplayDurations.Default,
         string? Game = null, bool AutoFallback = false, bool DesktopAudio = true, bool Microphone = false, bool Motion = false,
-        RecordingQuality Quality = RecordingQuality.High, int ReplayKey = 8)
+        RecordingQuality Quality = RecordingQuality.High, int ReplayKey = 8, string? ArchiveFolder = null)
     {
         [System.Text.Json.Serialization.JsonIgnore]
         public Provider? FallbackProvider => AutoFallback

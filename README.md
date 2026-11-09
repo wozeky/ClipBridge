@@ -42,6 +42,14 @@ Kütüphane ve ayarlar `%LOCALAPPDATA%\RollClip` altında saklanır. Uygulama pe
 
 Yakalama yalnızca seçilen pencereyi hedefler. Kayıt, seçilen profil için sırasıyla NVIDIA NVENC ve AMD AMF donanım kodlamasını dener. Yazılımsal Media Foundation yedeği 720p30 kullanır. Windows Graphics Capture başlatılamazsa aynı pencere için Windows GDI denenir. GDI, donanım hızlandırmalı bazı oyunlarda boş görüntü verebilir. Kullanılan yakalama yöntemi, kodlayıcı ve kayıt biçimi durum satırında görünür.
 
+## Google Drive arşivi
+
+1. Google Drive for desktop uygulamasında eşitlenen **Drive’ım** klasöründe bir RollClip arşiv klasörü oluşturun.
+2. RollClip’te **Ayarlar → Uzun süreli arşiv → Klasör seç** ile bu klasörü seçin ve ayarları kaydedin.
+3. Yeni klipler arka planda yıl ve ay klasörlerine kopyalanır. Var olan klipler veya başarısız kopyalar için **Eski klipleri yedekle** düğmesini kullanın.
+
+RollClip yerel kopyayı oluşturur. Drive’a yüklemeyi Google Drive for desktop yapar. Eşitleme tamamlanınca dosyayı Drive web arayüzünde kontrol edin. Paylaşım bağlantısının sona ermesi arşivdeki MP4’ü etkilemez.
+
 ## Tanılama raporu
 
 Kayıt denemesi bittikten sonra **Tanılama raporunu kopyala** düğmesine basın. Rapor bu oturumdaki son kayıt denemesini, son kaydedilen klibi ve paylaşım durumunu gösterir. MP4 hazır olduktan sonraki süre, varsa yükleme sırasını ve yeniden denemeleri de içerir. Rapor yerelde hazırlanır. Ham hata çıktısı yerine bilinen hata türlerini gösterir ve kişisel yolları, pencere adlarını veya paylaşım bağlantılarını içermez.
