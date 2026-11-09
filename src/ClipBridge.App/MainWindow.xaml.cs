@@ -168,19 +168,26 @@ public partial class MainWindow : Window
 
             void ExportPng(string suffix, double width = 1600, double height = 1200)
             {
+                // Detach only in the isolated test. An attached visual is clipped by the CI
+                // desktop HWND even when its own ActualWidth reports the requested size.
+                Content = null;
+                RootSurface.Resources.MergedDictionaries.Clear();
+                RootSurface.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("GlassTheme.xaml", UriKind.Relative) });
                 RootSurface.Width = width;
                 RootSurface.Height = height;
                 RootSurface.Measure(new Size(width, height));
                 RootSurface.Arrange(new Rect(0, 0, width, height));
                 RootSurface.UpdateLayout();
-                if (Math.Abs(RootSurface.ActualWidth - width) > 1 || Math.Abs(RootSurface.ActualHeight - height) > 1)
-                    throw new InvalidOperationException("Screenshot layout dimensions were constrained by the hosted display.");
                 var screenshot = new RenderTargetBitmap((int)width, (int)height, 96, 96, PixelFormats.Pbgra32);
                 screenshot.Render(RootSurface);
                 var encoder = new PngBitmapEncoder();
                 encoder.Frames.Add(BitmapFrame.Create(screenshot));
-                using var output = File.Create(Path.ChangeExtension(_smokeMarker!, suffix + ".png"));
-                encoder.Save(output);
+                using (var output = File.Create(Path.ChangeExtension(_smokeMarker!, suffix + ".png")))
+                    encoder.Save(output);
+                RootSurface.Width = double.NaN;
+                RootSurface.Height = double.NaN;
+                Content = RootSurface;
+                UpdateLayout();
             }
             ShowPanel("home");
             ExportPng("");
