@@ -46,7 +46,8 @@ Yakalama yalnızca seçilen pencereyi hedefler. Kayıt, seçilen profil için s�
 
 1. Google Drive for desktop uygulamasında eşitlenen **Drive’ım** klasöründe bir RollClip arşiv klasörü oluşturun.
 2. RollClip’te **Ayarlar → Uzun süreli arşiv → Klasör seç** ile bu klasörü seçin ve ayarları kaydedin.
-3. Yeni klipler arka planda yıl ve ay klasörlerine kopyalanır. Var olan klipler veya başarısız kopyalar için **Eski klipleri yedekle** düğmesini kullanın.
+3. Yeni klipler arka planda yıl ve ay klasörlerine kopyalanır. Bekleyen otomatik kopyalar, aynı klasör seçiliyken RollClip yeniden açıldığında tekrar denenir.
+4. **Klasörü aç** ile yerel kopyalara ulaşın. Var olan klipler veya başarısız kopyalar için **Eski klipleri yedekle** düğmesini kullanın. Aynı adlı bir dosya varsa içerik doğrulanır ve mevcut dosyanın üzerine yazılmaz.
 
 RollClip yerel kopyayı oluşturur. Drive’a yüklemeyi Google Drive for desktop yapar. Eşitleme tamamlanınca dosyayı Drive web arayüzünde kontrol edin. Paylaşım bağlantısının sona ermesi arşivdeki MP4’ü etkilemez.
 

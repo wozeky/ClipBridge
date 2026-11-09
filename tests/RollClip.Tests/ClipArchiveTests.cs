@@ -25,9 +25,9 @@ public sealed class ClipArchiveTests
             Assert.Equal(bytes, File.ReadAllBytes(copy));
             Assert.Equal(bytes, File.ReadAllBytes(original));
 
-            File.WriteAllBytes(copy, [9]);
+            File.WriteAllBytes(copy, [4, 3, 2, 1]);
             await Assert.ThrowsAsync<IOException>(() => ClipArchive.CopyAsync(archive, clip, CancellationToken.None));
-            Assert.Equal(new byte[] { 9 }, File.ReadAllBytes(copy));
+            Assert.Equal(new byte[] { 4, 3, 2, 1 }, File.ReadAllBytes(copy));
         }
         finally { root.Delete(recursive: true); }
     }

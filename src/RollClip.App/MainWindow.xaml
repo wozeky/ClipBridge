@@ -104,7 +104,7 @@
        <Grid.RowDefinitions><RowDefinition Height="45"/><RowDefinition Height="*"/><RowDefinition Height="47"/></Grid.RowDefinitions>
        <TextBlock Text="Ayarlar" FontSize="20" FontWeight="SemiBold"/>
        <Button Style="{StaticResource RoundButton}" Width="34" Height="34" Content="&#xE711;" Click="Home_Click" HorizontalAlignment="Right" VerticalAlignment="Top" ToolTip="Ana ekrana dön" AutomationProperties.Name="Ayarları kapat"/>
-       <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"><Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="32"/><ColumnDefinition/></Grid.ColumnDefinitions>
+       <ScrollViewer x:Name="SettingsScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto"><Grid Margin="0,0,12,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="32"/><ColumnDefinition/></Grid.ColumnDefinitions>
         <StackPanel>
          <TextBlock Text="KAYIT" Style="{StaticResource Caption}" Margin="0,0,0,10"/>
          <TextBlock Text="Kayıt kalitesi" Style="{StaticResource Caption}" Margin="0,0,0,4"/>
@@ -131,13 +131,16 @@
          <CheckBox x:Name="MotionEnabled" Content="Hareketli krom arka plan" Click="Motion_Click"/>
          <TextBlock Text="Kayıt sırasında ve arka planda durur." Style="{StaticResource Caption}"/>
          <TextBlock Text="UZUN SÜRELİ ARŞİV" Style="{StaticResource Caption}" Margin="0,12,0,4"/>
+         <TextBlock x:Name="ArchiveState" Text="Otomatik kopya kapalı" FontWeight="SemiBold" Margin="0,0,0,4"/>
          <TextBlock Text="Drive ile eşitlenen bir klasör seçin. Yeni klipler buraya da kopyalanır." Style="{StaticResource Caption}" TextWrapping="Wrap"/>
          <TextBox x:Name="ArchiveFolderBox" IsReadOnly="True" Margin="0,6,0,0" AutomationProperties.Name="Yedek klasörü"/>
          <WrapPanel Margin="0,6,0,0">
           <Button Style="{StaticResource GlassButton}" Content="Klasör seç" Click="ChooseArchiveFolder_Click" Margin="0,0,5,4"/>
-          <Button Style="{StaticResource GlassButton}" Content="Kaldır" Click="ClearArchiveFolder_Click" Margin="0,0,5,4"/>
-          <Button x:Name="ArchiveExistingButton" Style="{StaticResource GlassButton}" Content="Eski klipleri yedekle" Click="ArchiveExisting_Click" IsEnabled="False"/>
+          <Button x:Name="OpenArchiveButton" Style="{StaticResource GlassButton}" Content="Klasörü aç" Click="OpenArchiveFolder_Click" Margin="0,0,5,4" IsEnabled="False"/>
+          <Button Style="{StaticResource GlassButton}" Content="Kapat" Click="ClearArchiveFolder_Click" Margin="0,0,5,4"/>
+          <Button x:Name="ArchiveExistingButton" Style="{StaticResource GlassButton}" Content="Eski klipleri yedekle" Click="ArchiveExisting_Click" ToolTip="Mevcut ve daha önce kopyalanamayan klipleri arşive kopyala" IsEnabled="False"/>
          </WrapPanel>
+         <TextBlock Text="Bulut yüklemesini Drive yapar. Eşitleme durumunu Drive’dan kontrol edin." Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,3,0,0"/>
          <TextBlock x:Name="ArchiveStatus" Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,4,0,0" AutomationProperties.LiveSetting="Polite"/>
         </StackPanel>
        </Grid></ScrollViewer>
