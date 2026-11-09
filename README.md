@@ -30,7 +30,9 @@ Kütüphane ve ayarlar `%LOCALAPPDATA%\RollClip` altında saklanır. Uygulama pe
 4. **F8** ile son tamamlanan parçalar MP4'e kaydolur. Kesim yaklaşık bir saniyelik parçalara göre yapılır. Otomatik yükleme açıksa bağlantı arşive eklenir ve pano ayarı açıksa panoya kopyalanır.
 5. **Kaydı durdur** ile geçici tamponu kapatın. Kalıcı MP4 dosyaları Videolar altındaki `RollClip` klasöründe kalır.
 
-Yakalama yalnızca seçilen pencereyi hedefler. Kayıt, 1080p60 H.264 için sırasıyla NVIDIA NVENC ve AMD AMF donanım kodlamasını dener. Yazılımsal Media Foundation yedeği 720p30 kullanır. Windows Graphics Capture başlatılamazsa aynı pencere için Windows GDI denenir. GDI, donanım hızlandırmalı bazı oyunlarda boş görüntü verebilir. Kullanılan yakalama yöntemi, kodlayıcı ve kayıt biçimi durum satırında görünür.
+**Ayarlar → Kayıt kalitesi** bölümünde **Yüksek (1080p60)**, **Dengeli (1080p30)** veya **Hafif (720p30)** seçin. **Klip kısayolu** için F6–F11 kullanılabilir. Varsayılan F8’dir. İki ayar da sonraki kayıt oturumunda uygulanır.
+
+Yakalama yalnızca seçilen pencereyi hedefler. Kayıt, seçilen profil için sırasıyla NVIDIA NVENC ve AMD AMF donanım kodlamasını dener. Yazılımsal Media Foundation yedeği 720p30 kullanır. Windows Graphics Capture başlatılamazsa aynı pencere için Windows GDI denenir. GDI, donanım hızlandırmalı bazı oyunlarda boş görüntü verebilir. Kullanılan yakalama yöntemi, kodlayıcı ve kayıt biçimi durum satırında görünür.
 
 ## Tanılama raporu
 
@@ -62,4 +64,4 @@ Gerçek oyunda F8, NVENC, FPS etkisi, ses senkronu ve anti-cheat davranışı fi
 
 Ana ekran, sağlanan hareketli referansın panel oranlarını kullanır. Pencereyi üstteki kapsülden seçin; soldaki **15 / 30 / 60 / 120 / 180** seçeneklerinden süreyi belirleyin. **Kayıt** kartındaki anahtarla kaydı başlatın ve **F8** ile klip alın. Alttaki kapsülden arşive ve ayarlara ulaşabilirsiniz. Paylaşım kartındaki **Otomatik** anahtarı yeni kliplerin yüklenmesini açar. Krom yükleme düğmesi arşivde seçili klibi yükler.
 
-**Ayarlar → Krom hareketi ve ışık animasyonu** hareketi kapatır. Dekoratif hareket, oyun penceresine geçildiğinde veya RollClip gizlendiğinde durur. Windows video çözücüsü kullanılamazsa aynı materyalin sabit görüntüsü gösterilir. [Referans ölçümleri, uygulama ayrıntıları ve bilinen sınırlar](docs/ui-reference.md).
+Yeni kurulumlarda arka plan sabittir. **Ayarlar → Görünüm → Hareketli krom arka plan** ile hareket açılabilir. RollClip arka plandayken hareket duraklar. Kayıt başladığında veya hareket kapatıldığında video çözücüsü kapanır ve aynı krom materyalin sabit görüntüsü kullanılır. [Referans ölçümleri, uygulama ayrıntıları ve bilinen sınırlar](docs/ui-reference.md).

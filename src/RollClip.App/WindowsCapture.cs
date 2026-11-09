@@ -25,7 +25,7 @@ internal sealed class WindowsCapture : IAsyncDisposable
     public TimeSpan? BufferedDuration => _recorder?.BufferedDuration;
 
     public async Task StartAsync(nint window, string cache, int seconds, bool desktopAudio, bool microphone,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, RecordingQuality quality = RecordingQuality.High)
     {
         var executable = Path.Combine(AppContext.BaseDirectory, "ffmpeg", "bin", "ffmpeg.exe");
         if (!File.Exists(executable))
@@ -44,9 +44,9 @@ internal sealed class WindowsCapture : IAsyncDisposable
             if (graphicsCapture && wgcUnavailable)
                 continue;
             var software = encoder == "h264_mf";
-            var (width, height, fps, bitrate, maxRate) = software
-                ? (1280, 720, 30, "6M", "8M")
-                : (1920, 1080, 60, "12M", "14M");
+            var (width, height, fps, mbps, maxMbps) = RecordingFormat.Select(quality, software);
+            var bitrate = FormattableString.Invariant($"{mbps}M");
+            var maxRate = FormattableString.Invariant($"{maxMbps}M");
             var fpsArg = fps.ToString(CultureInfo.InvariantCulture);
             using var startup = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             startup.CancelAfter(TimeSpan.FromSeconds(12));

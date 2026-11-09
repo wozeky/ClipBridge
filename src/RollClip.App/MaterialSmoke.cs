@@ -58,8 +58,12 @@ public partial class MainWindow
             await Task.Delay(1200);
             process.Refresh();
             var pausedCpu = (process.TotalProcessorTime-pausedStart).TotalSeconds / Stopwatch.GetElapsedTime(pausedAt).TotalSeconds / Environment.ProcessorCount;
+            SetReplayArmed(true);
+            if (ChromeMovie.Source is not null || _movieReady || ChromeMovie.Visibility != Visibility.Collapsed)
+                throw new InvalidOperationException("Arming recording did not release the decorative video.");
+            SetReplayArmed(false);
             File.WriteAllText(_smokeMarker!, FormattableString.Invariant(
-                $"PASS: video decoded, {changed} material bytes changed, pause stopped playback and pulse. Hosted sample {elapsed:F1}s: CPU {machineCpu:P1}, working set {activeMemory:F1} MiB, paused CPU {pausedCpu:P1}; WPF tier {RenderCapability.Tier >> 16}. Not a game/GPU benchmark."));
+                $"PASS: video decoded, {changed} material bytes changed, pause stopped playback and pulse, recording released the decorative video. Hosted sample {elapsed:F1}s: CPU {machineCpu:P1}, working set {activeMemory:F1} MiB, paused CPU {pausedCpu:P1}; WPF tier {RenderCapability.Tier >> 16}. Not a game/GPU benchmark."));
             Application.Current.Shutdown();
         }
         catch (Exception error)

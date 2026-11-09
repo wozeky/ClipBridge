@@ -113,12 +113,9 @@ jobs:
             $decoded
             throw "The captured window clip did not decode into visible frames."
           }
-          $captureMode = (Get-Content -LiteralPath $marker)[0]
-          if ($captureMode -match 'Media Foundation') {
-            $video = $decoded -match 'Video:.*1280x720.*30 fps'
-            if (-not $video) { throw "Software fallback did not produce 720p at 30 FPS." }
-            $video
-          }
+          $video = $decoded -match 'Video:.*1280x720.*30 fps'
+          if (-not $video) { throw "The Light profile did not produce 720p at 30 FPS." }
+          $video
       - name: Verify distribution contents
         shell: pwsh
         run: |

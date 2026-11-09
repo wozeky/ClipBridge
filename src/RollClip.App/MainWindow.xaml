@@ -107,12 +107,18 @@
        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"><Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="32"/><ColumnDefinition/></Grid.ColumnDefinitions>
         <StackPanel>
          <TextBlock Text="KAYIT" Style="{StaticResource Caption}" Margin="0,0,0,10"/>
-         <TextBlock Text="Oyun etiketi" Style="{StaticResource Caption}" Margin="0,0,0,6"/><TextBox x:Name="GameName" MaxLength="80" AutomationProperties.Name="Oyun etiketi"/>
+         <TextBlock Text="Kayıt kalitesi" Style="{StaticResource Caption}" Margin="0,0,0,4"/>
+         <ComboBox x:Name="RecordingQualityChoice" AutomationProperties.Name="Kayıt kalitesi" ToolTip="Yazılımsal kodlayıcı 720p30 ile sınırlıdır.">
+          <ComboBoxItem Content="Yüksek · 1080p60"/>
+          <ComboBoxItem Content="Dengeli · 1080p30"/>
+          <ComboBoxItem Content="Hafif · 720p30"/>
+         </ComboBox>
+         <TextBlock Text="Klip kısayolu" Style="{StaticResource Caption}" Margin="0,9,0,4"/>
+         <ComboBox x:Name="ReplayKeyChoice" AutomationProperties.Name="Klip kısayolu"/>
+         <TextBlock Text="Oyun etiketi" Style="{StaticResource Caption}" Margin="0,9,0,6"/><TextBox x:Name="GameName" MaxLength="80" AutomationProperties.Name="Oyun etiketi"/>
          <CheckBox x:Name="DesktopAudio" Content="Sistem sesi (Discord dahil)"/>
          <CheckBox x:Name="Microphone" Content="Mikrofonu da kaydet"/>
          <CheckBox x:Name="StartWithWindows" Content="Windows ile tepside başlat"/>
-         <CheckBox x:Name="MotionEnabled" Content="Krom hareketi ve ışık animasyonu" Click="Motion_Click"/>
-         <TextBlock Text="Pencere arka plandayken hareket durur." Style="{StaticResource Caption}"/>
         </StackPanel>
         <StackPanel Grid.Column="2">
          <TextBlock Text="PAYLAŞIM" Style="{StaticResource Caption}" Margin="0,0,0,10"/>
@@ -121,6 +127,9 @@
          <CheckBox x:Name="AutoFallback" Content="Limitte alternatif servisi dene"/>
          <CheckBox x:Name="AutoCopy" Content="Hazır bağlantıyı panoya kopyala"/>
          <TextBlock Text="Bağlantıya sahip kişiler yüklenen klibi görebilir." Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+         <TextBlock Text="GÖRÜNÜM" Style="{StaticResource Caption}" Margin="0,12,0,2"/>
+         <CheckBox x:Name="MotionEnabled" Content="Hareketli krom arka plan" Click="Motion_Click"/>
+         <TextBlock Text="Kayıt sırasında ve arka planda durur." Style="{StaticResource Caption}"/>
         </StackPanel>
        </Grid></ScrollViewer>
        <Button Grid.Row="2" Style="{StaticResource NeonButton}" Content="Ayarları kaydet" Click="SaveSettings_Click" HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
@@ -141,7 +150,7 @@
          <StackPanel Grid.Column="3"><TextBlock Text="{Binding Status}" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding Clip.Provider}" Style="{StaticResource Caption}" Margin="0,4,0,0"/></StackPanel>
         </Grid></DataTemplate></ListBox.ItemTemplate>
        </ListBox>
-       <TextBlock Grid.Row="1" Text="Henüz klip yok. F8 ile klip al veya bir MP4 içe aktar." Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding HasItems, ElementName=Library}" Value="False"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+       <TextBlock Grid.Row="1" Text="Henüz klip yok. Klip al veya bir MP4 içe aktar." Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding HasItems, ElementName=Library}" Value="False"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
        <StackPanel Grid.Row="2" Margin="0,15,0,0"><DockPanel><Image x:Name="Thumbnail" Width="82" Height="46" DockPanel.Dock="Right" Stretch="Uniform" Visibility="Collapsed"/>
         <WrapPanel><Button x:Name="OpenButton" Style="{StaticResource GlassButton}" Content="Videoyu aç" Click="Open_Click" Margin="0,0,7,7"/><Button x:Name="CopyButton" Style="{StaticResource GlassButton}" Content="Bağlantıyı kopyala" Click="Copy_Click" Margin="0,0,7,7"/><Button x:Name="UploadButton" Style="{StaticResource GlassButton}" Content="Yükle / yeniden dene" Click="Upload_Click" Margin="0,0,7,7"/><Button Style="{StaticResource GlassButton}" Content="Klip klasörü" Click="Folder_Click" Margin="0,0,7,7"/><Button x:Name="RecoverClipsButton" Style="{StaticResource GlassButton}" Content="Klasörü tara" Click="RecoverClips_Click" Margin="0,0,7,7"/></WrapPanel>
        </DockPanel><TextBlock Text="{Binding ElementName=Library, Path=SelectedItem.ShareLabel}" TextTrimming="CharacterEllipsis" Style="{StaticResource Caption}"/></StackPanel>
