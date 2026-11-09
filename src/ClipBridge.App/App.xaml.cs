@@ -10,7 +10,7 @@ public partial class App : Application
     {
         if (args.Args is ["--capture-smoke", _])
             System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
-        if (args.Args is not ["--smoke-test" or "--capture-smoke", _])
+        if (args.Args is not ["--smoke-test" or "--capture-smoke" or "--material-smoke", _])
         {
             _instance = new Mutex(initiallyOwned: false, @"Local\ClipBridge.Desktop", out bool created);
             if (!created)

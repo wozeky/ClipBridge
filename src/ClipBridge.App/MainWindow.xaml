@@ -33,7 +33,7 @@
      <local:ChromeGlass Canvas.Left="178" Canvas.Top="362" Width="402" Height="55" Radius="28" Scene="{Binding ElementName=ChromeScene}" Region="178,362,402,55">
       <Grid Margin="7"><Grid.ColumnDefinitions><ColumnDefinition Width="43"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
        <Button Style="{StaticResource RoundButton}" Width="38" Height="38" Content="&#xE72C;" Click="RefreshWindows_Click" ToolTip="Pencereleri yenile" AutomationProperties.Name="Pencereleri yenile"/>
-       <ComboBox x:Name="CaptureTarget" Grid.Column="1" DisplayMemberPath="Title" Margin="7,0,3,0" AutomationProperties.Name="Kaydedilecek pencere" ToolTip="Kaydedilecek oyun penceresi"/>
+       <ComboBox x:Name="CaptureTarget" Tag="Oyun penceresini seç" Grid.Column="1" DisplayMemberPath="Title" Margin="7,0,3,0" AutomationProperties.Name="Kaydedilecek pencere" ToolTip="Kaydedilecek oyun penceresi"/>
       </Grid>
      </local:ChromeGlass>
      <local:ChromeGlass Canvas.Left="178" Canvas.Top="433" Width="402" Height="174" Scene="{Binding ElementName=ChromeScene}" Region="178,433,402,174" Radius="38">

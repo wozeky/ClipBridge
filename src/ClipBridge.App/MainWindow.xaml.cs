@@ -76,8 +76,8 @@ public partial class MainWindow : Window
     private bool _movieFailed;
     private bool _moviePlaying;
     private bool CanAnimateInterface => (_smokeMarker is null || _materialSmoke) && !_captureBusy
-        && _settings.Motion && IsVisible && IsActive && WindowState != WindowState.Minimized
-        && SystemParameters.ClientAreaAnimation && (RenderCapability.Tier != 0 || _materialSmoke);
+        && _settings.Motion && (_materialSmoke || (IsVisible && IsActive && WindowState != WindowState.Minimized
+        && SystemParameters.ClientAreaAnimation && RenderCapability.Tier != 0));
 
     private void OnSystemParametersChanged(object? sender, PropertyChangedEventArgs args) =>
         Dispatcher.InvokeAsync(UpdateInterfaceMotion);
@@ -168,9 +168,13 @@ public partial class MainWindow : Window
 
             void ExportPng(string suffix, double width = 1600, double height = 1200)
             {
+                RootSurface.Width = width;
+                RootSurface.Height = height;
                 RootSurface.Measure(new Size(width, height));
                 RootSurface.Arrange(new Rect(0, 0, width, height));
                 RootSurface.UpdateLayout();
+                if (Math.Abs(RootSurface.ActualWidth - width) > 1 || Math.Abs(RootSurface.ActualHeight - height) > 1)
+                    throw new InvalidOperationException("Screenshot layout dimensions were constrained by the hosted display.");
                 var screenshot = new RenderTargetBitmap((int)width, (int)height, 96, 96, PixelFormats.Pbgra32);
                 screenshot.Render(RootSurface);
                 var encoder = new PngBitmapEncoder();
@@ -182,6 +186,9 @@ public partial class MainWindow : Window
             ExportPng("");
             if (!CaptureTarget.IsVisible || !ReplayLength.IsVisible || HomePanel.ActualHeight <= 0)
                 throw new InvalidOperationException("Home controls are not visible.");
+            if (CaptureTarget.Template.FindName("DropDownToggle", CaptureTarget) is not FrameworkElement toggle
+                || toggle.ActualWidth < CaptureTarget.ActualWidth - 3)
+                throw new InvalidOperationException("The source selector surface does not fill its hit target.");
             SettingsNav.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
             ExportPng("settings");
             if (!ProviderChoice.IsVisible || !MotionEnabled.IsVisible || SettingsMotion.HasAnimatedProperties)

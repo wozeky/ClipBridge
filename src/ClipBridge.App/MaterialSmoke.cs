@@ -19,11 +19,13 @@ public partial class MainWindow
             ChromeMovie.MediaOpened += (_, _) => ready.TrySetResult();
             ChromeMovie.MediaFailed += (_, error) => ready.TrySetException(error.ErrorException);
             ChromeMovie.Source = new Uri(Path.Combine(AppContext.BaseDirectory, "Assets", "ChromeLoop.mp4"));
-            ChromeMovie.Play();
+            ChromeMovie.Pause();
             await ready.Task.WaitAsync(TimeSpan.FromSeconds(15));
             if (!ChromeMovie.HasVideo || !ChromeMovie.NaturalDuration.HasTimeSpan
                 || ChromeMovie.NaturalDuration.TimeSpan.TotalSeconds < 9.9)
                 throw new InvalidOperationException("The material decoder did not open the 10-second loop.");
+            RootSurface.Width = 1200;
+            RootSurface.Height = 900;
             RootSurface.Measure(new Size(1200, 900));
             RootSurface.Arrange(new Rect(0, 0, 1200, 900));
             RootSurface.UpdateLayout();
@@ -43,10 +45,11 @@ public partial class MainWindow
             process.Refresh();
             var machineCpu = (process.TotalProcessorTime - cpu).TotalSeconds / elapsed / Environment.ProcessorCount;
             StopInterfaceMotion();
+            await Task.Delay(150);
             var position = ChromeMovie.Position;
             await Task.Delay(400);
             if (_moviePlaying || Math.Abs((ChromeMovie.Position-position).TotalMilliseconds) > 150 || HomeGlow.HasAnimatedProperties)
-                throw new InvalidOperationException("Decorative animation did not pause.");
+                throw new InvalidOperationException($"Decorative animation did not pause: playing={_moviePlaying}, delta={(ChromeMovie.Position-position).TotalMilliseconds:F0}ms, pulse={HomeGlow.HasAnimatedProperties}.");
             File.WriteAllText(_smokeMarker!, FormattableString.Invariant(
                 $"PASS: video decoded, {changed} material bytes changed, pause stopped playback and pulse. Hosted sample {elapsed:F1}s: CPU {machineCpu:P1}, working set {process.WorkingSet64 / 1048576d:F1} MiB; WPF tier {RenderCapability.Tier >> 16}. Not a game/GPU benchmark."));
             Application.Current.Shutdown();

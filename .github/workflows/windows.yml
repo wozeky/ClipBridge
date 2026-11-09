@@ -66,8 +66,7 @@ jobs:
           if (-not (Test-Path -LiteralPath $screenshot)) {
             throw "WPF did not export the real application screenshot."
           }
-      - name: Probe animated chrome and pause lifecycle on hosted Windows
-        continue-on-error: true
+      - name: Verify animated chrome and pause lifecycle on hosted Windows
         shell: pwsh
         run: |
           $marker = Join-Path $env:RUNNER_TEMP "clipbridge-material.txt"
@@ -77,7 +76,9 @@ jobs:
             throw "Material probe timed out."
           }
           if (Test-Path $marker) { Get-Content $marker }
-          if ($app.ExitCode -ne 0 -or -not (Test-Path $marker)) { throw "Hosted video material playback was not verified." }
+          if ($app.ExitCode -ne 0 -or -not (Test-Path $marker) -or -not ((Get-Content $marker -Raw).StartsWith("PASS:"))) {
+            throw "Hosted video material playback was not verified."
+          }
       - name: Upload native WPF views and material probe
         if: always()
         uses: actions/upload-artifact@v4

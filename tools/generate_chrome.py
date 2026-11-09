@@ -43,7 +43,8 @@ Image.fromarray(frame(0)).save(out/'ChromePoster.png')
 if '--poster' not in sys.argv:
     p = subprocess.Popen(['ffmpeg','-y','-loglevel','error','-f','rawvideo','-pix_fmt','rgb24',
         '-s',f'{w}x{h}','-r','30','-i','-','-an','-c:v','libx264','-preset','slow','-crf','19',
-        '-pix_fmt','yuv420p','-movflags','+faststart',str(out/'ChromeLoop.mp4')],stdin=subprocess.PIPE)
+        '-vf','scale=in_range=full:out_range=full:out_color_matrix=bt709','-color_range','pc',
+        '-colorspace','bt709','-color_primaries','bt709','-color_trc','bt709','-pix_fmt','yuv420p','-movflags','+faststart',str(out/'ChromeLoop.mp4')],stdin=subprocess.PIPE)
     for i in range(300):
         p.stdin.write(frame(i/30).tobytes())
     p.stdin.close()

@@ -90,20 +90,23 @@
   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TextBox"><Border CornerRadius="13" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"><ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/></Border></ControlTemplate></Setter.Value></Setter>
  </Style>
  <Style TargetType="ComboBox">
+  <Setter Property="OverridesDefaultStyle" Value="True"/><Setter Property="HorizontalAlignment" Value="Stretch"/><Setter Property="VerticalAlignment" Value="Stretch"/>
   <Setter Property="Foreground" Value="{StaticResource TextBrush}"/><Setter Property="Background" Value="#B00A0D0A"/>
   <Setter Property="MinHeight" Value="33"/><Setter Property="Padding" Value="12,7"/>
   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBox">
    <Grid>
-    <ToggleButton Focusable="False" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+    <ToggleButton x:Name="DropDownToggle" Style="{x:Null}" OverridesDefaultStyle="True" Focusable="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
      <ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border CornerRadius="20" Background="#AA080B08" BorderBrush="{StaticResource MetalRim}" BorderThickness="1"><TextBlock Text="⌄" HorizontalAlignment="Right" Margin="0,0,12,3" VerticalAlignment="Center"/></Border></ControlTemplate></ToggleButton.Template>
     </ToggleButton>
     <ContentPresenter IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" Margin="12,7,30,7" VerticalAlignment="Center"/>
+    <TextBlock x:Name="Placeholder" Text="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" Foreground="{StaticResource MutedBrush}" Margin="12,7,30,7" VerticalAlignment="Center" IsHitTestVisible="False" Visibility="Collapsed"/>
     <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
      <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" Background="#F2090D0A" CornerRadius="16" BorderBrush="{StaticResource MetalRim}" BorderThickness="1" Padding="5">
       <ScrollViewer MaxHeight="260"><ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/></ScrollViewer>
      </Border>
     </Popup>
    </Grid>
+   <ControlTemplate.Triggers><Trigger Property="SelectedIndex" Value="-1"><Setter TargetName="Placeholder" Property="Visibility" Value="Visible"/></Trigger></ControlTemplate.Triggers>
   </ControlTemplate></Setter.Value></Setter>
  </Style>
  <Style TargetType="ComboBoxItem"><Setter Property="Foreground" Value="{StaticResource TextBrush}"/><Setter Property="Padding" Value="10,7"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem"><Border x:Name="Row" CornerRadius="10" Background="Transparent" Padding="{TemplateBinding Padding}"><ContentPresenter/></Border><ControlTemplate.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Row" Property="Background" Value="#263E1B"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>

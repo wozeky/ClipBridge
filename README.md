@@ -16,7 +16,7 @@ Kütüphane ve ayarlar `%LOCALAPPDATA%\ClipBridge` altında saklanır. Uygulama 
 
 ## F8 ile replay
 
-1. Oyunu açın. ClipBridge'de **Ayarlar → Pencereleri yenile** ile oyun penceresini seçin.
+1. Oyunu açın. ClipBridge'de **Pencereleri yenile** ile oyun penceresini seçin.
 2. İstiyorsanız **Yeni klipleri otomatik yükle** seçeneğini açın. **Sistem sesi** açıkken Discord ve diğer uygulamaların sesi de kayda girebilir. Mikrofon ayrı bir seçenektir.
 3. **Kaydı başlat** düğmesine basın. Varsayılan hedef 60 saniyedir. Tampon doldukça daha uzun klip alabilirsiniz.
 4. **F8** ile son tamamlanan parçalar MP4'e kaydolur. Kesim yaklaşık bir saniyelik parçalara göre yapılır. Otomatik yükleme açıksa bağlantı arşive eklenir ve pano ayarı açıksa panoya kopyalanır.
@@ -49,3 +49,9 @@ Paylaşım bağlantısına sahip kişiler yüklenen klibe erişebilir. İsteğe 
 Kayıt mimarisi ve kaynak incelemesi için [Windows kayıt motoru notlarına](docs/recording.md) bakın. Windows CI, sentetik görüntü ve sesle ardışık MP4 dışa aktarmayı sınar. Ayrıca barındırılan Windows oturumunda gerçek pencere yakalama adımı çalıştırılır. Bu adımın sonucunu workflow logundan kontrol edin.
 
 Gerçek oyunda F8, NVENC, FPS etkisi, ses senkronu ve anti-cheat davranışı fiziksel Windows testinde ölçülmelidir.
+
+## Siyah krom arayüz
+
+Ana ekran, sağlanan hareketli referansın panel oranlarını kullanır. Pencereyi üstteki kapsülden seçin; soldaki **15 / 30 / 60 / 120 / 180** seçeneklerinden süreyi belirleyin. **Kayıt** kartındaki anahtarla kaydı başlatın ve **F8** ile klip alın. Alttaki kapsülden arşive ve ayarlara ulaşabilirsiniz. Paylaşım kartındaki **Otomatik** anahtarı yeni kliplerin yüklenmesini açar. Krom yükleme düğmesi arşivde seçili klibi yükler.
+
+**Ayarlar → Krom hareketi ve ışık animasyonu** hareketi kapatır. Dekoratif hareket, oyun penceresine geçildiğinde veya ClipBridge gizlendiğinde durur. Windows video çözücüsü kullanılamazsa aynı materyalin sabit görüntüsü gösterilir. [Referans ölçümleri, uygulama ayrıntıları ve bilinen sınırlar](docs/ui-reference.md).
