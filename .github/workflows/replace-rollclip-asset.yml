@@ -1,0 +1,56 @@
+name: Replace the existing Windows release asset
+on:
+  push:
+    branches: [release/rollclip-windows-asset]
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  replace-asset:
+    if: github.repository == 'wozeky/RollClip'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_ID: '438499607'
+      OLD_ASSET_ID: '725098052'
+      ARTIFACT_ID: '13692894132'
+      ZIP_SHA: '78e4d931d11f98f0ebd7db03a233295897b4138ff80738b786e74a0b370dccca'
+    steps:
+      - name: Verify the source package and replace the release download
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip=RollClip-win-x64.zip
+          release_path="repos/$GH_REPO/releases/$RELEASE_ID"
+          tag_path="repos/$GH_REPO/git/ref/tags/v0.1.0"
+          tag_before=$(gh api "$tag_path" --jq '.object.sha')
+          gh api "$release_path" | jq -e '.tag_name == "v0.1.0" and .draft == false and .immutable != true' >/dev/null
+          gh api "repos/$GH_REPO/actions/runs/42659335144" |
+            jq -e '.conclusion == "success" and .head_sha == "10fb2f73c3199305b4783dcc3f62558cb8c26f0d"' >/dev/null
+          gh api "repos/$GH_REPO/actions/artifacts/$ARTIFACT_ID" |
+            jq -e --arg sha "sha256:$ZIP_SHA" '.expired == false and .name == "RollClip-win-x64" and .workflow_run.id == 42659335144 and .digest == $sha' >/dev/null
+          gh api "repos/$GH_REPO/actions/artifacts/$ARTIFACT_ID/zip" > "$zip"
+          printf '%s  %s\n' "$ZIP_SHA" "$zip" | sha256sum --check
+          unzip -tq "$zip"
+          unzip -Z1 "$zip" > zip-entries.txt
+          grep -Fx 'RollClip.exe' zip-entries.txt
+
+          if ! gh api "$release_path" | jq -e --arg name "$zip" '.assets[] | select(.name == $name)' >/dev/null; then
+            gh release upload v0.1.0 "$zip"
+          fi
+          download_url=$(gh api "$release_path" |
+            jq -er --arg name "$zip" --arg sha "sha256:$ZIP_SHA" '.assets[] | select(.name == $name and .state == "uploaded" and .digest == $sha) | .browser_download_url')
+          curl --fail --silent --show-error --location --retry 4 --max-time 120 "$download_url" -o verified.zip
+          printf '%s  verified.zip\n' "$ZIP_SHA" | sha256sum --check
+
+          if gh api "$release_path" | jq -e --argjson id "$OLD_ASSET_ID" '.assets[] | select(.id == $id and .name == "ClipBridge-win-x64.zip")' >/dev/null; then
+            gh api --method DELETE "repos/$GH_REPO/releases/assets/$OLD_ASSET_ID"
+          fi
+          gh api "$release_path" |
+            jq -e --arg name "$zip" '([.assets[] | select(.name == $name)] | length) == 1 and ([.assets[] | select(.name == "ClipBridge-win-x64.zip")] | length) == 0' >/dev/null
+          test "$tag_before" = "$(gh api "$tag_path" --jq '.object.sha')"
+          printf 'Verified release download: %s\n' "$download_url"
