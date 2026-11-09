@@ -53,9 +53,9 @@ public sealed class ReplayDiagnostics
         _fallback = FallbackReason(fallbackDetails) ?? _fallback;
     }
 
-    public void BeginSave(bool viaHotkey)
+    public void BeginSave(bool viaHotkey, string hotkey = "F8")
     {
-        _trigger = viaHotkey ? "F8" : "Klip al düğmesi veya tepsi";
+        _trigger = viaHotkey ? hotkey : "Klip al düğmesi veya tepsi";
         _saveStatus = "MP4 hazırlanıyor";
         _saveError = null;
         _saveTime = null;
@@ -89,7 +89,7 @@ public sealed class ReplayDiagnostics
             _linkTime = Stopwatch.GetElapsedTime(_mp4ReadyAt, changedAt);
     }
 
-    public string BuildReport(Version version, bool hotkeyRegistered)
+    public string BuildReport(Version version, bool hotkeyRegistered, string hotkey = "F8")
     {
         var shareStatus = _uploadState switch
         {
@@ -112,7 +112,7 @@ public sealed class ReplayDiagnostics
             $"Kayıt biçimi: {format}",
             $"Yedek yöntem nedeni: {_fallback ?? "Yok"}",
             $"Kayıt hatası: {_captureError ?? "Yok"}",
-            $"F8 kısayolu: {(hotkeyRegistered ? "Etkin" : "Etkin değil")}",
+            $"{hotkey} kısayolu: {(hotkeyRegistered ? "Etkin" : "Etkin değil")}",
             $"Son klip alma denemesi: {_saveStatus}",
             $"Tetikleyici: {_trigger}",
             $"Klip alma hatası: {_saveError ?? "Yok"}",

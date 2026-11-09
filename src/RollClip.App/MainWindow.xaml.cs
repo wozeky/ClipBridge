@@ -36,6 +36,9 @@ public partial class MainWindow : Window
     private readonly ReplayDiagnostics _diagnostics = new();
     private HwndSource? _windowSource;
     private bool _hotkeyRegistered;
+    private int _activeReplayKey = 8;
+    private Forms.ToolStripItem? _traySave;
+    private string ReplayKeyLabel => $"F{_activeReplayKey}";
     private bool _armed;
     private readonly System.Windows.Threading.DispatcherTimer _bufferTimer = new()
     {
@@ -86,8 +89,8 @@ public partial class MainWindow : Window
     private bool _movieReady;
     private bool _movieFailed;
     private bool _moviePlaying;
-    private bool CanAnimateInterface => (_smokeMarker is null || _materialSmoke) && !_captureBusy
-        && _settings.Motion && (_materialSmoke || (IsVisible && IsActive && WindowState != WindowState.Minimized
+    private bool CanAnimateInterface => (_smokeMarker is null || _materialSmoke) && !_captureBusy && !_armed
+        && (_materialSmoke || (IsVisible && IsActive && WindowState != WindowState.Minimized
         && SystemParameters.ClientAreaAnimation && RenderCapability.Tier != 0));
 
     private void OnSystemParametersChanged(object? sender, PropertyChangedEventArgs args) =>
@@ -95,18 +98,44 @@ public partial class MainWindow : Window
 
     private void UpdateInterfaceMotion()
     {
-        if (_movieReady && !_movieFailed && CanAnimateInterface)
+        if (_armed || (!_materialSmoke && !_settings.Motion))
         {
-            if (!_moviePlaying)
+            StopInterfaceMotion();
+            if (ChromeMovie.Source is not null)
             {
-                ChromeMovie.Play(); _moviePlaying = true;
-                var pulse = new DoubleAnimation(.55, .85, TimeSpan.FromSeconds(2.4))
-                    { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever };
-                Timeline.SetDesiredFrameRate(pulse, 30);
-                HomeGlow.BeginAnimation(OpacityProperty, pulse);
+                CloseChromeMovie();
+                _materialPosition = TimeSpan.Zero;
             }
+            return;
         }
-        else StopInterfaceMotion();
+        if (_movieFailed || !CanAnimateInterface)
+        {
+            StopInterfaceMotion();
+            return;
+        }
+        if (ChromeMovie.Source is null && !_materialSmoke && File.Exists(MaterialPath))
+        {
+            ChromeMovie.Source = new Uri(MaterialPath);
+            ChromeMovie.Visibility = Visibility.Visible;
+            ChromeMovie.Pause();
+        }
+        if (!_movieReady || _moviePlaying)
+            return;
+
+        ChromeMovie.Play();
+        _moviePlaying = true;
+        var pulse = new DoubleAnimation(.55, .85, TimeSpan.FromSeconds(2.4))
+            { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever };
+        Timeline.SetDesiredFrameRate(pulse, 30);
+        HomeGlow.BeginAnimation(OpacityProperty, pulse);
+    }
+
+    private void CloseChromeMovie()
+    {
+        ChromeMovie.Close();
+        ChromeMovie.Source = null;
+        ChromeMovie.Visibility = Visibility.Collapsed;
+        _movieReady = false;
     }
 
     private void StopInterfaceMotion()
@@ -138,8 +167,7 @@ public partial class MainWindow : Window
     {
         _movieFailed = true;
         _moviePlaying = false;
-        ChromeMovie.Close();
-        ChromeMovie.Visibility = Visibility.Collapsed;
+        CloseChromeMovie();
         // The same material's poster remains visible. Recording never depends on the UI decoder.
     }
 
@@ -191,12 +219,15 @@ public partial class MainWindow : Window
         _materialView = view;
         var poster = view == "home" ? "ChromePoster.png" : "ChromePosterOverlay.png";
         ChromePoster.Source = new BitmapImage(new Uri($"pack://application:,,,/Assets/{poster}"));
-        if (_smokeMarker is not null || _movieFailed || !File.Exists(MaterialPath)) return;
-        _materialPosition = ChromeMovie.Position;
-        StopInterfaceMotion();
-        _movieReady = false;
-        ChromeMovie.Source = new Uri(MaterialPath);
-        ChromeMovie.Pause();
+        if (_smokeMarker is not null || _movieFailed)
+            return;
+        if (ChromeMovie.Source is not null)
+        {
+            _materialPosition = ChromeMovie.Position;
+            StopInterfaceMotion();
+            CloseChromeMovie();
+        }
+        UpdateInterfaceMotion();
     }
 
     private void Home_Click(object sender, RoutedEventArgs args) => ShowPanel("home");
@@ -252,8 +283,20 @@ public partial class MainWindow : Window
                 throw new InvalidOperationException("The source selector surface does not fill its hit target.");
             SettingsNav.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
             ExportPng("settings");
-            if (!ProviderChoice.IsVisible || !MotionEnabled.IsVisible || SettingsPanel.HasAnimatedProperties || SettingsPanel.RenderTransform.HasAnimatedProperties)
+            if (!ProviderChoice.IsVisible || !MotionEnabled.IsVisible || !RecordingQualityChoice.IsVisible
+                || !ReplayKeyChoice.IsVisible || SettingsPanel.HasAnimatedProperties || SettingsPanel.RenderTransform.HasAnimatedProperties)
                 throw new InvalidOperationException("Settings navigation failed.");
+            ReplayKeyChoice.SelectedIndex = 3; // F9
+            RecordingQualityChoice.SelectedIndex = (int)RecordingQuality.Light;
+            if (!SaveSettings() || SaveReplayButton.Content as string != "F9"
+                || AtomicJson.Read<ClipSettings>(Path.Combine(_root, "settings.json")) is not
+                    { ReplayKey: 9, Quality: RecordingQuality.Light, Motion: false })
+                throw new InvalidOperationException("Recording controls did not persist or update the hotkey label.");
+            ReplayKeyChoice.SelectedIndex = 2;
+            RecordingQualityChoice.SelectedIndex = 0;
+            if (!SaveSettings())
+                throw new InvalidOperationException("Could not restore default settings in the isolated smoke profile.");
+            StatusMessage.Text = "";
             ShowPanel("library");
             ExportPng("library");
             if (!Library.IsVisible || Library.ActualHeight <= 0 || !RecoverClipsButton.IsVisible)
@@ -264,7 +307,7 @@ public partial class MainWindow : Window
             DiagnosticsButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
             if (!Clipboard.GetText().Contains("Tanılama raporu", StringComparison.Ordinal))
                 throw new InvalidOperationException("Diagnostics clipboard failed.");
-            File.WriteAllText(_smokeMarker!, "PASS: native WPF home/settings/library, 3 window ratios, disabled actions, motion isolation, diagnostics clipboard.");
+            File.WriteAllText(_smokeMarker!, "PASS: native WPF home/settings/library, 3 window ratios, disabled actions, motion isolation, persisted profile and shortcut, diagnostics clipboard.");
             Application.Current.Shutdown();
         }
         catch (Exception error)
@@ -300,7 +343,7 @@ public partial class MainWindow : Window
         try
         {
             await using var capture = new WindowsCapture();
-            await capture.StartAsync(new WindowInteropHelper(this).Handle, _root, 3, false, false, timeout.Token);
+            await capture.StartAsync(new WindowInteropHelper(this).Handle, _root, 3, false, false, timeout.Token, RecordingQuality.Light);
             using var app = Process.GetCurrentProcess();
             var started = Stopwatch.GetTimestamp();
             var appStart = app.TotalProcessorTime;
@@ -363,6 +406,10 @@ public partial class MainWindow : Window
             Microphone.IsChecked = _settings.Microphone;
             GameName.Text = _settings.Game ?? "";
             MotionEnabled.IsChecked = _settings.Motion;
+            RecordingQualityChoice.SelectedIndex = Enum.IsDefined(_settings.Quality) ? (int)_settings.Quality : 0;
+            ReplayKeyChoice.ItemsSource = Enumerable.Range(6, 6).Select(key => $"F{key}").ToArray();
+            ReplayKeyChoice.SelectedIndex = _settings.ReplayKey is >= 6 and <= 11 ? _settings.ReplayKey - 6 : 2;
+            UpdateReplayKeyLabel();
             _store = new ClipStore(Path.Combine(_root, "library.json"));
             _queue = new UploadQueue(_store,
                 [new FreeUploadProvider(_http, Provider.Litterbox), new FreeUploadProvider(_http, Provider.Gofile)],
@@ -383,13 +430,7 @@ public partial class MainWindow : Window
             RefreshLibrary();
             if (_smokeMarker is not null)
                 return;
-            var materialPath = MaterialPath;
-            if (File.Exists(materialPath))
-            {
-                ChromeMovie.Source = new Uri(materialPath);
-                // Open the media graph without playback; animation policy controls Play.
-                ChromeMovie.Pause();
-            }
+            UpdateInterfaceMotion();
             CreateTrayIcon();
             _windowSource = PresentationSource.FromVisual(this) as HwndSource;
             _windowSource?.AddHook(WindowMessage);
@@ -521,12 +562,12 @@ public partial class MainWindow : Window
         {
             StatusMessage.Text = "Windows pencere kaydı başlatılıyor…";
             await capture.StartAsync(target.Handle, Path.Combine(_root, "replay"), _settings.ReplaySeconds,
-                _settings.DesktopAudio, _settings.Microphone, _shutdown.Token);
+                _settings.DesktopAudio, _settings.Microphone, _shutdown.Token, _settings.Quality);
             _capture = capture;
             _diagnostics.CaptureStarted(capture.Source, capture.Encoder, capture.FallbackDetails, capture.VideoFormat);
             SetReplayArmed(true);
             StatusMessage.Text = $"Kayıt hazır · {capture.Source} · {capture.Encoder} · {capture.FormatLabel} · hedef {_settings.ReplaySeconds} sn. " +
-                (_hotkeyRegistered ? "Klip için F8." : "Klip al düğmesini kullanın.");
+                (_hotkeyRegistered ? $"Klip için {ReplayKeyLabel}." : "Klip al düğmesini kullanın.");
             _ = WatchCaptureAsync(capture);
         }
         catch (Exception error) when (IsReplayError(error))
@@ -567,7 +608,7 @@ public partial class MainWindow : Window
         if (!_armed || _store is null || _capture is not { } capture)
             return;
         var saveStartedAt = Stopwatch.GetTimestamp();
-        _diagnostics.BeginSave(viaHotkey);
+        _diagnostics.BeginSave(viaHotkey, ReplayKeyLabel);
         var mp4Ready = false;
         SetCaptureBusy(true);
         try
@@ -596,11 +637,12 @@ public partial class MainWindow : Window
     private void SetReplayArmed(bool armed)
     {
         _armed = armed;
+        UpdateReplayKeyLabel();
         ArmButton.Content = armed ? "Kaydı durdur" : "Kaydı başlat";
         if (_windowSource is not null)
         {
             if (armed && !_hotkeyRegistered)
-                _hotkeyRegistered = RegisterHotKey(_windowSource.Handle, ReplayHotkey, 0x4000, 0x77);
+                _hotkeyRegistered = RegisterHotKey(_windowSource.Handle, ReplayHotkey, 0x4000, (uint)(0x70 + _activeReplayKey - 1));
             else if (!armed && _hotkeyRegistered)
             {
                 UnregisterHotKey(_windowSource.Handle, ReplayHotkey);
@@ -613,6 +655,16 @@ public partial class MainWindow : Window
         else
             _bufferTimer.Stop();
         RefreshCaptureStatus();
+        UpdateInterfaceMotion();
+    }
+
+    private void UpdateReplayKeyLabel()
+    {
+        _activeReplayKey = _settings.ReplayKey is >= 6 and <= 11 ? _settings.ReplayKey : 8;
+        SaveReplayButton.Content = ReplayKeyLabel;
+        System.Windows.Automation.AutomationProperties.SetName(SaveReplayButton, $"Klip al · {ReplayKeyLabel}");
+        if (_traySave is not null)
+            _traySave.Text = $"Klip al ({ReplayKeyLabel})";
     }
 
     private void RefreshCaptureStatus()
@@ -621,7 +673,7 @@ public partial class MainWindow : Window
             ? $"Hazır · Tampon: {Math.Floor(duration.TotalSeconds):0} sn"
             : "Yeni görüntü gelmiyor";
         if (_armed && !_hotkeyRegistered)
-            status += " · F8 kullanılamıyor";
+            status += $" · {ReplayKeyLabel} kullanılamıyor";
         if (CaptureStatus.Text != status)
             CaptureStatus.Text = status;
         var trayText = "RollClip · " + status;
@@ -727,13 +779,18 @@ public partial class MainWindow : Window
             var settings = new ClipSettings(ProviderChoice.SelectedIndex == 1 ? Provider.Gofile : Provider.Litterbox,
                 AutoUpload.IsChecked == true, AutoCopy.IsChecked == true, limit, seconds,
                 game.Length == 0 ? null : game, AutoFallback.IsChecked == true, DesktopAudio.IsChecked == true,
-                Microphone.IsChecked == true, MotionEnabled.IsChecked == true);
+                Microphone.IsChecked == true, MotionEnabled.IsChecked == true,
+                RecordingQualityChoice.SelectedIndex is >= 0 and <= 2
+                    ? (RecordingQuality)RecordingQualityChoice.SelectedIndex : RecordingQuality.High,
+                ReplayKeyChoice.SelectedIndex is >= 0 and <= 5 ? ReplayKeyChoice.SelectedIndex + 6 : 8);
             AtomicJson.Write(Path.Combine(_root, "settings.json"), settings);
             Volatile.Write(ref _settings, settings);
+            if (!_armed)
+                UpdateReplayKeyLabel();
             UpdateInterfaceMotion();
             if (_smokeMarker is null)
                 SaveStartupPreference(StartWithWindows.IsChecked == true);
-            StatusMessage.Text = _armed ? "Ayarlar kaydedildi. Ses ve süre değişiklikleri sonraki kayıtta uygulanır."
+            StatusMessage.Text = _armed ? "Ayarlar kaydedildi. Kayıt ve kısayol ayarları sonraki kayıtta uygulanır."
                 : "Ayarlar kaydedildi.";
             return true;
         }
@@ -885,7 +942,7 @@ public partial class MainWindow : Window
     private void CopyDiagnostics_Click(object sender, RoutedEventArgs args)
     {
         var version = typeof(MainWindow).Assembly.GetName().Version ?? new Version(0, 0, 0);
-        StatusMessage.Text = TryCopy(_diagnostics.BuildReport(version, _hotkeyRegistered))
+        StatusMessage.Text = TryCopy(_diagnostics.BuildReport(version, _hotkeyRegistered, ReplayKeyLabel))
             ? "Tanılama raporu panoya kopyalandı." : "Tanılama raporu kopyalanamadı.";
     }
 
@@ -916,7 +973,7 @@ public partial class MainWindow : Window
     {
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("RollClip'i aç", null, (_, _) => ShowWindow());
-        menu.Items.Add("Klip al (F8)", null, async (_, _) => await SaveReplayAsync());
+        _traySave = menu.Items.Add($"Klip al ({ReplayKeyLabel})", null, async (_, _) => await SaveReplayAsync());
         menu.Items.Add("Çıkış", null, (_, _) => { _exit = true; Close(); });
         _tray = new Forms.NotifyIcon { Icon = System.Drawing.SystemIcons.Application, Text = "RollClip",
             ContextMenuStrip = menu, Visible = true };
@@ -974,7 +1031,8 @@ public partial class MainWindow : Window
 
     private sealed record ClipSettings(Provider Provider = Provider.Litterbox, bool AutoUpload = false,
         bool AutoCopy = true, int SpeedLimit = 0, int ReplaySeconds = ReplayDurations.Default,
-        string? Game = null, bool AutoFallback = false, bool DesktopAudio = true, bool Microphone = false, bool Motion = true)
+        string? Game = null, bool AutoFallback = false, bool DesktopAudio = true, bool Microphone = false, bool Motion = false,
+        RecordingQuality Quality = RecordingQuality.High, int ReplayKey = 8)
     {
         [System.Text.Json.Serialization.JsonIgnore]
         public Provider? FallbackProvider => AutoFallback

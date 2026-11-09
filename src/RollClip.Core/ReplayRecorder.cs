@@ -115,6 +115,12 @@ public sealed class ReplayRecorder : IAsyncDisposable
                     ["-hide_banner", "-loglevel", "error", "-nostdin", "-n", "-f", "concat", "-safe", "1",
                     "-i", "clip.ffconcat", "-map", "0:v:0", "-map", "0:a?", "-c", "copy",
                     "-movflags", "+faststart", "-f", "mp4", temporary], stdout: false);
+                if (OperatingSystem.IsWindows())
+                {
+                    // Stream copy is short-lived, but it can compete with the game during MP4 finalization.
+                    try { mux.PriorityClass = ProcessPriorityClass.BelowNormal; }
+                    catch (Exception error) when (error is System.ComponentModel.Win32Exception or InvalidOperationException) { }
+                }
                 var errors = ReadErrorsAsync(mux);
                 try { await mux.WaitForExitAsync(cancellationToken); }
                 catch (OperationCanceledException)
