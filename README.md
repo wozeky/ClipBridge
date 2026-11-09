@@ -4,7 +4,15 @@ Windows 11 x64 için ücretsiz, MIT lisanslı klip arşivi ve paylaşım uygulam
 
 ## İndir ve çalıştır
 
-[Windows x64 Actions](https://github.com/wozeky/RollClip/actions/workflows/windows.yml) sayfasındaki başarılı çalıştırmanın **Artifacts** bölümünden `RollClip-win-x64` ZIP'ini indirin. GitHub indirme için oturum açmanızı isteyebilir. ZIP'in tamamını bir klasöre çıkarıp `RollClip.exe` dosyasını çalıştırın. Paket .NET çalışma zamanını içerir. Erken sürüm dijital olarak imzalanmamıştır.
+[RollClip-win-x64.zip’i indir](https://github.com/wozeky/RollClip/releases/download/v0.1.0/RollClip-win-x64.zip). ZIP'in tamamını bir klasöre çıkarıp `RollClip.exe` dosyasını çalıştırın. Paket .NET çalışma zamanını içerir. Erken sürüm dijital olarak imzalanmamıştır. Derlemelerin test sonuçları [Windows Actions](https://github.com/wozeky/RollClip/actions/workflows/windows.yml) sayfasında yer alır.
+
+## Ekran görüntüleri
+
+![RollClip ana ekranı](docs/screenshots/home.png)
+
+| Ayarlar | Klip arşivi |
+| --- | --- |
+| ![RollClip ayarları](docs/screenshots/settings.png) | ![RollClip klip arşivi](docs/screenshots/library.png) |
 
 ## ClipBridge'den geçiş
 
