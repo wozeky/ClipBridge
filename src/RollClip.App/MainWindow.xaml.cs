@@ -285,6 +285,10 @@ public partial class MainWindow : Window
                 throw new InvalidOperationException("The source selector surface does not fill its hit target.");
             SettingsNav.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
             ExportPng("settings");
+            SettingsScroll.ScrollToBottom();
+            UpdateLayout();
+            ExportPng("archive");
+            SettingsScroll.ScrollToTop();
             if (!ProviderChoice.IsVisible || !MotionEnabled.IsVisible || !RecordingQualityChoice.IsVisible
                 || !ReplayKeyChoice.IsVisible || !ArchiveFolderBox.IsVisible || SettingsPanel.HasAnimatedProperties || SettingsPanel.RenderTransform.HasAnimatedProperties)
                 throw new InvalidOperationException("Settings navigation failed.");
@@ -413,7 +417,7 @@ public partial class MainWindow : Window
             GameName.Text = _settings.Game ?? "";
             MotionEnabled.IsChecked = _settings.Motion;
             ArchiveFolderBox.Text = _settings.ArchiveFolder ?? "";
-            ArchiveExistingButton.IsEnabled = _settings.ArchiveFolder is not null;
+            RefreshArchiveControls();
             RecordingQualityChoice.SelectedIndex = Enum.IsDefined(_settings.Quality) ? (int)_settings.Quality : 0;
             ReplayKeyChoice.ItemsSource = Enumerable.Range(6, 6).Select(key => $"F{key}").ToArray();
             ReplayKeyChoice.SelectedIndex = _settings.ReplayKey is >= 6 and <= 11 ? _settings.ReplayKey - 6 : 2;
@@ -444,6 +448,12 @@ public partial class MainWindow : Window
             _windowSource?.AddHook(WindowMessage);
             RefreshWindows_Click(this, new RoutedEventArgs());
             _ = RunQueueAsync(_queue);
+            if (_settings.ArchiveFolder is { } archiveFolder)
+            {
+                var pending = _store.Snapshot().Where(clip => clip.PendingArchiveFolder == archiveFolder).ToArray();
+                if (pending.Length > 0)
+                    _ = BackupClipsAsync(pending, archiveFolder);
+            }
             if (Environment.GetCommandLineArgs().Contains("--tray"))
                 Hide();
         }
@@ -731,14 +741,15 @@ public partial class MainWindow : Window
         var info = new FileInfo(path);
         var duration = await Task.Run(() => Mp4.ReadDuration(path), _shutdown.Token);
         var clip = new Clip(id, path, name, DateTimeOffset.UtcNow, info.Length, duration, Game: game, Provider: _settings.Provider,
-            State: _settings.AutoUpload ? UploadState.Queued : UploadState.Local, FallbackProvider: _settings.FallbackProvider);
+            State: _settings.AutoUpload ? UploadState.Queued : UploadState.Local, FallbackProvider: _settings.FallbackProvider,
+            PendingArchiveFolder: _settings.ArchiveFolder);
         _store!.Add(clip);
         _diagnostics.ClipChanged(clip, Stopwatch.GetTimestamp());
         RefreshLibrary(clip.Id);
         StatusMessage.Text = _settings.AutoUpload ? "Klip kaydedildi, yükleme sıraya alındı." : "Klip yerel arşive kaydedildi.";
         if (_settings.AutoUpload)
             _queue?.Signal();
-        if (_settings.ArchiveFolder is { } folder)
+        if (clip.PendingArchiveFolder is { } folder)
             _ = BackupClipsAsync([clip], folder);
     }
 
@@ -778,14 +789,30 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog(this) == true)
         {
             ArchiveFolderBox.Text = dialog.FolderName;
-            ArchiveStatus.Text = "Otomatik yedeklemeyi açmak için ayarları kaydedin.";
+            RefreshArchiveControls();
         }
     }
 
     private void ClearArchiveFolder_Click(object sender, RoutedEventArgs args)
     {
         ArchiveFolderBox.Text = "";
-        ArchiveStatus.Text = "Otomatik yedeklemeyi kapatmak için ayarları kaydedin.";
+        RefreshArchiveControls();
+    }
+
+    private void RefreshArchiveControls()
+    {
+        var saved = _settings.ArchiveFolder ?? "";
+        var changed = !string.Equals(saved, ArchiveFolderBox.Text, StringComparison.Ordinal);
+        ArchiveState.Text = changed ? "Değişikliği uygulamak için ayarları kaydedin."
+            : saved.Length > 0 ? "Otomatik kopya açık" : "Otomatik kopya kapalı";
+        OpenArchiveButton.IsEnabled = !changed && saved.Length > 0;
+        ArchiveExistingButton.IsEnabled = OpenArchiveButton.IsEnabled && !_archiveBulkRunning;
+    }
+
+    private void OpenArchiveFolder_Click(object sender, RoutedEventArgs args)
+    {
+        if (_settings.ArchiveFolder is { } folder)
+            OpenPath(folder);
     }
 
     private async void ArchiveExisting_Click(object sender, RoutedEventArgs args)
@@ -798,7 +825,7 @@ public partial class MainWindow : Window
         finally
         {
             _archiveBulkRunning = false;
-            ArchiveExistingButton.IsEnabled = _settings.ArchiveFolder is not null;
+            RefreshArchiveControls();
         }
     }
 
@@ -810,17 +837,26 @@ public partial class MainWindow : Window
             await _archiveGate.WaitAsync(token);
             try
             {
+                if (_settings.ArchiveFolder != folder)
+                    return;
                 ArchiveStatus.Text = "Klipler arşiv klasörüne kopyalanıyor…";
-                var (copied, existing, failed) = await Task.Run(async () =>
+                var (copied, existing, failed, reason) = await Task.Run(async () =>
                 {
                     var copied = 0;
                     var existing = 0;
                     var failed = 0;
+                    string? reason = null;
                     foreach (var clip in clips)
                     {
+                        if (Volatile.Read(ref _settings).ArchiveFolder != folder)
+                            break;
                         try
                         {
-                            if (await ClipArchive.CopyAsync(folder, clip, token))
+                            var wasCopied = await ClipArchive.CopyAsync(folder, clip, token);
+                            if (clip.PendingArchiveFolder == folder)
+                                _store?.Change(clip.Id, current => current.PendingArchiveFolder == folder
+                                    ? current with { PendingArchiveFolder = null } : null);
+                            if (wasCopied)
                                 copied++;
                             else
                                 existing++;
@@ -828,13 +864,21 @@ public partial class MainWindow : Window
                         catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or System.Security.SecurityException)
                         {
                             failed++;
+                            reason ??= error is DirectoryNotFoundException
+                                ? "Arşiv klasörünü ve Drive bağlantısını kontrol edin."
+                                : error is FileNotFoundException ? "Yerel klip dosyası bulunamadı."
+                                : error is UnauthorizedAccessException ? "Dosyaya veya klasöre erişim yok."
+                                : "Dosya kopyalanamadı. Boş alanı ve mevcut kopyayı kontrol edin.";
                         }
                     }
-                    return (copied, existing, failed);
+                    return (copied, existing, failed, reason);
                 }, token);
-                ArchiveStatus.Text = $"{copied} kopyalandı · {existing} zaten var · {failed} başarısız.";
+                if (_settings.ArchiveFolder != folder)
+                    return;
+                ArchiveStatus.Text = clips.Count == 0 ? "Yedeklenecek klip yok."
+                    : $"{copied} kopyalandı · {existing} doğrulandı · {failed} başarısız. {reason}".TrimEnd();
                 if (failed > 0)
-                    StatusMessage.Text = "Bazı klipler yedeklenemedi. Klasörü kontrol edip yeniden deneyin.";
+                    StatusMessage.Text = "Bazı klipler yedeklenemedi. Ayarlardan yeniden deneyebilirsiniz.";
             }
             finally { _archiveGate.Release(); }
         }
@@ -864,8 +908,10 @@ public partial class MainWindow : Window
                 ReplayKeyChoice.SelectedIndex is >= 0 and <= 5 ? ReplayKeyChoice.SelectedIndex + 6 : 8,
                 string.IsNullOrWhiteSpace(ArchiveFolderBox.Text) ? null : ArchiveFolderBox.Text);
             AtomicJson.Write(Path.Combine(_root, "settings.json"), settings);
+            if (_settings.ArchiveFolder != settings.ArchiveFolder)
+                ArchiveStatus.Text = "";
             Volatile.Write(ref _settings, settings);
-            ArchiveExistingButton.IsEnabled = settings.ArchiveFolder is not null && !_archiveBulkRunning;
+            RefreshArchiveControls();
             if (!_armed)
                 UpdateReplayKeyLabel();
             UpdateInterfaceMotion();
