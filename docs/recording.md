@@ -6,7 +6,7 @@
 - [Snag FFmpeg kodu](https://github.com/focatdev/snag/blob/main/internal/ffmpeg/ffmpeg.go) donanım kodlayıcıları ve sürücü hatalarını ayrı ele alır. [WASAPI kodu](https://github.com/focatdev/snag/blob/main/internal/wasapi/process_windows.go) süreç bazlı ses yakalama örneğidir.
 - [Windows Graphics Capture](https://learn.microsoft.com/en-us/windows/apps/develop/media-authoring-processing/screen-capture) pencereyi Windows üzerinden yakalar. [FFmpeg gfxcapture kaynağı](https://www.ffmpeg.org/doxygen/8.1/vsrc__gfxcapture_8c_source.html) pencere tanıtıcısı, kare hızı ve ölçekleme ayarlarını tanımlar. [FFmpeg segment muxer](https://github.com/FFmpeg/FFmpeg/blob/a35157abb9/libavformat/segment.c) kapanan parça için CSV satırını yazar ve akışı boşaltır.
 
-ClipBridge bu desenleri kendi C# akışıyla uygular. Yukarıdaki klip uygulamalarından kaynak kod alınmadı.
+RollClip bu desenleri kendi C# akışıyla uygular. Yukarıdaki klip uygulamalarından kaynak kod alınmadı.
 
 ## Uygulama
 

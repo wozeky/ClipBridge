@@ -46,17 +46,21 @@ because the supplied video has no corresponding application screens.
 
 `tools/generate_chrome.py` deterministically shades an original twisted height field
 with reflected studio strips and a dark environment. It produces the bundled
-960 × 720, 30 FPS, 10 s full-range BT.709 H.264 loop (about 0.9 MB) and a matching still poster.
+960 × 720, 30 FPS, 10 s full-range BT.709 H.264 loops for home and overlay, with matching still posters.
 Generation requires Python, numpy, Pillow and FFmpeg; normal .NET builds use the
 committed assets and do not require these tools. No frames, audio or smart-home
 content from the uploaded reference are included in the application.
 
 Windows/WPF decodes the local video, with hardware use depending on Windows codecs
 and driver support. This is a pre-rendered animated material, not a real-time fluid
-simulation or a claim to recover the original 3D scene. `ChromeGlass` samples the
-actual background visual at each panel's coordinates with optical enlargement,
-local blur, a dark coating, inset light and a separate metallic rim. Surface
-reflections consequently change with the background rather than staying static.
+simulation or a claim to recover the original 3D scene. The generator bakes optical enlargement and local blur at each measured panel region
+into the animated material. `ChromeGlass` adds the dark coating, inset light and
+metallic rim. Surface reflections consequently change with the background. The
+home and overlay materials share the same underlying frames; navigation preserves
+the current playback position. This replaces live WPF VisualBrush + BlurEffect
+sampling, which measured very high CPU on the hosted display (about 91% in a short
+2.2-second diagnostic sample). No blur shader or repeated video rasterization is
+required per panel at runtime. If panel geometry changes, regenerate both materials.
 
 Decorative playback and the green light pulse pause when hidden, minimized,
 inactive, capture is busy, motion is disabled, or Windows disables client-area
@@ -69,7 +73,7 @@ older settings default to enabled.
 The poster/loop is intentionally approximate: the source's mesh, environment map,
 font and optical setup are unavailable. Pixel-identical reflections and exact 3D
 objects cannot be reconstructed from this single compressed video. The recreated
-metal F8 key and upload puck map the reference objects to real ClipBridge actions.
+metal F8 key and upload puck map the reference objects to real RollClip actions.
 
 ## Verification
 

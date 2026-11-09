@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="src/RollClip.App/RollClip.App.csproj" />
+  <Project Path="src/RollClip.Core/RollClip.Core.csproj" />
+  <Project Path="tests/RollClip.Tests/RollClip.Tests.csproj" />
+  <Project Path="tools/RollClip.Bench/RollClip.Bench.csproj" />
+</Solution>
