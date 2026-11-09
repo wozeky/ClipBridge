@@ -10,6 +10,8 @@
     <AssemblyName>ClipBridge</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
+    <Resource Include="Assets/ChromePoster.png" />
+    <Content Include="Assets/ChromeLoop.mp4" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Using Remove="System.Windows.Forms" />
     <Using Remove="System.Drawing" />
     <None Include="../../LICENSE" Link="LICENSE" CopyToPublishDirectory="PreserveNewest" />

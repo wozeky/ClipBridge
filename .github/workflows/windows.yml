@@ -55,6 +55,7 @@ jobs:
           if ($app.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $marker)) {
             throw "ClipBridge did not render the window successfully. Exit code: $($app.ExitCode)"
           }
+          Get-Content -LiteralPath $marker
           $screenshot = [IO.Path]::ChangeExtension($marker, ".png")
           if (-not (Test-Path -LiteralPath $screenshot)) {
             throw "WPF did not export the real application screenshot."

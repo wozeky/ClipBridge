@@ -55,22 +55,11 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        Activated += (_, _) =>
-        {
-            if (CanAnimateInterface)
-                AnimateInterface(BrandMotion, ScaleTransform.ScaleXProperty, 0.5, 1);
-        };
+        Activated += (_, _) => UpdateInterfaceMotion();
         Deactivated += (_, _) => StopInterfaceMotion();
-        IsVisibleChanged += (_, _) =>
-        {
-            if (!IsVisible)
-                StopInterfaceMotion();
-        };
-        StateChanged += (_, _) =>
-        {
-            if (WindowState == WindowState.Minimized)
-                StopInterfaceMotion();
-        };
+        IsVisibleChanged += (_, _) => UpdateInterfaceMotion();
+        StateChanged += (_, _) => UpdateInterfaceMotion();
+        SystemParameters.StaticPropertyChanged += OnSystemParametersChanged;
         if (Environment.GetCommandLineArgs() is [_, "--smoke-test" or "--capture-smoke", var marker])
         {
             _smokeMarker = marker;
@@ -83,92 +72,130 @@ public partial class MainWindow : Window
         Loaded += OnLoaded;
     }
 
-    private bool CanAnimateInterface => _smokeMarker is null && !_captureBusy && !_armed
-        && IsVisible && IsActive && WindowState != WindowState.Minimized
+    private bool _movieReady;
+    private bool _movieFailed;
+    private bool _moviePlaying;
+    private bool CanAnimateInterface => _smokeMarker is null && !_captureBusy
+        && _settings.Motion && IsVisible && IsActive && WindowState != WindowState.Minimized
         && SystemParameters.ClientAreaAnimation && RenderCapability.Tier != 0;
 
-    private void Settings_Expanded(object sender, RoutedEventArgs args)
-    {
-        if (CanAnimateInterface)
-            AnimateInterface(SettingsMotion, TranslateTransform.YProperty, -5, 0);
-    }
+    private void OnSystemParametersChanged(object? sender, PropertyChangedEventArgs args) =>
+        Dispatcher.InvokeAsync(UpdateInterfaceMotion);
 
-    private void Settings_Collapsed(object sender, RoutedEventArgs args) =>
-        SettingsMotion.BeginAnimation(TranslateTransform.YProperty, null);
-
-    private static void AnimateInterface(Animatable target, DependencyProperty property, double from, double to)
+    private void UpdateInterfaceMotion()
     {
-        var animation = new DoubleAnimation(from, to, TimeSpan.FromMilliseconds(140))
+        if (_movieReady && !_movieFailed && CanAnimateInterface)
         {
-            DecelerationRatio = 0.75,
-            FillBehavior = FillBehavior.Stop
-        };
-        Timeline.SetDesiredFrameRate(animation, 30);
-        target.BeginAnimation(property, animation);
+            if (!_moviePlaying) { ChromeMovie.Play(); _moviePlaying = true; }
+        }
+        else StopInterfaceMotion();
     }
 
     private void StopInterfaceMotion()
     {
-        if (BrandMotion.HasAnimatedProperties)
-            BrandMotion.BeginAnimation(ScaleTransform.ScaleXProperty, null);
-        if (SettingsMotion.HasAnimatedProperties)
-            SettingsMotion.BeginAnimation(TranslateTransform.YProperty, null);
+        if (_moviePlaying) { ChromeMovie.Pause(); _moviePlaying = false; }
+        SettingsMotion.BeginAnimation(TranslateTransform.YProperty, null);
+    }
+
+    private void Chrome_Opened(object sender, RoutedEventArgs args)
+    {
+        _movieReady = true;
+        UpdateInterfaceMotion();
+    }
+
+    private void Chrome_Ended(object sender, RoutedEventArgs args)
+    {
+        ChromeMovie.Position = TimeSpan.Zero;
+        _moviePlaying = false;
+        UpdateInterfaceMotion();
+    }
+
+    private void Chrome_Failed(object sender, ExceptionRoutedEventArgs args)
+    {
+        _movieFailed = true;
+        _moviePlaying = false;
+        ChromeMovie.Close();
+        ChromeMovie.Visibility = Visibility.Collapsed;
+        // The same material's poster remains visible. Recording never depends on the UI decoder.
+    }
+
+    private void ShowPanel(string panel)
+    {
+        HomePanel.Visibility = panel == "home" ? Visibility.Visible : Visibility.Collapsed;
+        SettingsPanel.Visibility = panel == "settings" ? Visibility.Visible : Visibility.Collapsed;
+        LibraryPanel.Visibility = panel == "library" ? Visibility.Visible : Visibility.Collapsed;
+        if (panel == "settings" && CanAnimateInterface)
+        {
+            var animation = new DoubleAnimation(-6, 0, TimeSpan.FromMilliseconds(180))
+                { DecelerationRatio = .8, FillBehavior = FillBehavior.Stop };
+            Timeline.SetDesiredFrameRate(animation, 30);
+            SettingsMotion.BeginAnimation(TranslateTransform.YProperty, animation);
+        }
+    }
+
+    private void Home_Click(object sender, RoutedEventArgs args) => ShowPanel("home");
+    private void Library_Click(object sender, RoutedEventArgs args) => ShowPanel("library");
+    private void Settings_Click(object sender, RoutedEventArgs args) => ShowPanel("settings");
+    private void Minimize_Click(object sender, RoutedEventArgs args) => WindowState = WindowState.Minimized;
+    private void Maximize_Click(object sender, RoutedEventArgs args) =>
+        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+    private void Close_Click(object sender, RoutedEventArgs args) => Close();
+    private void QuickSettings_Click(object sender, RoutedEventArgs args) => SaveSettings();
+    private void Motion_Click(object sender, RoutedEventArgs args)
+    {
+        if (SaveSettings()) UpdateInterfaceMotion();
     }
 
     private void OnSmokeRendered(object? sender, EventArgs args)
     {
-        if (_store is null || _queue is null || Library.Items.Count != 0 || !IsLoaded)
+        ContentRendered -= OnSmokeRendered;
+        try
         {
-            Application.Current.Shutdown(1);
-            return;
-        }
-        SettingsPanel.IsExpanded = true;
-        UpdateLayout();
-        if (!CaptureTarget.IsVisible || !ReplayLength.IsVisible || Library.ActualHeight <= 0
-            || SettingsMotion.HasAnimatedProperties || BrandMotion.HasAnimatedProperties)
-        {
-            Application.Current.Shutdown(1);
-            return;
-        }
-        DiagnosticsButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
-        if (!Clipboard.GetText().Contains("Tanılama raporu", StringComparison.Ordinal))
-        {
-            Application.Current.Shutdown(1);
-            return;
-        }
-        // Capture the actual rendered WPF view for visual review, rather than producing a mockup.
-        // Run only in the isolated --smoke-test mode; no user clips or settings are touched.
-        if (Content is FrameworkElement root)
-        {
-            // Use an explicit desktop-sized layout to avoid the hosted CI screen resolution
-            // cropping native WPF elements. The pixels still come from the actual WPF tree.
-            const double captureWidth = 1240;
-            const double captureHeight = 830;
+            if (_store is null || _queue is null || Library.Items.Count != 0 || !IsLoaded)
+                throw new InvalidOperationException("Startup or isolated library failed.");
+            if (SaveReplayButton.IsEnabled || OpenButton.IsEnabled || CopyButton.IsEnabled || QuickUploadButton.IsEnabled)
+                throw new InvalidOperationException("Unavailable actions must be disabled.");
+            if (ChromeMovie.Source is not null || _moviePlaying)
+                throw new InvalidOperationException("Smoke mode must not run decorative video.");
 
-            void ExportPng(string path)
+            void ExportPng(string suffix, double width = 1600, double height = 1200)
             {
-                root.Measure(new Size(captureWidth, captureHeight));
-                root.Arrange(new Rect(0, 0, captureWidth, captureHeight));
-                root.UpdateLayout();
-                var dpi = VisualTreeHelper.GetDpi(root);
-                var width = Math.Max(1, (int)Math.Ceiling(root.ActualWidth * dpi.DpiScaleX));
-                var height = Math.Max(1, (int)Math.Ceiling(root.ActualHeight * dpi.DpiScaleY));
-                var screenshot = new RenderTargetBitmap(width, height,
-                    dpi.PixelsPerInchX, dpi.PixelsPerInchY, PixelFormats.Pbgra32);
-                screenshot.Render(root);
+                RootSurface.Measure(new Size(width, height));
+                RootSurface.Arrange(new Rect(0, 0, width, height));
+                RootSurface.UpdateLayout();
+                var screenshot = new RenderTargetBitmap((int)width, (int)height, 96, 96, PixelFormats.Pbgra32);
+                screenshot.Render(RootSurface);
                 var encoder = new PngBitmapEncoder();
                 encoder.Frames.Add(BitmapFrame.Create(screenshot));
-                using var output = File.Create(path);
+                using var output = File.Create(Path.ChangeExtension(_smokeMarker!, suffix + ".png"));
                 encoder.Save(output);
             }
-
-            // One inspection view for settings and one for the normal (collapsed) archive.
-            ExportPng(Path.ChangeExtension(_smokeMarker!, ".settings.png"));
-            SettingsPanel.IsExpanded = false;
-            ExportPng(Path.ChangeExtension(_smokeMarker!, ".png"));
+            ShowPanel("home");
+            ExportPng("");
+            if (!CaptureTarget.IsVisible || !ReplayLength.IsVisible || HomePanel.ActualHeight <= 0)
+                throw new InvalidOperationException("Home controls are not visible.");
+            SettingsNav.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
+            ExportPng("settings");
+            if (!ProviderChoice.IsVisible || !MotionEnabled.IsVisible || SettingsMotion.HasAnimatedProperties)
+                throw new InvalidOperationException("Settings navigation failed.");
+            ShowPanel("library");
+            ExportPng("library");
+            if (!Library.IsVisible || Library.ActualHeight <= 0 || !RecoverClipsButton.IsVisible)
+                throw new InvalidOperationException("Library navigation failed.");
+            ShowPanel("home");
+            ExportPng("compact", 900, 700);
+            ExportPng("wide", 1600, 900);
+            DiagnosticsButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
+            if (!Clipboard.GetText().Contains("Tanılama raporu", StringComparison.Ordinal))
+                throw new InvalidOperationException("Diagnostics clipboard failed.");
+            File.WriteAllText(_smokeMarker!, "PASS: native WPF home/settings/library, 3 window ratios, disabled actions, motion isolation, diagnostics clipboard.");
+            Application.Current.Shutdown();
         }
-        File.WriteAllText(_smokeMarker!, "ClipBridge window, library and diagnostics clipboard initialized");
-        Application.Current.Shutdown();
+        catch (Exception error)
+        {
+            File.WriteAllText(_smokeMarker!, "FAIL: " + error);
+            Application.Current.Shutdown(1);
+        }
     }
 
     private async void OnSmokeCaptureRendered(object? sender, EventArgs args)
@@ -252,6 +279,7 @@ public partial class MainWindow : Window
             DesktopAudio.IsChecked = _settings.DesktopAudio;
             Microphone.IsChecked = _settings.Microphone;
             GameName.Text = _settings.Game ?? "";
+            MotionEnabled.IsChecked = _settings.Motion;
             _store = new ClipStore(Path.Combine(_root, "library.json"));
             _queue = new UploadQueue(_store,
                 [new FreeUploadProvider(_http, Provider.Litterbox), new FreeUploadProvider(_http, Provider.Gofile)],
@@ -272,6 +300,13 @@ public partial class MainWindow : Window
             RefreshLibrary();
             if (_smokeMarker is not null)
                 return;
+            var materialPath = Path.Combine(AppContext.BaseDirectory, "Assets", "ChromeLoop.mp4");
+            if (File.Exists(materialPath))
+            {
+                ChromeMovie.Source = new Uri(materialPath);
+                // Open the media graph without playback; animation policy controls Play.
+                ChromeMovie.Pause();
+            }
             CreateTrayIcon();
             _windowSource = PresentationSource.FromVisual(this) as HwndSource;
             _windowSource?.AddHook(WindowMessage);
@@ -516,6 +551,7 @@ public partial class MainWindow : Window
         _captureBusy = busy;
         if (busy)
             StopInterfaceMotion();
+        UpdateInterfaceMotion();
         ArmButton.IsEnabled = !busy;
         SaveReplayButton.IsEnabled = !busy && _armed;
         if (!busy && _exit && _shutdown.IsCancellationRequested)
@@ -608,9 +644,10 @@ public partial class MainWindow : Window
             var settings = new ClipSettings(ProviderChoice.SelectedIndex == 1 ? Provider.Gofile : Provider.Litterbox,
                 AutoUpload.IsChecked == true, AutoCopy.IsChecked == true, limit, seconds,
                 game.Length == 0 ? null : game, AutoFallback.IsChecked == true, DesktopAudio.IsChecked == true,
-                Microphone.IsChecked == true);
+                Microphone.IsChecked == true, MotionEnabled.IsChecked == true);
             AtomicJson.Write(Path.Combine(_root, "settings.json"), settings);
             Volatile.Write(ref _settings, settings);
+            UpdateInterfaceMotion();
             using var startup = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run");
             if (StartWithWindows.IsChecked == true)
                 startup.SetValue("ClipBridge", $"\"{Environment.ProcessPath}\" --tray");
@@ -688,6 +725,7 @@ public partial class MainWindow : Window
         OpenButton.IsEnabled = SelectedClip is not null;
         CopyButton.IsEnabled = SelectedClip?.ShareUrl is not null;
         UploadButton.IsEnabled = _queue is not null && SelectedClip?.State is UploadState.Local or UploadState.Failed;
+        QuickUploadButton.IsEnabled = UploadButton.IsEnabled;
     }
 
     private void Open_Click(object sender, RoutedEventArgs args)
@@ -813,6 +851,9 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs args)
     {
+        SystemParameters.StaticPropertyChanged -= OnSystemParametersChanged;
+        StopInterfaceMotion();
+        ChromeMovie.Close();
         _shutdown.Cancel();
         var capture = _capture;
         _capture = null;
@@ -829,7 +870,7 @@ public partial class MainWindow : Window
 
     private sealed record ClipSettings(Provider Provider = Provider.Litterbox, bool AutoUpload = false,
         bool AutoCopy = true, int SpeedLimit = 0, int ReplaySeconds = ReplayDurations.Default,
-        string? Game = null, bool AutoFallback = false, bool DesktopAudio = true, bool Microphone = false)
+        string? Game = null, bool AutoFallback = false, bool DesktopAudio = true, bool Microphone = false, bool Motion = true)
     {
         [System.Text.Json.Serialization.JsonIgnore]
         public Provider? FallbackProvider => AutoFallback

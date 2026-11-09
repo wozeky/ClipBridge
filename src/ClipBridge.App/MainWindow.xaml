@@ -1,254 +1,147 @@
 <Window x:Class="ClipBridge.App.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="ClipBridge" Height="760" Width="1100" MinHeight="560" MinWidth="760"
-        WindowStartupLocation="CenterScreen" UseLayoutRounding="True"
-        SnapsToDevicePixels="True" TextOptions.TextFormattingMode="Display"
-        FontFamily="Segoe UI Variable, Segoe UI" FontSize="13"
-        Background="{DynamicResource WindowBrush}" Foreground="{DynamicResource TextBrush}">
-  <Window.Resources>
-    <ResourceDictionary Source="GlassTheme.xaml" />
-  </Window.Resources>
-
-  <!-- Preserve the native Windows title bar, resize, snap and DPI behavior. -->
-  <Grid Margin="22,18,22,18" Background="{DynamicResource WindowBrush}">
-    <Grid.RowDefinitions>
-      <RowDefinition Height="Auto" />
-      <RowDefinition Height="Auto" />
-      <RowDefinition Height="Auto" />
-      <RowDefinition Height="*" />
-      <RowDefinition Height="Auto" />
-    </Grid.RowDefinitions>
-
-    <!-- Product identity and the existing import action. -->
-    <DockPanel Grid.Row="0" Margin="1,0,1,18" LastChildFill="True">
-      <Button DockPanel.Dock="Right" Style="{StaticResource GlassButton}"
-              Content="MP4 içe aktar" Click="Import_Click"
-              VerticalAlignment="Center" Padding="16,9" />
-      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-        <Border Width="3" Height="36" CornerRadius="2"
-                Background="{StaticResource AccentBrush}" Margin="0,0,14,0">
-          <Border.RenderTransform>
-            <ScaleTransform x:Name="BrandMotion" />
-          </Border.RenderTransform>
-        </Border>
-        <StackPanel VerticalAlignment="Center">
-          <TextBlock Text="ClipBridge" FontSize="25" FontWeight="SemiBold"
-                     LineHeight="30" />
-          <TextBlock Text="Kayıt, klip arşivi ve paylaşım"
-                     FontSize="12" Foreground="{StaticResource MutedBrush}"
-                     Margin="0,2,0,0" />
-        </StackPanel>
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:local="clr-namespace:ClipBridge.App"
+ Title="ClipBridge" Width="1280" Height="960" MinWidth="900" MinHeight="700"
+ WindowStartupLocation="CenterScreen" WindowStyle="None" ResizeMode="CanResize"
+ Background="#020303" Foreground="#E8EBE8" FontFamily="Segoe UI Variable, Segoe UI" FontSize="12"
+ UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+ <WindowChrome.WindowChrome><WindowChrome CaptionHeight="32" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0" UseAeroCaptionButtons="False"/></WindowChrome.WindowChrome>
+ <Window.Resources><ResourceDictionary Source="GlassTheme.xaml"/></Window.Resources>
+ <Grid x:Name="RootSurface" Background="#020303">
+  <Viewbox Stretch="Uniform">
+   <Grid x:Name="Scene" Width="1200" Height="900">
+    <Grid x:Name="ChromeScene" IsHitTestVisible="False">
+     <Image Source="Assets/ChromePoster.png" Stretch="Fill"/>
+     <MediaElement x:Name="ChromeMovie" LoadedBehavior="Manual" UnloadedBehavior="Close" IsMuted="True" Volume="0"
+      Stretch="Fill" MediaOpened="Chrome_Opened" MediaEnded="Chrome_Ended" MediaFailed="Chrome_Failed"/>
+    </Grid>
+    <Canvas x:Name="HomePanel">
+     <!-- Coordinates measured from the 1600 × 1200 reference at 75% scale. -->
+     <StackPanel Canvas.Left="178" Canvas.Top="295" Orientation="Horizontal">
+      <Button Style="{StaticResource RoundButton}" Click="Home_Click" ToolTip="Ana ekran" AutomationProperties.Name="Ana ekran" Content="&#xE714;" Foreground="{StaticResource NeonBrush}"/>
+      <StackPanel Margin="12,3,0,0"><TextBlock Text="Son anları sakla." Style="{StaticResource Caption}"/>
+       <TextBlock Text="ClipBridge" FontSize="17" FontWeight="SemiBold" Margin="0,2,0,0"/>
       </StackPanel>
-    </DockPanel>
+     </StackPanel>
+     <Button Canvas.Left="465" Canvas.Top="295" Style="{StaticResource RoundButton}" Content="&#xE9CE;" Click="CopyDiagnostics_Click" ToolTip="Tanılama raporunu kopyala" AutomationProperties.Name="Tanılama raporunu kopyala"/>
+     <Button Canvas.Left="529" Canvas.Top="295" Style="{StaticResource RoundButton}" Content="&#xE80A;" Click="Library_Click" ToolTip="Klip arşivi" AutomationProperties.Name="Klip arşivi"/>
 
-    <!-- Recording: no mock states or new backend dependencies. -->
-    <Border Grid.Row="1" Style="{StaticResource GlassCard}" Margin="0,0,0,12">
-      <Grid>
-        <Grid.RowDefinitions>
-          <RowDefinition Height="Auto" />
-          <RowDefinition Height="Auto" />
-          <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
-        <DockPanel Grid.Row="0" Margin="0,0,0,15">
-          <Border DockPanel.Dock="Right" CornerRadius="7" Padding="10,5"
-                  Background="#233044" BorderBrush="{StaticResource OutlineBrush}"
-                  BorderThickness="1" VerticalAlignment="Center">
-            <TextBlock x:Name="CaptureStatus" Text="Kayıt kapalı"
-                       FontSize="12" FontWeight="Medium"
-                       Foreground="#BCCAF4" />
-          </Border>
-          <StackPanel>
-            <TextBlock Text="Oyun yakalama" FontSize="16" FontWeight="SemiBold" />
-            <TextBlock Text="Pencereyi seç ve son anları F8 ile kaydet."
-                       FontSize="12" Foreground="{StaticResource MutedBrush}"
-                       Margin="0,4,0,0" />
-          </StackPanel>
-        </DockPanel>
-        <WrapPanel Grid.Row="1">
-          <ComboBox x:Name="CaptureTarget" DisplayMemberPath="Title"
-                    Width="255" MinHeight="36" Margin="0,0,8,7"
-                    AutomationProperties.Name="Kaydedilecek pencere"
-                    ToolTip="Kaydedilecek oyun penceresi" />
-          <Button Style="{StaticResource GlassButton}" Content="Yenile"
-                  Click="RefreshWindows_Click" Margin="0,0,8,7" />
-          <Button x:Name="ArmButton" Style="{StaticResource PrimaryButton}"
-                  Content="Kaydı başlat" Click="Arm_Click"
-                  Padding="16,7" Margin="0,0,8,7" />
-          <Button x:Name="SaveReplayButton" Style="{StaticResource GlassButton}"
-                  Content="Klip al · F8" Click="SaveReplay_Click"
-                  Margin="0,0,0,7" IsEnabled="False" />
-        </WrapPanel>
-        <TextBlock Grid.Row="2" Margin="0,0,0,0"
-                   Foreground="{StaticResource SubtleBrush}" FontSize="12"
-                   TextWrapping="Wrap"
-                   Text="Kaydı başlattıktan sonra kısayol çalışır. Klipler yerel arşive kaydedilir." />
+     <local:ChromeGlass Canvas.Left="178" Canvas.Top="362" Width="402" Height="55" Radius="28" Scene="{Binding ElementName=ChromeScene}" Region="178,362,402,55">
+      <Grid Margin="7"><Grid.ColumnDefinitions><ColumnDefinition Width="43"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+       <Button Style="{StaticResource RoundButton}" Width="38" Height="38" Content="&#xE72C;" Click="RefreshWindows_Click" ToolTip="Pencereleri yenile" AutomationProperties.Name="Pencereleri yenile"/>
+       <ComboBox x:Name="CaptureTarget" Grid.Column="1" DisplayMemberPath="Title" Margin="7,0,3,0" AutomationProperties.Name="Kaydedilecek pencere" ToolTip="Kaydedilecek oyun penceresi"/>
       </Grid>
-    </Border>
-
-    <!-- Settings intentionally retain the original controls, names, and save semantics. -->
-    <Border Grid.Row="2" Style="{StaticResource SurfaceCard}"
-            Padding="12,6" Margin="0,0,0,12">
-      <Expander x:Name="SettingsPanel" Header="Kayıt ve paylaşım ayarları"
-                FontWeight="Medium"
-                Expanded="Settings_Expanded" Collapsed="Settings_Collapsed">
-        <ScrollViewer MaxHeight="177" Margin="0,8,0,0"
-                      VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled">
-          <StackPanel Margin="8,2,8,9">
-            <StackPanel.RenderTransform>
-              <TranslateTransform x:Name="SettingsMotion" />
-            </StackPanel.RenderTransform>
-
-            <WrapPanel>
-              <TextBlock Text="Yükleme servisi" VerticalAlignment="Center"
-                         Foreground="{StaticResource MutedBrush}" Margin="0,0,8,7" />
-              <ComboBox x:Name="ProviderChoice" Width="180" Margin="0,0,19,7">
-                <ComboBoxItem Content="Litterbox · 24 saat" />
-                <ComboBoxItem Content="Gofile" />
-              </ComboBox>
-              <TextBlock Text="Hız sınırı (KiB/sn, 0 sınırsız)"
-                         Foreground="{StaticResource MutedBrush}"
-                         VerticalAlignment="Center" Margin="0,0,8,7" />
-              <TextBox x:Name="SpeedLimit" Width="88" Margin="0,0,0,7" />
-            </WrapPanel>
-
-            <WrapPanel Margin="0,5,0,0">
-              <TextBlock Text="Klip süresi (sn)" VerticalAlignment="Center"
-                         Foreground="{StaticResource MutedBrush}" Margin="0,0,8,7" />
-              <ComboBox x:Name="ReplayLength" Width="82" Margin="0,0,19,7" />
-              <TextBlock Text="Oyun etiketi" VerticalAlignment="Center"
-                         Foreground="{StaticResource MutedBrush}" Margin="0,0,8,7" />
-              <TextBox x:Name="GameName" Width="158" MaxLength="80"
-                       Margin="0,0,0,7" />
-            </WrapPanel>
-
-            <WrapPanel Margin="0,7,0,0">
-              <StackPanel Margin="0,0,26,0">
-                <CheckBox x:Name="DesktopAudio"
-                          Content="Sistem sesi (Discord dahil)" Margin="0,0,0,5" />
-                <CheckBox x:Name="Microphone"
-                          Content="Mikrofonu da kaydet" Margin="0,0,0,5" />
-                <CheckBox x:Name="AutoUpload"
-                          Content="Yeni klipleri otomatik yükle" Margin="0,0,0,5" />
-              </StackPanel>
-              <StackPanel>
-                <CheckBox x:Name="AutoFallback"
-                          Content="Dosya limiti reddinde diğer ücretsiz servisi dene"
-                          Margin="0,0,0,5" />
-                <CheckBox x:Name="AutoCopy"
-                          Content="Hazır bağlantıları otomatik panoya kopyala"
-                          Margin="0,0,0,5" />
-                <CheckBox x:Name="StartWithWindows"
-                          Content="Windows oturumunda tepside başlat"
-                          Margin="0,0,0,5" />
-              </StackPanel>
-            </WrapPanel>
-
-            <TextBlock Text="Paylaşım bağlantısına sahip kişiler yüklenen klipleri görebilir."
-                       TextWrapping="Wrap" FontSize="12"
-                       Foreground="{StaticResource SubtleBrush}" Margin="0,10,0,0" />
-            <Button Style="{StaticResource GlassButton}" Content="Ayarları kaydet"
-                    Click="SaveSettings_Click" HorizontalAlignment="Left"
-                    Margin="0,10,0,0" />
-          </StackPanel>
-        </ScrollViewer>
-      </Expander>
-    </Border>
-
-    <!-- The library remains a virtualized, keyboard-accessible WPF DataGrid. -->
-    <Border Grid.Row="3" Style="{StaticResource SurfaceCard}" Padding="0">
-      <Grid>
-        <Grid.RowDefinitions>
-          <RowDefinition Height="Auto" />
-          <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-        <Border Grid.Row="0" Padding="16,13,16,12"
-                BorderBrush="{StaticResource SeparatorBrush}"
-                BorderThickness="0,0,0,1">
-          <DockPanel LastChildFill="True">
-            <TextBlock DockPanel.Dock="Right" Text="Çift tıkla: videoyu aç"
-                       FontSize="12" Foreground="{StaticResource SubtleBrush}"
-                       VerticalAlignment="Center" />
-            <TextBlock Text="Klip arşivi" FontSize="16" FontWeight="SemiBold"
-                       VerticalAlignment="Center" />
-          </DockPanel>
-        </Border>
-        <Grid Grid.Row="1">
-          <DataGrid x:Name="Library" AutoGenerateColumns="False" CanUserAddRows="False"
-                    SelectionMode="Single" IsReadOnly="True" HeadersVisibility="Column"
-                    RowHeaderWidth="0" EnableRowVirtualization="True"
-                    EnableColumnVirtualization="True" AlternationCount="2"
-                    VirtualizingPanel.VirtualizationMode="Recycling"
-                    SelectionChanged="Library_SelectionChanged"
-                    MouseDoubleClick="Open_Click">
-            <DataGrid.Columns>
-              <DataGridTextColumn Header="Klip" Binding="{Binding Title}" Width="2*" />
-              <DataGridTextColumn Header="Tarih" Binding="{Binding Date}" Width="125" />
-              <DataGridTextColumn Header="Süre" Binding="{Binding Duration}" Width="66" />
-              <DataGridTextColumn Header="Boyut" Binding="{Binding Size}" Width="78" />
-              <DataGridTextColumn Header="Servis" Binding="{Binding Clip.Provider}" Width="96" />
-              <DataGridTextColumn Header="Durum" Binding="{Binding Status}" Width="1.5*" />
-            </DataGrid.Columns>
-          </DataGrid>
-          <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
-                      Margin="16,16,16,16" IsHitTestVisible="False">
-            <StackPanel.Style>
-              <Style TargetType="StackPanel">
-                <Setter Property="Visibility" Value="Collapsed" />
-                <Style.Triggers>
-                  <DataTrigger Binding="{Binding HasItems, ElementName=Library}" Value="False">
-                    <Setter Property="Visibility" Value="Visible" />
-                  </DataTrigger>
-                </Style.Triggers>
-              </Style>
-            </StackPanel.Style>
-            <TextBlock Text="Henüz klip yok" HorizontalAlignment="Center"
-                       FontSize="14" FontWeight="SemiBold" />
-            <TextBlock Text="F8 ile klip al veya bir MP4 içe aktar."
-                       HorizontalAlignment="Center" Foreground="{StaticResource MutedBrush}"
-                       TextWrapping="Wrap" Margin="0,7,0,0" />
-          </StackPanel>
-        </Grid>
+     </local:ChromeGlass>
+     <local:ChromeGlass Canvas.Left="178" Canvas.Top="433" Width="402" Height="174" Scene="{Binding ElementName=ChromeScene}" Region="178,433,402,174" Radius="38">
+      <Grid Margin="27,23,27,19"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+       <TextBlock Text="Klip süresi" FontWeight="SemiBold" FontSize="17"/>
+       <TextBlock Grid.Row="1" Text="Son anları tek tuşla kaydet." Style="{StaticResource Caption}" Margin="0,6,0,0"/>
+       <Grid Grid.Row="2" VerticalAlignment="Bottom"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="110"/></Grid.ColumnDefinitions>
+        <TextBlock Text="SON" Style="{StaticResource Caption}" VerticalAlignment="Center"/>
+        <ComboBox x:Name="ReplayLength" Grid.Column="1" FontSize="25" AutomationProperties.Name="Klip süresi, saniye" ToolTip="15, 30, 60, 120 veya 180 saniye"/>
+       </Grid>
       </Grid>
-    </Border>
+     </local:ChromeGlass>
+     <local:ChromeGlass Canvas.Left="620" Canvas.Top="305" Width="196" Height="196" Scene="{Binding ElementName=ChromeScene}" Region="620,305,196,196" Radius="36">
+      <Grid ClipToBounds="True">
+       <StackPanel Margin="25,24,18,0" VerticalAlignment="Top"><TextBlock Text="Kayıt" FontSize="17" FontWeight="SemiBold"/>
+        <TextBlock x:Name="CaptureStatus" Text="Kayıt kapalı" Style="{StaticResource Caption}" Margin="0,8,0,0" TextWrapping="Wrap" MaxWidth="147" HorizontalAlignment="Left"/>
+       </StackPanel>
+       <Button x:Name="ArmButton" Style="{StaticResource ArmSwitch}" Content="Kaydı başlat" Click="Arm_Click" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,24,20,0"/>
+       <Button x:Name="SaveReplayButton" Style="{StaticResource GlassButton}" Content="F8" FontSize="32" FontWeight="Light" IsEnabled="False" Click="SaveReplay_Click" ToolTip="Son klibi MP4 olarak kaydet" AutomationProperties.Name="Klip al · F8"
+        Width="100" Height="86" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="10,0,0,-7" RenderTransformOrigin=".5,.5">
+        <Button.RenderTransform><TransformGroup><SkewTransform AngleX="-12"/><RotateTransform Angle="-25"/></TransformGroup></Button.RenderTransform>
+        <Button.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#686F6E" Offset="0"/><GradientStop Color="#111615" Offset=".18"/><GradientStop Color="#060908" Offset=".8"/><GradientStop Color="#757C78" Offset="1"/></LinearGradientBrush></Button.Background>
+       </Button>
+      </Grid>
+     </local:ChromeGlass>
+     <local:ChromeGlass Canvas.Left="827" Canvas.Top="305" Width="196" Height="196" Scene="{Binding ElementName=ChromeScene}" Region="827,305,196,196" Radius="36">
+      <Grid ClipToBounds="True">
+       <StackPanel Margin="25,23,20,0" VerticalAlignment="Top"><TextBlock Text="Paylaşım" FontSize="17" FontWeight="SemiBold"/>
+        <CheckBox x:Name="AutoUpload" Content="Otomatik" Click="QuickSettings_Click" ToolTip="Yeni klipleri otomatik yükle"/>
+       </StackPanel>
+       <Button x:Name="QuickUploadButton" Click="Upload_Click" IsEnabled="False" ToolTip="Seçilen klibi yükle / yeniden dene" AutomationProperties.Name="Seçilen klibi yükle" Width="153" Height="84" VerticalAlignment="Bottom" Margin="0,0,0,10" Cursor="Hand">
+        <Button.Template><ControlTemplate TargetType="Button">
+         <Grid><Ellipse Margin="0,22,0,0" Stroke="#7D8381" StrokeThickness="1"><Ellipse.Fill><LinearGradientBrush><GradientStop Color="#080A09" Offset="0"/><GradientStop Color="#6D7370" Offset=".18"/><GradientStop Color="#141815" Offset=".35"/><GradientStop Color="#030504" Offset=".74"/><GradientStop Color="#6F7673" Offset="1"/></LinearGradientBrush></Ellipse.Fill></Ellipse>
+          <Ellipse Margin="0,0,0,22" Stroke="#C2C8C5" StrokeThickness="1.4"><Ellipse.Fill><LinearGradientBrush StartPoint=".3,0" EndPoint=".65,1"><GradientStop Color="#7C827F" Offset="0"/><GradientStop Color="#EEF1EF" Offset=".15"/><GradientStop Color="#3F4441" Offset=".25"/><GradientStop Color="#080B09" Offset=".52"/><GradientStop Color="#1D211E" Offset=".82"/><GradientStop Color="#B9C2BD" Offset="1"/></LinearGradientBrush></Ellipse.Fill></Ellipse>
+          <TextBlock x:Name="Glyph" Text="&#xE898;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-22,0,0"/>
+         </Grid><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Glyph" Property="Foreground" Value="{StaticResource NeonBrush}"/></Trigger><Trigger Property="IsEnabled" Value="False"><Setter TargetName="Glyph" Property="Foreground" Value="#69746A"/></Trigger></ControlTemplate.Triggers>
+        </ControlTemplate></Button.Template>
+       </Button>
+      </Grid>
+     </local:ChromeGlass>
+     <local:ChromeGlass Canvas.Left="632" Canvas.Top="518" Width="382" Height="82" Radius="40" Scene="{Binding ElementName=ChromeScene}" Region="632,518,382,82">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+       <Button Style="{StaticResource NeonButton}" Click="Home_Click" Height="48" Margin="0,0,7,0"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE80F;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{StaticResource NeonBrush}" Margin="0,0,8,0"/><TextBlock Text="Ana ekran" FontSize="11"/></StackPanel></Button>
+       <Button Style="{StaticResource RoundButton}" Content="&#xE8F1;" Click="Library_Click" Margin="3,0" ToolTip="Klip arşivi" AutomationProperties.Name="Klip arşivi"/>
+       <Button x:Name="SettingsNav" Style="{StaticResource RoundButton}" Content="&#xE713;" Click="Settings_Click" Margin="3,0" ToolTip="Ayarlar" AutomationProperties.Name="Ayarlar"/>
+       <Button Style="{StaticResource RoundButton}" Content="&#xE710;" Click="Import_Click" Margin="3,0" ToolTip="MP4 içe aktar" AutomationProperties.Name="MP4 içe aktar"/>
+       <Button x:Name="DiagnosticsButton" Style="{StaticResource RoundButton}" Content="&#xE9D9;" Click="CopyDiagnostics_Click" Margin="3,0" ToolTip="Tanılama raporunu kopyala" AutomationProperties.Name="Tanılama raporunu kopyala"/>
+      </StackPanel>
+     </local:ChromeGlass>
+    </Canvas>
 
-    <!-- Existing selected-clip commands, upload progress and status remain intact. -->
-    <Border Grid.Row="4" Style="{StaticResource SurfaceCard}"
-            Background="{StaticResource RaisedBrush}" Margin="0,12,0,0"
-            Padding="13,12">
-      <DockPanel LastChildFill="True">
-        <Image x:Name="Thumbnail" DockPanel.Dock="Right" Width="118" Height="66"
-               Visibility="Collapsed" Margin="12,0,0,0" Stretch="Uniform"
-               AutomationProperties.Name="Klip küçük resmi" />
+    <!-- Functional secondary screens overlay the measured home composition. -->
+    <Canvas x:Name="SettingsPanel" Visibility="Collapsed">
+     <local:ChromeGlass Canvas.Left="178" Canvas.Top="245" Width="845" Height="420" Radius="36" Scene="{Binding ElementName=ChromeScene}" Region="178,245,845,420">
+      <Grid Margin="28"><Grid.RenderTransform><TranslateTransform x:Name="SettingsMotion"/></Grid.RenderTransform>
+       <Grid.RowDefinitions><RowDefinition Height="45"/><RowDefinition Height="*"/><RowDefinition Height="47"/></Grid.RowDefinitions>
+       <TextBlock Text="Ayarlar" FontSize="20" FontWeight="SemiBold"/>
+       <Button Style="{StaticResource RoundButton}" Width="34" Height="34" Content="&#xE711;" Click="Home_Click" HorizontalAlignment="Right" VerticalAlignment="Top" ToolTip="Ana ekrana dön" AutomationProperties.Name="Ayarları kapat"/>
+       <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"><Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="32"/><ColumnDefinition/></Grid.ColumnDefinitions>
         <StackPanel>
-          <WrapPanel>
-            <Button Style="{StaticResource GlassButton}" x:Name="OpenButton"
-                    Content="Videoyu aç" Click="Open_Click" Margin="0,0,8,7" />
-            <Button Style="{StaticResource GlassButton}" x:Name="CopyButton"
-                    Content="Bağlantıyı kopyala" Click="Copy_Click" Margin="0,0,8,7" />
-            <Button Style="{StaticResource GlassButton}" x:Name="UploadButton"
-                    Content="Yükle / yeniden dene" Click="Upload_Click" Margin="0,0,8,7" />
-            <Button Style="{StaticResource GlassButton}" Content="Klip klasörü"
-                    Click="Folder_Click" Margin="0,0,8,7" />
-            <Button Style="{StaticResource GlassButton}" x:Name="RecoverClipsButton"
-                    Content="Klip klasörünü tara" Click="RecoverClips_Click"
-                    Margin="0,0,8,7" />
-            <Button Style="{StaticResource GlassButton}" x:Name="DiagnosticsButton"
-                    Content="Tanılama raporunu kopyala" Click="CopyDiagnostics_Click"
-                    Margin="0,0,0,7" />
-          </WrapPanel>
-          <ProgressBar x:Name="UploadProgress" Height="4" Margin="0,5,0,8"
-                       Minimum="0" Maximum="100" Visibility="Collapsed" />
-          <TextBlock Text="{Binding ElementName=Library, Path=SelectedItem.ShareLabel}"
-                     ToolTip="{Binding ElementName=Library, Path=SelectedItem.ShareLabel}"
-                     TextTrimming="CharacterEllipsis" FontSize="12"
-                     Foreground="{StaticResource MutedBrush}" />
-          <TextBlock x:Name="StatusMessage" Text="MP4 içe aktararak başlayabilirsiniz."
-                     TextWrapping="Wrap" Margin="0,5,0,0" FontSize="12"
-                     AutomationProperties.LiveSetting="Polite" />
+         <TextBlock Text="KAYIT" Style="{StaticResource Caption}" Margin="0,0,0,10"/>
+         <TextBlock Text="Oyun etiketi" Style="{StaticResource Caption}" Margin="0,0,0,6"/><TextBox x:Name="GameName" MaxLength="80" AutomationProperties.Name="Oyun etiketi"/>
+         <CheckBox x:Name="DesktopAudio" Content="Sistem sesi (Discord dahil)"/>
+         <CheckBox x:Name="Microphone" Content="Mikrofonu da kaydet"/>
+         <CheckBox x:Name="StartWithWindows" Content="Windows ile tepside başlat"/>
+         <CheckBox x:Name="MotionEnabled" Content="Krom hareketi ve ışık animasyonu" Click="Motion_Click"/>
+         <TextBlock Text="Pencere arka plandayken hareket durur." Style="{StaticResource Caption}"/>
         </StackPanel>
-      </DockPanel>
-    </Border>
-  </Grid>
+        <StackPanel Grid.Column="2">
+         <TextBlock Text="PAYLAŞIM" Style="{StaticResource Caption}" Margin="0,0,0,10"/>
+         <ComboBox x:Name="ProviderChoice" AutomationProperties.Name="Yükleme servisi"><ComboBoxItem Content="Litterbox · 24 saat"/><ComboBoxItem Content="Gofile"/></ComboBox>
+         <Grid Margin="0,10,0,3"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="80"/></Grid.ColumnDefinitions><TextBlock Text="Hız sınırı · KiB/sn" VerticalAlignment="Center"/><TextBox x:Name="SpeedLimit" Grid.Column="1" AutomationProperties.Name="Yükleme hız sınırı" ToolTip="0 = sınırsız"/></Grid>
+         <CheckBox x:Name="AutoFallback" Content="Limitte alternatif servisi dene"/>
+         <CheckBox x:Name="AutoCopy" Content="Hazır bağlantıyı panoya kopyala"/>
+         <TextBlock Text="Bağlantıya sahip kişiler yüklenen klibi görebilir." Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+        </StackPanel>
+       </Grid></ScrollViewer>
+       <Button Grid.Row="2" Style="{StaticResource NeonButton}" Content="Ayarları kaydet" Click="SaveSettings_Click" HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
+      </Grid>
+     </local:ChromeGlass>
+    </Canvas>
+    <Canvas x:Name="LibraryPanel" Visibility="Collapsed">
+     <local:ChromeGlass Canvas.Left="178" Canvas.Top="245" Width="845" Height="420" Radius="36" Scene="{Binding ElementName=ChromeScene}" Region="178,245,845,420">
+      <Grid Margin="26"><Grid.RowDefinitions><RowDefinition Height="48"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+       <TextBlock Text="Klip arşivi" FontSize="20" FontWeight="SemiBold"/>
+       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top"><Button Style="{StaticResource GlassButton}" Content="MP4 içe aktar" Click="Import_Click" Margin="0,0,10,0"/><Button Style="{StaticResource RoundButton}" Width="34" Height="34" Content="&#xE711;" Click="Home_Click" ToolTip="Ana ekrana dön" AutomationProperties.Name="Arşivi kapat"/></StackPanel>
+       <ListBox x:Name="Library" Grid.Row="1" Background="Transparent" BorderThickness="0" SelectionMode="Single" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+        VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" SelectionChanged="Library_SelectionChanged" MouseDoubleClick="Open_Click" AutomationProperties.Name="Klip arşivi">
+        <ListBox.ItemTemplate><DataTemplate><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="72"/><ColumnDefinition Width="90"/><ColumnDefinition Width="140"/></Grid.ColumnDefinitions>
+         <StackPanel><TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" FontWeight="SemiBold"/><TextBlock Text="{Binding Date}" Style="{StaticResource Caption}" Margin="0,4,0,0"/></StackPanel>
+         <TextBlock Grid.Column="1" Text="{Binding Duration}" VerticalAlignment="Center"/><TextBlock Grid.Column="2" Text="{Binding Size}" VerticalAlignment="Center"/>
+         <StackPanel Grid.Column="3"><TextBlock Text="{Binding Status}" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding Clip.Provider}" Style="{StaticResource Caption}" Margin="0,4,0,0"/></StackPanel>
+        </Grid></DataTemplate></ListBox.ItemTemplate>
+       </ListBox>
+       <TextBlock Grid.Row="1" Text="Henüz klip yok. F8 ile klip al veya bir MP4 içe aktar." Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding HasItems, ElementName=Library}" Value="False"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+       <StackPanel Grid.Row="2" Margin="0,15,0,0"><DockPanel><Image x:Name="Thumbnail" Width="82" Height="46" DockPanel.Dock="Right" Stretch="Uniform" Visibility="Collapsed"/>
+        <WrapPanel><Button x:Name="OpenButton" Style="{StaticResource GlassButton}" Content="Videoyu aç" Click="Open_Click" Margin="0,0,7,7"/><Button x:Name="CopyButton" Style="{StaticResource GlassButton}" Content="Bağlantıyı kopyala" Click="Copy_Click" Margin="0,0,7,7"/><Button x:Name="UploadButton" Style="{StaticResource GlassButton}" Content="Yükle / yeniden dene" Click="Upload_Click" Margin="0,0,7,7"/><Button Style="{StaticResource GlassButton}" Content="Klip klasörü" Click="Folder_Click" Margin="0,0,7,7"/><Button x:Name="RecoverClipsButton" Style="{StaticResource GlassButton}" Content="Klasörü tara" Click="RecoverClips_Click" Margin="0,0,7,7"/></WrapPanel>
+       </DockPanel><TextBlock Text="{Binding ElementName=Library, Path=SelectedItem.ShareLabel}" TextTrimming="CharacterEllipsis" Style="{StaticResource Caption}"/></StackPanel>
+      </Grid>
+     </local:ChromeGlass>
+    </Canvas>
+    <StackPanel VerticalAlignment="Top" Margin="205,690,205,0">
+     <ProgressBar x:Name="UploadProgress" Height="3" Minimum="0" Maximum="100" Visibility="Collapsed" Foreground="{StaticResource NeonBrush}" Background="#182019" BorderThickness="0"/>
+     <TextBlock x:Name="StatusMessage" Text="Pencereyi seç, kaydı başlat. Son anlar için F8." Foreground="#9EA59D" FontSize="11" TextAlignment="Center" TextWrapping="Wrap" Margin="0,10,0,0" AutomationProperties.LiveSetting="Polite"/>
+    </StackPanel>
+   </Grid>
+  </Viewbox>
+  <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" WindowChrome.IsHitTestVisibleInChrome="True" Margin="0,3,8,0">
+   <Button Style="{StaticResource GlassButton}" Content="—" MinHeight="27" Height="27" Padding="12,0" Click="Minimize_Click" ToolTip="Küçült" AutomationProperties.Name="Küçült"/>
+   <Button Style="{StaticResource GlassButton}" Content="□" MinHeight="27" Height="27" Padding="12,0" Click="Maximize_Click" ToolTip="Büyüt / geri yükle" AutomationProperties.Name="Büyüt veya geri yükle"/>
+   <Button Style="{StaticResource GlassButton}" Content="×" MinHeight="27" Height="27" Padding="12,0" Click="Close_Click" ToolTip="Sistem tepsisine gizle" AutomationProperties.Name="Kapat"/>
+  </StackPanel>
+ </Grid>
 </Window>
