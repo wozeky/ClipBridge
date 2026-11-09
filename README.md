@@ -1,26 +1,34 @@
-# ClipBridge
+# RollClip
 
 Windows 11 x64 için ücretsiz, MIT lisanslı klip arşivi ve paylaşım uygulaması. Windows'un pencere yakalama API'siyle F8 klipleri alabilir veya hazır bir MP4'ü içe aktarabilirsiniz. Kayıt motoru ZIP paketinin içindedir.
 
 ## İndir ve çalıştır
 
-[Windows x64 Actions](https://github.com/wozeky/ClipBridge/actions/workflows/windows.yml) sayfasındaki başarılı çalıştırmanın **Artifacts** bölümünden `ClipBridge-win-x64` ZIP'ini indirin. GitHub indirme için oturum açmanızı isteyebilir. ZIP'in tamamını bir klasöre çıkarıp `ClipBridge.exe` dosyasını çalıştırın. Paket .NET çalışma zamanını içerir. Erken sürüm dijital olarak imzalanmamıştır.
+[Windows x64 Actions](https://github.com/wozeky/RollClip/actions/workflows/windows.yml) sayfasındaki başarılı çalıştırmanın **Artifacts** bölümünden `RollClip-win-x64` ZIP'ini indirin. GitHub indirme için oturum açmanızı isteyebilir. ZIP'in tamamını bir klasöre çıkarıp `RollClip.exe` dosyasını çalıştırın. Paket .NET çalışma zamanını içerir. Erken sürüm dijital olarak imzalanmamıştır.
+
+## ClipBridge'den geçiş
+
+Eski uygulamadan sistem tepsisindeki **Çıkış** ile çıkın ve yeni paketi açıp
+`RollClip.exe` dosyasını çalıştırın. RollClip klasörü yoksa mevcut ClipBridge
+veri ve video klasörleri yerinde kullanılır. Böylece arşiv yolları, ayarlar,
+klipler ve bekleyen yüklemeler korunur. Yeni kurulumlar RollClip klasörlerini
+kullanır. İlk açılış eski Windows başlangıç kaydını RollClip'e taşır.
 
 ## İlk klip
 
-1. **MP4 içe aktar** ile yerel bir video seçin. ClipBridge orijinali korur, Windows Videolar klasörü altındaki `ClipBridge` klasörüne bir kopya koyar.
+1. **MP4 içe aktar** ile yerel bir video seçin. RollClip orijinali korur, Windows Videolar klasörü altındaki `RollClip` klasörüne bir kopya koyar.
 2. **Yükle / yeniden dene** ile yüklemeyi başlatın. Her yeni klibin arka planda yüklenmesi için **Ayarlar → Yeni klipleri otomatik yükle** seçeneğini etkinleştirin ve ayarları kaydedin.
 3. Hazır bağlantıyı Discord'a yapıştırın. Varsayılan pano ayarı bağlantıyı otomatik kopyalar. Önceki bağlantılar arşivden tekrar kopyalanabilir.
 
-Kütüphane ve ayarlar `%LOCALAPPDATA%\ClipBridge` altında saklanır. Uygulama pencere kapatıldığında tepsiye iner. Tepsideki **Çıkış** ClipBridge'i kapatır. Bekleyen yüklemeler sonraki açılışta devam eder. Önceki isteğin sunucuya ulaşıp ulaşmadığı belirsiz kalan kesintilerde arşivden tekrar deneyebilirsiniz. Yerel video dosyaları korunur.
+Kütüphane ve ayarlar `%LOCALAPPDATA%\RollClip` altında saklanır. Uygulama pencere kapatıldığında tepsiye iner. Tepsideki **Çıkış** RollClip'i kapatır. Bekleyen yüklemeler sonraki açılışta devam eder. Önceki isteğin sunucuya ulaşıp ulaşmadığı belirsiz kalan kesintilerde arşivden tekrar deneyebilirsiniz. Yerel video dosyaları korunur.
 
 ## F8 ile replay
 
-1. Oyunu açın. ClipBridge'de **Ayarlar → Pencereleri yenile** ile oyun penceresini seçin.
+1. Oyunu açın. RollClip'de **Pencereleri yenile** ile oyun penceresini seçin.
 2. İstiyorsanız **Yeni klipleri otomatik yükle** seçeneğini açın. **Sistem sesi** açıkken Discord ve diğer uygulamaların sesi de kayda girebilir. Mikrofon ayrı bir seçenektir.
 3. **Kaydı başlat** düğmesine basın. Varsayılan hedef 60 saniyedir. Tampon doldukça daha uzun klip alabilirsiniz.
 4. **F8** ile son tamamlanan parçalar MP4'e kaydolur. Kesim yaklaşık bir saniyelik parçalara göre yapılır. Otomatik yükleme açıksa bağlantı arşive eklenir ve pano ayarı açıksa panoya kopyalanır.
-5. **Kaydı durdur** ile geçici tamponu kapatın. Kalıcı MP4 dosyaları Videolar altındaki `ClipBridge` klasöründe kalır.
+5. **Kaydı durdur** ile geçici tamponu kapatın. Kalıcı MP4 dosyaları Videolar altındaki `RollClip` klasöründe kalır.
 
 Yakalama yalnızca seçilen pencereyi hedefler. Kayıt, 1080p60 H.264 için sırasıyla NVIDIA NVENC ve AMD AMF donanım kodlamasını dener. Yazılımsal Media Foundation yedeği 720p30 kullanır. Windows Graphics Capture başlatılamazsa aynı pencere için Windows GDI denenir. GDI, donanım hızlandırmalı bazı oyunlarda boş görüntü verebilir. Kullanılan yakalama yöntemi, kodlayıcı ve kayıt biçimi durum satırında görünür.
 
@@ -32,7 +40,7 @@ Kayıt denemesi bittikten sonra **Tanılama raporunu kopyala** düğmesine bası
 
 | Servis | Ücretsiz otomasyon | Paylaşım ve sınırlar |
 | --- | --- | --- |
-| [Litterbox](https://litterbox.catbox.moe/) | Hesapsız, multipart API | Varsayılan. Doğrudan HTTPS video bağlantısı, 24 saatlik saklama, ClipBridge üst sınırı 1 GB. |
+| [Litterbox](https://litterbox.catbox.moe/) | Hesapsız, multipart API | Varsayılan. Doğrudan HTTPS video bağlantısı, 24 saatlik saklama, RollClip üst sınırı 1 GB. |
 | [Gofile](https://gofile.io/api) | Hesapsız yükleme sentetik bir videoyla doğrulandı | Paylaşım sayfası bağlantısı. Ücretsiz saklama ve erişim koşulları değişebilir. |
 | [Catbox](https://catbox.moe/faq.php) | Hesapsız API | 200 MB, anonim dosyalarda iki yıl erişimsizlikten sonra silme. Geçici paylaşım için Litterbox seçildi. |
 | [Pixeldrain](https://pixeldrain.com/api) | API anahtarı gerekir | Ücretsiz indirme kotası, önizleme ve saklama kuralları uygulanır. |
@@ -42,10 +50,16 @@ Paylaşım bağlantısına sahip kişiler yüklenen klibe erişebilir. İsteğe 
 
 ## Geliştirme ve doğrulama
 
-.NET 10 SDK ile `dotnet build ClipBridge.slnx` ve `dotnet test ClipBridge.slnx` çalıştırın. [Windows workflow'u](.github/workflows/windows.yml) testleri, self-contained win-x64 yayını ve WPF penceresi açılış kontrolünü çalıştırır.
+.NET 10 SDK ile `dotnet build RollClip.slnx` ve `dotnet test RollClip.slnx` çalıştırın. [Windows workflow'u](.github/workflows/windows.yml) testleri, self-contained win-x64 yayını ve WPF penceresi açılış kontrolünü çalıştırır.
 
-`dotnet run --project tools/ClipBridge.Bench -- test.mp4 litterbox` komutu gerçek bir yükleme yapar. `gofile` ikinci seçenektir. Paylaşabileceğiniz sentetik MP4 kullanın. Araç gövdenin istemcide yazılmasını, sunucu yanıtı beklemesini ve bağlantının hazır oluşunu ayrı ölçer. Paylaşım bağlantısını geçici bir yerel arşivden yeniden okur. Litterbox için ilk video baytlarına kadar geçen süreyi ve dosya bütünlüğünü de kontrol eder. Gofile paylaşım sayfası için izlenebilirlik ölçümü yoktur.
+`dotnet run --project tools/RollClip.Bench -- test.mp4 litterbox` komutu gerçek bir yükleme yapar. `gofile` ikinci seçenektir. Paylaşabileceğiniz sentetik MP4 kullanın. Araç gövdenin istemcide yazılmasını, sunucu yanıtı beklemesini ve bağlantının hazır oluşunu ayrı ölçer. Paylaşım bağlantısını geçici bir yerel arşivden yeniden okur. Litterbox için ilk video baytlarına kadar geçen süreyi ve dosya bütünlüğünü de kontrol eder. Gofile paylaşım sayfası için izlenebilirlik ölçümü yoktur.
 
 Kayıt mimarisi ve kaynak incelemesi için [Windows kayıt motoru notlarına](docs/recording.md) bakın. Windows CI, sentetik görüntü ve sesle ardışık MP4 dışa aktarmayı sınar. Ayrıca barındırılan Windows oturumunda gerçek pencere yakalama adımı çalıştırılır. Bu adımın sonucunu workflow logundan kontrol edin.
 
 Gerçek oyunda F8, NVENC, FPS etkisi, ses senkronu ve anti-cheat davranışı fiziksel Windows testinde ölçülmelidir.
+
+## Siyah krom arayüz
+
+Ana ekran, sağlanan hareketli referansın panel oranlarını kullanır. Pencereyi üstteki kapsülden seçin; soldaki **15 / 30 / 60 / 120 / 180** seçeneklerinden süreyi belirleyin. **Kayıt** kartındaki anahtarla kaydı başlatın ve **F8** ile klip alın. Alttaki kapsülden arşive ve ayarlara ulaşabilirsiniz. Paylaşım kartındaki **Otomatik** anahtarı yeni kliplerin yüklenmesini açar. Krom yükleme düğmesi arşivde seçili klibi yükler.
+
+**Ayarlar → Krom hareketi ve ışık animasyonu** hareketi kapatır. Dekoratif hareket, oyun penceresine geçildiğinde veya RollClip gizlendiğinde durur. Windows video çözücüsü kullanılamazsa aynı materyalin sabit görüntüsü gösterilir. [Referans ölçümleri, uygulama ayrıntıları ve bilinen sınırlar](docs/ui-reference.md).

@@ -5,7 +5,7 @@ $release = "autobuild-2026-11-08-12-35"
 $asset = "ffmpeg-n8.1.3-34-ga35157abb9-win64-lgpl-8.1.zip"
 $hash = "d1172b6bf0ffd75cf93c3362585c0c0fb62c3caef6d93df5add6ac64779f8f73"
 $url = "https://github.com/FFmpeg-Builds/FFmpeg-Builds/releases/download/$release/$asset"
-$staging = Join-Path ([IO.Path]::GetTempPath()) ("clipbridge-ffmpeg-" + [Guid]::NewGuid().ToString("N"))
+$staging = Join-Path ([IO.Path]::GetTempPath()) ("rollclip-ffmpeg-" + [Guid]::NewGuid().ToString("N"))
 try {
   New-Item -ItemType Directory -Path $staging | Out-Null
   $zip = Join-Path $staging "engine.zip"
