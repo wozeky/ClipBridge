@@ -51,6 +51,8 @@ Yakalama yalnızca seçilen pencereyi hedefler. Kayıt, seçilen profil için s�
 
 RollClip yerel kopyayı oluşturur. Drive’a yüklemeyi Google Drive for desktop yapar. Eşitleme tamamlanınca dosyayı Drive web arayüzünde kontrol edin. Paylaşım bağlantısının sona ermesi arşivdeki MP4’ü etkilemez.
 
+![RollClip uzun süreli arşiv ayarları](docs/screenshots/archive.png)
+
 ## Tanılama raporu
 
 Kayıt denemesi bittikten sonra **Tanılama raporunu kopyala** düğmesine basın. Rapor bu oturumdaki son kayıt denemesini, son kaydedilen klibi ve paylaşım durumunu gösterir. MP4 hazır olduktan sonraki süre, varsa yükleme sırasını ve yeniden denemeleri de içerir. Rapor yerelde hazırlanır. Ham hata çıktısı yerine bilinen hata türlerini gösterir ve kişisel yolları, pencere adlarını veya paylaşım bağlantılarını içermez.
