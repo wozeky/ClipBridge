@@ -180,6 +180,8 @@ internal sealed class WindowsCapture : IAsyncDisposable
         return processId;
     }
 
+    public static bool WindowExists(nint window) => window != 0 && IsWindow(window);
+
     public static string? ProcessName(nint window)
     {
         var processId = window == 0 ? 0 : ProcessId(window);
