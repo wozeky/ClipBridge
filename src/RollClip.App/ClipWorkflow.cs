@@ -23,7 +23,7 @@ public partial class MainWindow
     {
         _pendingImportFolder = _settings.ImportFolder;
         _pendingImportSince = _settings.ImportSince;
-        ImportFolderLabel.Text = _pendingImportFolder ?? "Klasör izleme kapalı";
+        ImportFolderLabel.Text = _pendingImportFolder ?? T("Klasör izleme kapalı", "Folder watching off");
         ImportFolderLabel.ToolTip = _pendingImportFolder;
     }
 
@@ -169,12 +169,11 @@ public partial class MainWindow
                 ShowReplayStatus("Oyun penceresi kapandı. Otomatik kayıt seçiliyse yeniden açılmasını bekliyor.",
                     System.Windows.Forms.ToolTipIcon.Info);
             }
-            if (_settings.AutoGame && _settings.AutoGameProcess is { } game && !_autoGamePaused &&
-                !_captureBusy && _capture is null && !_recovering && DateTimeOffset.UtcNow >= _nextAutoCapture)
+            if (HasAutomaticGame && !_autoGamePaused && !_captureBusy && _capture is null &&
+                !_recovering && DateTimeOffset.UtcNow >= _nextAutoCapture)
             {
                 var windows = WindowsCapture.Windows(_windowSource?.Handle ?? 0);
-                var target = windows.FirstOrDefault(window =>
-                    string.Equals(WindowsCapture.ProcessName(window.Handle), game, StringComparison.OrdinalIgnoreCase));
+                var target = windows.FirstOrDefault(window => CanStartAutomatically(window.Handle));
                 if (target is not null)
                 {
                     _nextAutoCapture = DateTimeOffset.UtcNow.AddSeconds(20);
@@ -229,12 +228,13 @@ public partial class MainWindow
         try
         {
             ShowWindow();
-            var editor = new ClipEditor(clip, Path.Combine(_clipsPath, "Paylaşım")) { Owner = this };
+            var editor = new ClipEditor(clip, Path.Combine(_clipsPath, "Paylaşım"), _settings.English,
+                bookmarks => _store?.Change(clip.Id, current => current with { Bookmarks = bookmarks })) { Owner = this };
             if (editor.ShowDialog() == true && editor.SavedPath is { } path)
             {
                 var destination = Path.Combine(_clipsPath, $"Kırpılmış klip-{editor.SavedId:N}.mp4");
                 File.Move(path, destination);
-                await AddClipAsync(destination, clip.Name + " · Kırpılmış", editor.SavedId, clip.Game, allowUpload: false);
+                await AddClipAsync(destination, clip.Name + " · Kırpılmış", editor.SavedId, clip.Game, allowUpload: false, bookmarks: editor.SavedBookmarks);
             }
         }
         catch (OperationCanceledException) when (_shutdown.IsCancellationRequested) { }
