@@ -62,8 +62,8 @@
        <StackPanel Margin="25,24,18,0" VerticalAlignment="Top"><TextBlock Text="Kayıt" FontSize="17" FontWeight="SemiBold"/>
         <TextBlock x:Name="CaptureStatus" Text="Kayıt kapalı" Style="{StaticResource Caption}" Margin="0,8,0,0" TextWrapping="Wrap" MaxWidth="147" HorizontalAlignment="Left"/>
        </StackPanel>
-       <Button x:Name="ArmButton" Style="{StaticResource ArmSwitch}" Content="Kaydı başlat" Click="Arm_Click" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,24,20,0"/>
-       <Button x:Name="SaveReplayButton" Style="{StaticResource GlassButton}" Content="F8" FontSize="32" FontWeight="Light" IsEnabled="False" Click="SaveReplay_Click" ToolTip="Son klibi MP4 olarak kaydet" AutomationProperties.Name="Klip al · F8"
+       <Button ToolTipService.ShowOnDisabled="True" ToolTip="{Binding Content, RelativeSource={RelativeSource Self}}" x:Name="ArmButton" Style="{StaticResource ArmSwitch}" Content="Kaydı başlat" Click="Arm_Click" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,24,20,0"/>
+       <Button ToolTipService.ShowOnDisabled="True" x:Name="SaveReplayButton" Style="{StaticResource GlassButton}" Content="F8" FontSize="32" FontWeight="Light" IsEnabled="False" Click="SaveReplay_Click" ToolTip="Son klibi MP4 olarak kaydet" AutomationProperties.Name="Klip al · F8"
         Width="100" Height="86" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="10,0,0,-7" RenderTransformOrigin=".5,.5">
         <Button.RenderTransform><TransformGroup><SkewTransform AngleX="-12"/><RotateTransform Angle="-25"/></TransformGroup></Button.RenderTransform>
         <Button.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#686F6E" Offset="0"/><GradientStop Color="#111615" Offset=".18"/><GradientStop Color="#060908" Offset=".8"/><GradientStop Color="#757C78" Offset="1"/></LinearGradientBrush></Button.Background>
@@ -75,7 +75,7 @@
        <StackPanel Margin="25,23,20,0" VerticalAlignment="Top"><TextBlock Text="Paylaşım" FontSize="17" FontWeight="SemiBold"/>
         <CheckBox x:Name="AutoUpload" Content="Otomatik" Click="QuickSettings_Click" ToolTip="Yeni klipleri otomatik yükle"/>
        </StackPanel>
-       <Button x:Name="QuickUploadButton" Click="Upload_Click" IsEnabled="False" ToolTip="Seçilen klibi yükle / yeniden dene" AutomationProperties.Name="Seçilen klibi yükle" Width="153" Height="84" VerticalAlignment="Bottom" Margin="0,0,0,10" Cursor="Hand">
+       <Button ToolTipService.ShowOnDisabled="True" x:Name="QuickUploadButton" Click="Upload_Click" IsEnabled="False" ToolTip="Seçilen klibi yükle / yeniden dene" AutomationProperties.Name="Seçilen klibi yükle" Width="153" Height="84" VerticalAlignment="Bottom" Margin="0,0,0,10" Cursor="Hand">
         <Button.Template><ControlTemplate TargetType="Button">
          <Grid><Ellipse Margin="0,22,0,0" Stroke="#7D8381" StrokeThickness="1"><Ellipse.Fill><LinearGradientBrush><GradientStop Color="#080A09" Offset="0"/><GradientStop Color="#6D7370" Offset=".18"/><GradientStop Color="#141815" Offset=".35"/><GradientStop Color="#030504" Offset=".74"/><GradientStop Color="#6F7673" Offset="1"/></LinearGradientBrush></Ellipse.Fill></Ellipse>
           <Ellipse Margin="0,0,0,22" Stroke="#C2C8C5" StrokeThickness="1.4"><Ellipse.Fill><LinearGradientBrush StartPoint=".3,0" EndPoint=".65,1"><GradientStop Color="#7C827F" Offset="0"/><GradientStop Color="#EEF1EF" Offset=".15"/><GradientStop Color="#3F4441" Offset=".25"/><GradientStop Color="#080B09" Offset=".52"/><GradientStop Color="#1D211E" Offset=".82"/><GradientStop Color="#B9C2BD" Offset="1"/></LinearGradientBrush></Ellipse.Fill></Ellipse>
@@ -87,7 +87,7 @@
      </local:ChromeGlass>
      <local:ChromeGlass Canvas.Left="632" Canvas.Top="518" Width="382" Height="82" Radius="40">
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-       <Button Style="{StaticResource NeonButton}" Click="Home_Click" Height="48" Margin="0,0,7,0"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE80F;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{StaticResource NeonBrush}" Margin="0,0,8,0"/><TextBlock Text="Ana ekran" FontSize="11"/></StackPanel></Button>
+       <Button ToolTip="Ana ekran" Style="{StaticResource NeonButton}" Click="Home_Click" Height="48" Margin="0,0,7,0"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE80F;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{StaticResource NeonBrush}" Margin="0,0,8,0"/><TextBlock Text="Ana ekran" FontSize="11"/></StackPanel></Button>
        <Button Style="{StaticResource RoundButton}" Content="&#xE8F1;" Click="Library_Click" Margin="3,0" ToolTip="Klip arşivi" AutomationProperties.Name="Klip arşivi"/>
        <Button x:Name="SettingsNav" Style="{StaticResource RoundButton}" Content="&#xE713;" Click="Settings_Click" Margin="3,0" ToolTip="Ayarlar" AutomationProperties.Name="Ayarlar"/>
        <Button Style="{StaticResource RoundButton}" Content="&#xE710;" Click="Import_Click" Margin="3,0" ToolTip="MP4 içe aktar" AutomationProperties.Name="MP4 içe aktar"/>
@@ -135,16 +135,16 @@
          <TextBlock Text="Drive ile eşitlenen bir klasör seçin. Yeni klipler buraya da kopyalanır." Style="{StaticResource Caption}" TextWrapping="Wrap"/>
          <TextBox x:Name="ArchiveFolderBox" IsReadOnly="True" Margin="0,6,0,0" AutomationProperties.Name="Yedek klasörü"/>
          <WrapPanel Margin="0,6,0,0">
-          <Button Style="{StaticResource GlassButton}" Content="Klasör seç" Click="ChooseArchiveFolder_Click" Margin="0,0,5,4"/>
-          <Button x:Name="OpenArchiveButton" Style="{StaticResource GlassButton}" Content="Klasörü aç" Click="OpenArchiveFolder_Click" Margin="0,0,5,4" IsEnabled="False"/>
-          <Button Style="{StaticResource GlassButton}" Content="Kapat" Click="ClearArchiveFolder_Click" Margin="0,0,5,4"/>
-          <Button x:Name="ArchiveExistingButton" Style="{StaticResource GlassButton}" Content="Eski klipleri yedekle" Click="ArchiveExisting_Click" ToolTip="Mevcut ve daha önce kopyalanamayan klipleri arşive kopyala" IsEnabled="False"/>
+          <Button ToolTip="{Binding Content, RelativeSource={RelativeSource Self}}" Style="{StaticResource GlassButton}" Content="Klasör seç" Click="ChooseArchiveFolder_Click" Margin="0,0,5,4"/>
+          <Button ToolTipService.ShowOnDisabled="True" ToolTip="{Binding Content, RelativeSource={RelativeSource Self}}" x:Name="OpenArchiveButton" Style="{StaticResource GlassButton}" Content="Klasörü aç" Click="OpenArchiveFolder_Click" Margin="0,0,5,4" IsEnabled="False"/>
+          <Button ToolTip="Arşiv yedeklemeyi kapat" Style="{StaticResource GlassButton}" Content="Kapat" Click="ClearArchiveFolder_Click" Margin="0,0,5,4"/>
+          <Button ToolTipService.ShowOnDisabled="True" x:Name="ArchiveExistingButton" Style="{StaticResource GlassButton}" Content="Eski klipleri yedekle" Click="ArchiveExisting_Click" ToolTip="Mevcut ve daha önce kopyalanamayan klipleri arşive kopyala" IsEnabled="False"/>
          </WrapPanel>
          <TextBlock Text="Bulut yüklemesini Drive yapar. Eşitleme durumunu Drive’dan kontrol edin." Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,3,0,0"/>
          <TextBlock x:Name="ArchiveStatus" Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,4,0,0" AutomationProperties.LiveSetting="Polite"/>
         </StackPanel>
        </Grid></ScrollViewer>
-       <Button Grid.Row="2" Style="{StaticResource NeonButton}" Content="Ayarları kaydet" Click="SaveSettings_Click" HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
+       <Button ToolTip="{Binding Content, RelativeSource={RelativeSource Self}}" Grid.Row="2" Style="{StaticResource NeonButton}" Content="Ayarları kaydet" Click="SaveSettings_Click" HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
       </Grid>
      </local:ChromeGlass>
     </Canvas>
@@ -153,7 +153,7 @@
      <local:ChromeGlass Canvas.Left="178" Canvas.Top="245" Width="845" Height="420" Radius="36">
       <Grid Margin="26"><Grid.RowDefinitions><RowDefinition Height="48"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
        <TextBlock Text="Klip arşivi" FontSize="20" FontWeight="SemiBold"/>
-       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top"><Button Style="{StaticResource GlassButton}" Content="MP4 içe aktar" Click="Import_Click" Margin="0,0,10,0"/><Button Style="{StaticResource RoundButton}" Width="34" Height="34" Content="&#xE711;" Click="Home_Click" ToolTip="Ana ekrana dön" AutomationProperties.Name="Arşivi kapat"/></StackPanel>
+       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top"><Button ToolTip="{Binding Content, RelativeSource={RelativeSource Self}}" Style="{StaticResource GlassButton}" Content="MP4 içe aktar" Click="Import_Click" Margin="0,0,10,0"/><Button Style="{StaticResource RoundButton}" Width="34" Height="34" Content="&#xE711;" Click="Home_Click" ToolTip="Ana ekrana dön" AutomationProperties.Name="Arşivi kapat"/></StackPanel>
        <ListBox x:Name="Library" Grid.Row="1" Background="Transparent" BorderThickness="0" SelectionMode="Single" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
         VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" SelectionChanged="Library_SelectionChanged" MouseDoubleClick="Open_Click" AutomationProperties.Name="Klip arşivi">
         <ListBox.ItemTemplate><DataTemplate><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="72"/><ColumnDefinition Width="90"/><ColumnDefinition Width="140"/></Grid.ColumnDefinitions>
@@ -164,7 +164,7 @@
        </ListBox>
        <TextBlock Grid.Row="1" Text="Henüz klip yok. Klip al veya bir MP4 içe aktar." Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding HasItems, ElementName=Library}" Value="False"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
        <StackPanel Grid.Row="2" Margin="0,15,0,0"><DockPanel><Image x:Name="Thumbnail" Width="82" Height="46" DockPanel.Dock="Right" Stretch="Uniform" Visibility="Collapsed"/>
-        <WrapPanel><Button x:Name="OpenButton" Style="{StaticResource GlassButton}" Content="Videoyu aç" Click="Open_Click" Margin="0,0,7,7"/><Button x:Name="CopyButton" Style="{StaticResource GlassButton}" Content="Bağlantıyı kopyala" Click="Copy_Click" Margin="0,0,7,7"/><Button x:Name="UploadButton" Style="{StaticResource GlassButton}" Content="Yükle / yeniden dene" Click="Upload_Click" Margin="0,0,7,7"/><Button Style="{StaticResource GlassButton}" Content="Klip klasörü" Click="Folder_Click" Margin="0,0,7,7"/><Button x:Name="RecoverClipsButton" Style="{StaticResource GlassButton}" Content="Klasörü tara" Click="RecoverClips_Click" Margin="0,0,7,7"/></WrapPanel>
+        <WrapPanel><Button ToolTipService.ShowOnDisabled="True" ToolTip="{Binding Content, RelativeSource={RelativeSource Self}}" x:Name="OpenButton" Style="{StaticResource GlassButton}" Content="Videoyu aç" Click="Open_Click" Margin="0,0,7,7"/><Button ToolTipService.ShowOnDisabled="True" ToolTip="{Binding Content, RelativeSource={RelativeSource Self}}" x:Name="CopyButton" Style="{StaticResource GlassButton}" Content="Bağlantıyı kopyala" Click="Copy_Click" Margin="0,0,7,7"/><Button ToolTipService.ShowOnDisabled="True" ToolTip="{Binding Content, RelativeSource={RelativeSource Self}}" x:Name="UploadButton" Style="{StaticResource GlassButton}" Content="Yükle / yeniden dene" Click="Upload_Click" Margin="0,0,7,7"/><Button ToolTip="{Binding Content, RelativeSource={RelativeSource Self}}" Style="{StaticResource GlassButton}" Content="Klip klasörü" Click="Folder_Click" Margin="0,0,7,7"/><Button ToolTipService.ShowOnDisabled="True" ToolTip="{Binding Content, RelativeSource={RelativeSource Self}}" x:Name="RecoverClipsButton" Style="{StaticResource GlassButton}" Content="Klasörü tara" Click="RecoverClips_Click" Margin="0,0,7,7"/></WrapPanel>
        </DockPanel><TextBlock Text="{Binding ElementName=Library, Path=SelectedItem.ShareLabel}" TextTrimming="CharacterEllipsis" Style="{StaticResource Caption}"/></StackPanel>
       </Grid>
      </local:ChromeGlass>
