@@ -20,7 +20,7 @@ public sealed record Clip(
     string? Game = null, Provider Provider = Provider.Litterbox, UploadState State = UploadState.Local,
     string? ShareUrl = null, string? Error = null, int Attempts = 0, DateTimeOffset? NextAttempt = null,
     UploadTiming? Timing = null, Provider? FallbackProvider = null, string? PendingArchiveFolder = null,
-    DateTimeOffset? LinkExpiresAt = null, bool SeparateMicrophone = false, string? ImportKey = null)
+    DateTimeOffset? LinkExpiresAt = null, bool SeparateMicrophone = false, string? ImportKey = null, double[]? Bookmarks = null)
 {
     public bool LinkExpired(DateTimeOffset now) => LinkExpiresAt is { } expires && expires <= now;
 }

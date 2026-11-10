@@ -113,6 +113,11 @@
           <ComboBoxItem Content="Dengeli · 1080p30"/>
           <ComboBoxItem Content="Hafif · 720p30"/>
          </ComboBox>
+         <TextBlock Text="Yakalama yöntemi" Style="{StaticResource Caption}" Margin="0,9,0,4"/>
+         <ComboBox x:Name="CaptureMethodChoice" AutomationProperties.Name="Yakalama yöntemi">
+          <ComboBoxItem Content="Otomatik · WGC → GDI"/><ComboBoxItem Content="WGC · Pencere"/>
+          <ComboBoxItem Content="DXGI · Ekran 0 (tüm ekran)"/><ComboBoxItem Content="GDI · Pencere"/>
+         </ComboBox>
          <TextBlock Text="Klip kısayolu" Style="{StaticResource Caption}" Margin="0,9,0,4"/>
          <ComboBox x:Name="ReplayKeyChoice" AutomationProperties.Name="Klip kısayolu"/>
          <TextBlock Text="Oyun etiketi" Style="{StaticResource Caption}" Margin="0,9,0,6"/><TextBox x:Name="GameName" MaxLength="80" AutomationProperties.Name="Oyun etiketi"/>
@@ -120,6 +125,15 @@
          <CheckBox x:Name="GameOnlyAudio" Content="Sistem sesi yerine yalnız seçili oyunun sesi"/>
          <CheckBox x:Name="Microphone" Content="Mikrofonu ayrı kaydet"/>
          <CheckBox x:Name="AutoGame" Content="Seçilen oyun açılınca kaydı başlat"/>
+         <TextBlock Text="OYUN PROFİLLERİ" Style="{StaticResource Caption}" Margin="0,12,0,4"/>
+         <ComboBox x:Name="GameProfilesChoice" AutomationProperties.Name="Kayıtlı oyun profilleri"/>
+         <WrapPanel Margin="0,4,0,0">
+          <Button Content="Seçili oyun için kaydet" Click="SaveGameProfile_Click" Style="{StaticResource GlassButton}" Margin="0,0,5,4"/>
+          <Button Content="Profili yükle" Click="LoadGameProfile_Click" Style="{StaticResource GlassButton}" Margin="0,0,5,4"/>
+          <Button Content="Profili sil" Click="RemoveGameProfile_Click" Style="{StaticResource GlassButton}" Margin="0,0,0,4"/>
+         </WrapPanel>
+         <CheckBox x:Name="SaveSound" Content="Klip kaydedilince ses çal"/>
+         <CheckBox x:Name="SaveNotice" Content="Klip kaydedilince Windows bildirimi"/>
          <Button x:Name="TestClipButton" Content="Test klibi al ve kontrol et" Style="{StaticResource GlassButton}"
           Click="TestClip_Click" IsEnabled="False" HorizontalAlignment="Left" Margin="0,8,0,0"/>
          <TextBlock Text="KLİP KAYNAĞI" Style="{StaticResource Caption}" Margin="0,12,0,4"/>
@@ -138,6 +152,10 @@
          <CheckBox x:Name="AutoFallback" Content="Limitte alternatif servisi dene"/>
          <CheckBox x:Name="AutoCopy" Content="Hazır bağlantıyı panoya kopyala"/>
          <TextBlock Text="Bağlantıya sahip kişiler yüklenen klibi görebilir." Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+         <TextBlock Text="Dil · Language" Style="{StaticResource Caption}" Margin="0,12,0,4"/>
+         <ComboBox x:Name="LanguageChoice" AutomationProperties.Name="Dil · Language">
+          <ComboBoxItem Content="Türkçe"/><ComboBoxItem Content="English"/>
+         </ComboBox>
          <TextBlock Text="GÖRÜNÜM" Style="{StaticResource Caption}" Margin="0,12,0,2"/>
          <CheckBox x:Name="MotionEnabled" Content="Hareketli krom arka plan" Click="Motion_Click"/>
          <TextBlock Text="Kayıt sırasında ve arka planda durur." Style="{StaticResource Caption}"/>

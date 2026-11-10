@@ -8,6 +8,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>RollClip</AssemblyName>
+    <Version>0.3.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Assets/ChromePoster*.png" />

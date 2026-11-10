@@ -31,7 +31,8 @@ internal sealed class WindowsCapture : IAsyncDisposable
     public TimeSpan? BufferedDuration => _recorder?.BufferedDuration;
 
     public async Task StartAsync(nint window, string cache, int seconds, bool desktopAudio, bool microphone,
-        CancellationToken cancellationToken, RecordingQuality quality = RecordingQuality.High, bool gameOnlyAudio = false)
+        CancellationToken cancellationToken, RecordingQuality quality = RecordingQuality.High, bool gameOnlyAudio = false,
+        CaptureMethod method = CaptureMethod.Auto)
     {
         var executable = Path.Combine(AppContext.BaseDirectory, "ffmpeg", "bin", "ffmpeg.exe");
         if (!File.Exists(executable))
@@ -41,13 +42,18 @@ internal sealed class WindowsCapture : IAsyncDisposable
 
         var errors = new List<string>();
         var handle = unchecked((ulong)(nuint)window).ToString(CultureInfo.InvariantCulture);
+        if (CaptureTargets.IsExcluded(ProcessName(window)))
+            throw new CaptureException("Başlatıcı veya anti-cheat penceresi kayıt hedefi olamaz.");
         var wgcUnavailable = false;
-        foreach (var (graphicsCapture, encoder) in new[]
+        var methods = method == CaptureMethod.Auto ? new[] { CaptureMethod.Wgc, CaptureMethod.Gdi } : [method];
+        var hardwareEncoders = new[] { "h264_nvenc", "h264_amf", "h264_qsv", "h264_mf" };
+        var attempts = methods.SelectMany(source => (source == CaptureMethod.Gdi ? ["h264_mf"] : hardwareEncoders)
+            .Select(encoder => (source, encoder)));
+        foreach (var (source, encoder) in attempts)
         {
-            (true, "h264_nvenc"), (true, "h264_amf"), (true, "h264_mf"), (false, "h264_mf")
-        })
-        {
-            if (graphicsCapture && wgcUnavailable)
+            var wgc = source == CaptureMethod.Wgc;
+            var dxgi = source == CaptureMethod.Dxgi;
+            if (wgc && wgcUnavailable)
                 continue;
             var software = encoder == "h264_mf";
             var (width, height, fps, mbps, maxMbps) = RecordingFormat.Select(quality, software);
@@ -71,26 +77,33 @@ internal sealed class WindowsCapture : IAsyncDisposable
 
                 // Video packets can own raw frames. Keep this queue short independently of audio buffering.
                 var inputs = new List<string> { "-thread_queue_size", "8" };
-                if (graphicsCapture)
+                if (wgc)
                     inputs.AddRange(["-f", "lavfi", "-i",
                         FormattableString.Invariant(
                             $"gfxcapture=hwnd={handle}:max_framerate={fps}:width={width}:height={height}:resize_mode=scale_aspect:display_border=1")]);
+                else if (dxgi)
+                    inputs.AddRange(["-f", "lavfi", "-i", $"ddagrab=output_idx=0:framerate={fpsArg}:draw_mouse=0"]);
                 else
                     inputs.AddRange(["-f", "gdigrab", "-framerate", fpsArg, "-draw_mouse", "0", "-i", $"hwnd={handle}"]);
                 foreach (var feed in _audio)
                     inputs.AddRange(feed.Arguments);
 
                 var args = new List<string> { "-map", "0:v:0" };
+                var scale = FormattableString.Invariant(
+                    $"scale={width}:{height}:flags=bilinear:force_original_aspect_ratio=decrease:force_divisible_by=2,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2");
+                if (dxgi)
+                    args.AddRange(["-vf", $"hwdownload,format=bgra,{scale},format=nv12"]);
                 if (encoder == "h264_nvenc")
                     args.AddRange(["-c:v", encoder, "-preset", "p4", "-tune", "ll", "-rc", "cbr"]);
                 else if (encoder == "h264_amf")
                     args.AddRange(["-c:v", encoder, "-usage", "lowlatency", "-quality", "speed", "-rc", "cbr"]);
                 else
                 {
-                    var filter = graphicsCapture ? "hwdownload,format=bgra,format=nv12"
-                        : FormattableString.Invariant(
-                            $"scale={width}:{height}:flags=bilinear:force_original_aspect_ratio=decrease:force_divisible_by=2,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,format=nv12");
-                    args.AddRange(["-vf", filter, "-c:v", encoder, "-hw_encoding", "0"]);
+                    if (!dxgi)
+                        args.AddRange(["-vf", wgc ? "hwdownload,format=bgra,format=nv12" : $"{scale},format=nv12"]);
+                    args.AddRange(["-c:v", encoder]);
+                    if (software)
+                        args.AddRange(["-hw_encoding", "0"]);
                 }
                 args.AddRange(["-r", fpsArg, "-fps_mode", "cfr", "-b:v", bitrate, "-maxrate", maxRate, "-bufsize", maxRate,
                     "-g", fpsArg, "-bf", "0", "-force_key_frames", "expr:gte(t,n_forced)"]);
@@ -102,12 +115,13 @@ internal sealed class WindowsCapture : IAsyncDisposable
 
                 _recorder = new ReplayRecorder(executable, cache, seconds, inputs, args);
                 await _recorder.WaitUntilReadyAsync(startup.Token);
-                Source = graphicsCapture ? "Windows Graphics Capture" : "Windows GDI";
+                Source = wgc ? "Windows Graphics Capture" : dxgi ? "DXGI · Output 0" : "Windows GDI";
                 VideoFormat = (width, height, fps);
                 Encoder = encoder switch
                 {
                     "h264_nvenc" => "NVIDIA NVENC",
                     "h264_amf" => "AMD AMF",
+                    "h264_qsv" => "Intel Quick Sync",
                     _ => "Media Foundation"
                 };
                 return;
@@ -119,9 +133,8 @@ internal sealed class WindowsCapture : IAsyncDisposable
                 var details = error is OperationCanceledException
                     ? "İlk kareler zamanında gelmedi. Seçilen pencereyi açık tutun."
                     : error.Message;
-                if (graphicsCapture && details.Contains("Failed to create D3D11VA device", StringComparison.Ordinal))
+                if (wgc && details.Contains("Failed to create D3D11VA device", StringComparison.Ordinal))
                     wgcUnavailable = true;
-                var source = graphicsCapture ? "WGC" : "GDI";
                 errors.Add($"{source}/{encoder} · {details}");
                 FallbackDetails = string.Join(Environment.NewLine, errors);
             }
@@ -165,7 +178,8 @@ internal sealed class WindowsCapture : IAsyncDisposable
             if (handle == excluded || !IsWindowVisible(handle) || IsIconic(handle))
                 return true;
             var title = new StringBuilder(512);
-            if (GetWindowText(handle, title, title.Capacity) > 0)
+            if (GetWindowText(handle, title, title.Capacity) > 0 &&
+                !CaptureTargets.IsExcluded(ProcessName(handle)))
                 windows.Add(new CaptureWindow(handle, title.ToString()));
             return true;
         }, 0);
