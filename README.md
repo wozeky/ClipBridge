@@ -1,10 +1,13 @@
 # RollClip
 
-**Klibi al, kes, Discord’a yapıştır.** RollClip, Windows 11 x64 için ücretsiz ve MIT lisanslı bir klip uygulamasıdır. F8 ile son anları kaydedin veya başka bir kayıt uygulamasından MP4 sürükleyin. Orijinal klip bilgisayarınızda kalır.
+**Klibi al, kes, Discord’a yapıştır.** RollClip, Windows 11 x64 için ücretsiz, MIT lisanslı bir oyun klipçisidir. Hesap açmadan F8 ile klip alın veya mevcut MP4’leri sürükleyin. Orijinal klip bilgisayarınızda kalır. Yakalama için OBS kurulumu gerekmez. RollClip, Windows yakalama API’lerini ve paketle gelen FFmpeg’i kullanır.
 
-## İndir ve çalıştır
+## İndir
 
-[RollClip-win-x64.zip’i indir](https://github.com/wozeky/RollClip/releases/download/v0.2.0/RollClip-win-x64.zip). ZIP'in tamamını bir klasöre çıkarıp `RollClip.exe` dosyasını çalıştırın. Paket .NET çalışma zamanını içerir. Erken sürüm dijital olarak imzalanmamıştır. Derlemelerin test sonuçları [Windows Actions](https://github.com/wozeky/RollClip/actions/workflows/windows.yml) sayfasında yer alır.
+- **[Windows yükleyicisi](https://github.com/wozeky/RollClip/releases/download/v0.3.0/RollClip-Setup-win-x64.exe)** · Türkçe/İngilizce, kullanıcı hesabına kurulum ve Başlat menüsü kısayolu.
+- **[Taşınabilir Windows ZIP](https://github.com/wozeky/RollClip/releases/download/v0.3.0/RollClip-win-x64.zip)** · ZIP’in tamamını çıkarıp `RollClip.exe` dosyasını çalıştırın.
+
+İki paket de bu ön sürümde imzasızdır. SHA-256 dosyaları [Release sayfasında](https://github.com/wozeky/RollClip/releases/tag/v0.3.0) bulunur. **Ayarlar → Dil** üzerinden Türkçe ve İngilizce temel arayüz arasında geçebilirsiniz. Dili kaydedip uygulamayı yeniden açın. Bazı hata ve tanılama metinleri Türkçe kalır.
 
 ## Ekran görüntüleri
 
@@ -25,7 +28,7 @@ kullanır. İlk açılış eski Windows başlangıç kaydını RollClip'e taşı
 ## Discord’a klip gönder
 
 1. F8 ile bir klip alın veya MP4’ü RollClip’e sürükleyip bırakın. **Ayarlar → Klip kaynağı** bölümünden ShadowPlay veya başka bir kayıt uygulamasının klasörünü de izleyebilirsiniz. Yeni, tamamlanmış MP4’ler yerel arşive alınır. İzlenen klasörden gelen klipler otomatik yüklenmez.
-2. **Kes ve paylaş** ekranında klibi izleyin ve başlangıç/bitiş noktasını seçin. **Discord için dosyayı kopyala** en fazla 19 MB’lık MP4’ü panoya alır. Discord’da `Ctrl+V` ile ekleyin. Zaten sığıyorsa ve düzenleme istemediyseniz orijinal MP4 doğrudan kopyalanır. Hazırlanan Discord kopyaları **Videolar → RollClip → Paylaşım** klasöründe kalır.
+2. **Kes ve paylaş** ekranında klibi izleyin ve başlangıç/bitiş noktasını seçin. **Paylaşım dosyasını kopyala** seçilen boyut sınırına uygun MP4’ü panoya alır. Varsayılan Discord ön ayarı 19 MB, diğer hedefler 10/50/100/500 MB. Alıcının veya hizmetin dosya sınırına göre seçin. Zaman çizelgesindeki yer imleri arşivde saklanır ve bir tıklamayla ilgili ana gider. Discord’da `Ctrl+V` ile ekleyin. Zaten sığıyorsa ve düzenleme istemediyseniz orijinal MP4 doğrudan kopyalanır. Hazırlanan Discord kopyaları **Videolar → RollClip → Paylaşım** klasöründe kalır.
 3. Uzun klipler için **Bağlantı oluştur** seçeneğini kullanabilirsiniz. Yalnızca istediğiniz kesiti yüklemek için önce **Kırpılmış kopyayı kaydet** deyin. Litterbox bağlantılarında arşiv bitiş saatini gösterir ve yeni bağlantı üretebilir.
 
 Kütüphane ve ayarlar `%LOCALAPPDATA%\RollClip` altında saklanır. Uygulama pencere kapatıldığında tepsiye iner. Tepsideki **Çıkış** RollClip’i kapatır. Bekleyen yüklemeler sonraki açılışta devam eder. Yerel video dosyaları korunur.
@@ -41,6 +44,15 @@ Kütüphane ve ayarlar `%LOCALAPPDATA%\RollClip` altında saklanır. Uygulama pe
 **Ayarlar → Kayıt kalitesi** bölümünde **Yüksek (1080p60)**, **Dengeli (1080p30)** veya **Hafif (720p30)** seçin. **Klip kısayolu** için F6–F11 kullanılabilir. Varsayılan F8’dir. İki ayar da sonraki kayıt oturumunda uygulanır.
 
 Yakalama yalnızca seçilen pencereyi hedefler. Kayıt, seçilen profil için sırasıyla NVIDIA NVENC ve AMD AMF donanım kodlamasını dener. Yazılımsal Media Foundation yedeği 720p30 kullanır. Windows Graphics Capture başlatılamazsa aynı pencere için Windows GDI denenir. GDI, donanım hızlandırmalı bazı oyunlarda boş görüntü verebilir. Kullanılan yakalama yöntemi, kodlayıcı ve kayıt biçimi durum satırında görünür.
+
+## Oyun profilleri ve yakalama
+
+Ana ekrandan oyun penceresini seçin. Kalite, süre, ses, etiket, yöntem ve otomatik başlatma ayarlarını belirleyip **Ayarlar → Seçili oyun için kaydet** deyin. Profil işlem adına bağlıdır ve ilgili oyun kaydı başlarken genel ayarların üzerine uygulanır. Bilinen başlatıcılar ve anti-cheat süreçleri pencere listesinden çıkarılır.
+
+- **Otomatik** pencere için WGC’yi, gerekirse GDI’ı dener. **WGC** ve **GDI** yalnızca seçili pencereye yöneliktir.
+- **DXGI** ekran 0’ın tamamını kaydeder. Başlamadan önce onay ister ve otomatik başlatma için kullanılmaz.
+- NVENC, AMF ve Intel QSV denenir. Donanım kodlama açılmazsa yazılımsal Media Foundation kullanılır. Video SDR olarak kaydedilir.
+- Klip diske yazılınca isteğe bağlı Windows bildirimi ve ses çalar. Windows bildirim ayarları ve Rahatsız Etmeyin modu bildirimin görünmesini etkileyebilir.
 
 ## Google Drive arşivi
 
@@ -61,7 +73,7 @@ Kıyaslama için aynı çözünürlük, FPS, klip süresi ve bağlantıyla Shado
 - Kaçırılan klipler, boş görüntü ve ses senkronu. Arka arkaya iki F8, Alt+Tab ve oyunu kapatıp açmayı da deneyin.
 - Kayıt kapalı ve açıkken yüzde birlik düşük FPS, 95. yüzdelik kare süresi ve süreçlerin toplam CPU/GPU kullanımı.
 
-Windows CI masaüstü yakalamayı ve Discord çıktısını sınar. Donanım kodlama, seçili oyun sesi ve Discord’da gerçek oynatma için fiziksel Windows doğrulaması gerekir.
+Windows CI masaüstü yakalamayı, Discord çıktısını ve yükleyicinin sessiz kurulum/kaldırma akışını sınar. Donanım kodlama, seçili oyun sesi ve Discord’da gerçek oynatma için fiziksel Windows doğrulaması gerekir.
 
 ## Tanılama raporu
 
