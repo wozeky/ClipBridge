@@ -19,7 +19,11 @@ public sealed record Clip(
     Guid Id, string FilePath, string Name, DateTimeOffset CreatedAt, long Bytes, TimeSpan? Duration,
     string? Game = null, Provider Provider = Provider.Litterbox, UploadState State = UploadState.Local,
     string? ShareUrl = null, string? Error = null, int Attempts = 0, DateTimeOffset? NextAttempt = null,
-    UploadTiming? Timing = null, Provider? FallbackProvider = null, string? PendingArchiveFolder = null);
+    UploadTiming? Timing = null, Provider? FallbackProvider = null, string? PendingArchiveFolder = null,
+    DateTimeOffset? LinkExpiresAt = null, bool SeparateMicrophone = false, string? ImportKey = null)
+{
+    public bool LinkExpired(DateTimeOffset now) => LinkExpiresAt is { } expires && expires <= now;
+}
 
 public sealed record UploadTiming(TimeSpan BodyWritten, TimeSpan LinkReady)
 {
