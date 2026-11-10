@@ -279,6 +279,25 @@ public partial class MainWindow : Window
             }
             ShowPanel("home");
             ExportPng("");
+            void VerifyTrack(System.Windows.Controls.Control control, string name, string brush)
+            {
+                control.ApplyTemplate();
+                if (control.Template.FindName(name, control) is not System.Windows.Controls.Border track ||
+                    track.Background is not SolidColorBrush actual ||
+                    control.FindResource(brush) is not SolidColorBrush expected || actual.Color != expected.Color)
+                    throw new InvalidOperationException($"Incorrect switch color: {name}, {brush}.");
+            }
+            VerifyTrack(ArmButton, "ArmTrack", "SwitchOffBrush");
+            VerifyTrack(AutoUpload, "Track", "SwitchOffBrush");
+            SetReplayArmed(true);
+            AutoUpload.IsChecked = true;
+            VerifyTrack(ArmButton, "ArmTrack", "SwitchOnBrush");
+            VerifyTrack(AutoUpload, "Track", "SwitchOnBrush");
+            ExportPng("switches-on");
+            SetReplayArmed(false);
+            AutoUpload.IsChecked = false;
+            VerifyTrack(ArmButton, "ArmTrack", "SwitchOffBrush");
+            VerifyTrack(AutoUpload, "Track", "SwitchOffBrush");
             if (!CaptureTarget.IsVisible || !ReplayLength.IsVisible || HomePanel.ActualHeight <= 0)
                 throw new InvalidOperationException("Home controls are not visible.");
             if (CaptureTarget.Template.FindName("DropDownToggle", CaptureTarget) is not FrameworkElement toggle
@@ -659,6 +678,7 @@ public partial class MainWindow : Window
     {
         _armed = armed;
         UpdateReplayKeyLabel();
+        ArmButton.Tag = armed ? "Armed" : null;
         ArmButton.Content = armed ? T("Kaydı durdur", "Stop capture") : T("Kaydı başlat", "Start capture");
         if (_windowSource is not null)
         {
