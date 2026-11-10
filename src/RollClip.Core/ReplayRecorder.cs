@@ -92,6 +92,7 @@ public sealed class ReplayRecorder : IAsyncDisposable
 
     public async Task<string> SaveAsync(string destination, CancellationToken cancellationToken)
     {
+        var outputPath = Path.GetFullPath(destination);
         await _gate.WaitAsync(cancellationToken);
         try
         {
@@ -108,7 +109,7 @@ public sealed class ReplayRecorder : IAsyncDisposable
             }
             await File.WriteAllTextAsync(Path.Combine(_directory, "clip.ffconcat"), manifest.ToString(), cancellationToken);
 
-            var temporary = destination + ".partial";
+            var temporary = outputPath + ".partial";
             try
             {
                 using var mux = Launch(_ffmpeg, _directory,
@@ -130,7 +131,7 @@ public sealed class ReplayRecorder : IAsyncDisposable
                 }
                 if (mux.ExitCode != 0 || Mp4.ReadDuration(temporary) is null)
                     throw new CaptureException("MP4 kaydedilemedi. " + await errors);
-                File.Move(temporary, destination);
+                File.Move(temporary, outputPath);
                 return destination;
             }
             finally

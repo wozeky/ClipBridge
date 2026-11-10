@@ -9,8 +9,9 @@ if (args is ["replay-smoke", var executable, var outputDirectory])
     Directory.CreateDirectory(outputDirectory);
     using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(30));
     await using var recorder = new ReplayRecorder(executable, outputDirectory, 3,
-        ["-re", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=30", "-f", "lavfi", "-i", "sine=frequency=440"],
-        ["-c:v", OperatingSystem.IsWindows() ? "mpeg2video" : "libx264", "-c:a", "aac", "-g", "30",
+        ["-re", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=30", "-f", "lavfi", "-i", "sine=frequency=440",
+            "-f", "lavfi", "-i", "sine=frequency=880"],
+        ["-map", "0:v:0", "-map", "1:a:0", "-map", "2:a:0", "-c:v", OperatingSystem.IsWindows() ? "mpeg2video" : "libx264", "-c:a", "aac", "-g", "30",
         "-bf", "0", "-force_key_frames", "expr:gte(t,n_forced)"]);
     await recorder.WaitUntilReadyAsync(stop.Token);
     await Task.Delay(4500, stop.Token);
@@ -24,6 +25,18 @@ if (args is ["replay-smoke", var executable, var outputDirectory])
         Console.WriteLine($"{clip} · {duration.TotalSeconds:F2}s");
         await Task.Delay(1200, stop.Token);
     }
+    return 0;
+}
+
+if (args is ["export-smoke", var ffmpeg, var source, var output])
+{
+    using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+    await ClipExport.CreateAsync(ffmpeg, source, output, 0.25, 1.75, discord: true,
+        mixMicrophone: true, mute: false, stop.Token, OperatingSystem.IsWindows() ? "h264_mf" : "libx264");
+    if (new FileInfo(output).Length > ClipExport.DiscordBytes ||
+        Mp4.ReadDuration(output) is not { TotalSeconds: >= 1.4 and <= 1.65 })
+        throw new InvalidDataException("Discord export did not meet the size or trim target.");
+    Console.WriteLine($"Discord MP4 validated: {new FileInfo(output).Length} bytes.");
     return 0;
 }
 

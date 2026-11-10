@@ -18,11 +18,11 @@ public sealed class UploadQueue
     public event Action<Clip>? Changed;
     public event Action<Guid, double>? Progress;
 
-    public Clip? Enqueue(Guid id, Provider provider, Provider? fallback = null)
+    public Clip? Enqueue(Guid id, Provider provider, Provider? fallback = null, bool renew = false)
     {
         if (!_providers.ContainsKey(provider) || (fallback is { } other && (other == provider || !_providers.ContainsKey(other))))
             throw new ArgumentOutOfRangeException(nameof(provider));
-        var clip = _store.Change(id, current => current.State is UploadState.Local or UploadState.Failed
+        var clip = _store.Change(id, current => (current.State is UploadState.Local or UploadState.Failed || (renew && current.State == UploadState.Uploaded))
             ? current with { State = UploadState.Queued, Provider = provider, Attempts = 0, NextAttempt = null, Error = null,
                 FallbackProvider = fallback }
             : null);
@@ -74,7 +74,8 @@ public sealed class UploadQueue
             var progress = new CallbackProgress(percent => Progress?.Invoke(id, percent));
             var uploaded = await provider.UploadAsync(clip.FilePath, _speedLimit(), progress, cancellationToken);
             Update(id, current => current with { State = UploadState.Uploaded, ShareUrl = uploaded.ShareUrl.AbsoluteUri, FallbackProvider = null,
-                Timing = uploaded.Timing, Error = null, NextAttempt = null });
+                Timing = uploaded.Timing, LinkExpiresAt = clip.Provider == Provider.Litterbox ? DateTimeOffset.UtcNow.AddHours(24) : null,
+                Error = null, NextAttempt = null });
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

@@ -1,0 +1,38 @@
+<Window x:Class="RollClip.App.ClipEditor"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="RollClip · Klibi hazırla" Width="720" Height="560" MinWidth="560" MinHeight="470"
+ WindowStartupLocation="CenterOwner" Background="#151715" Foreground="#F1F5EF" FontSize="13">
+ <Grid Margin="20">
+  <Grid.RowDefinitions>
+   <RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+   <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+  </Grid.RowDefinitions>
+  <Border Background="#080908" CornerRadius="8">
+   <MediaElement x:Name="Preview" LoadedBehavior="Manual" UnloadedBehavior="Close" Stretch="Uniform"
+    MediaOpened="Preview_Opened" MediaFailed="Preview_Failed" MediaEnded="Preview_Ended"/>
+  </Border>
+  <DockPanel Grid.Row="1" Margin="0,10,0,0">
+   <Button x:Name="PlayButton" Content="Oynat" Width="78" Click="Play_Click" IsEnabled="False" Margin="0,0,12,0"/>
+   <TextBlock x:Name="PositionText" DockPanel.Dock="Right" Width="90" Margin="12,0,0,0" VerticalAlignment="Center"/>
+   <Slider x:Name="Timeline" Minimum="0" IsMoveToPointEnabled="True" ValueChanged="Timeline_Changed"
+    AutomationProperties.Name="Önizleme konumu"/>
+  </DockPanel>
+  <WrapPanel Grid.Row="2" Margin="0,12,0,0">
+   <Button Content="Başlangıcı burada yap" Click="SetStart_Click" Padding="8,4" Margin="0,0,8,5"/>
+   <TextBox x:Name="StartBox" Width="65" Margin="0,0,14,5" AutomationProperties.Name="Başlangıç, saniye"/>
+   <Button Content="Bitişi burada yap" Click="SetEnd_Click" Padding="8,4" Margin="0,0,8,5"/>
+   <TextBox x:Name="EndBox" Width="65" Margin="0,0,14,5" AutomationProperties.Name="Bitiş, saniye"/>
+   <CheckBox x:Name="IncludeMic" Content="Mikrofonu ekle" IsChecked="True" Foreground="#F1F5EF" Margin="0,4,12,5"/>
+   <CheckBox x:Name="Mute" Content="Sesi kapat" Foreground="#F1F5EF" Margin="0,4,0,5"/>
+  </WrapPanel>
+  <WrapPanel Grid.Row="3" Margin="0,9,0,0">
+   <Button x:Name="DiscordButton" Content="Discord için dosyayı kopyala" Click="Discord_Click" Padding="12,6" Margin="0,0,8,5"/>
+   <Button x:Name="SaveButton" Content="Kırpılmış kopyayı kaydet" Click="Save_Click" Padding="12,6" Margin="0,0,8,5"/>
+   <Button x:Name="OpenCopyButton" Content="Paylaşım kopyasını aç" Click="OpenCopy_Click" Padding="10,6" Margin="0,0,8,5" IsEnabled="False"/>
+   <Button x:Name="CancelButton" Content="İptal" Click="Cancel_Click" Padding="10,6" IsEnabled="False"/>
+  </WrapPanel>
+  <TextBlock x:Name="Feedback" Grid.Row="4" Margin="0,6,0,0" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"
+   Text="Başlangıç ve bitiş saniye cinsinden. Discord kopyası en fazla 19 MB olur."/>
+ </Grid>
+</Window>

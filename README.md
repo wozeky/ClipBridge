@@ -1,10 +1,10 @@
 # RollClip
 
-Windows 11 x64 için ücretsiz, MIT lisanslı klip arşivi ve paylaşım uygulaması. Windows'un pencere yakalama API'siyle F8 klipleri alabilir veya hazır bir MP4'ü içe aktarabilirsiniz. Kayıt motoru ZIP paketinin içindedir.
+**Klibi al, kes, Discord’a yapıştır.** RollClip, Windows 11 x64 için ücretsiz ve MIT lisanslı bir klip uygulamasıdır. F8 ile son anları kaydedin veya başka bir kayıt uygulamasından MP4 sürükleyin. Orijinal klip bilgisayarınızda kalır.
 
 ## İndir ve çalıştır
 
-[RollClip-win-x64.zip’i indir](https://github.com/wozeky/RollClip/releases/download/v0.1.0/RollClip-win-x64.zip). ZIP'in tamamını bir klasöre çıkarıp `RollClip.exe` dosyasını çalıştırın. Paket .NET çalışma zamanını içerir. Erken sürüm dijital olarak imzalanmamıştır. Derlemelerin test sonuçları [Windows Actions](https://github.com/wozeky/RollClip/actions/workflows/windows.yml) sayfasında yer alır.
+[RollClip-win-x64.zip’i indir](https://github.com/wozeky/RollClip/releases/download/v0.2.0/RollClip-win-x64.zip). ZIP'in tamamını bir klasöre çıkarıp `RollClip.exe` dosyasını çalıştırın. Paket .NET çalışma zamanını içerir. Erken sürüm dijital olarak imzalanmamıştır. Derlemelerin test sonuçları [Windows Actions](https://github.com/wozeky/RollClip/actions/workflows/windows.yml) sayfasında yer alır.
 
 ## Ekran görüntüleri
 
@@ -22,19 +22,19 @@ veri ve video klasörleri yerinde kullanılır. Böylece arşiv yolları, ayarla
 klipler ve bekleyen yüklemeler korunur. Yeni kurulumlar RollClip klasörlerini
 kullanır. İlk açılış eski Windows başlangıç kaydını RollClip'e taşır.
 
-## İlk klip
+## Discord’a klip gönder
 
-1. **MP4 içe aktar** ile yerel bir video seçin. RollClip orijinali korur, Windows Videolar klasörü altındaki `RollClip` klasörüne bir kopya koyar.
-2. **Yükle / yeniden dene** ile yüklemeyi başlatın. Her yeni klibin arka planda yüklenmesi için **Ayarlar → Yeni klipleri otomatik yükle** seçeneğini etkinleştirin ve ayarları kaydedin.
-3. Hazır bağlantıyı Discord'a yapıştırın. Varsayılan pano ayarı bağlantıyı otomatik kopyalar. Önceki bağlantılar arşivden tekrar kopyalanabilir.
+1. F8 ile bir klip alın veya MP4’ü RollClip’e sürükleyip bırakın. **Ayarlar → Klip kaynağı** bölümünden ShadowPlay veya başka bir kayıt uygulamasının klasörünü de izleyebilirsiniz. Yeni, tamamlanmış MP4’ler yerel arşive alınır. İzlenen klasörden gelen klipler otomatik yüklenmez.
+2. **Kes ve paylaş** ekranında klibi izleyin ve başlangıç/bitiş noktasını seçin. **Discord için dosyayı kopyala** en fazla 19 MB’lık MP4’ü panoya alır. Discord’da `Ctrl+V` ile ekleyin. Zaten sığıyorsa ve düzenleme istemediyseniz orijinal MP4 doğrudan kopyalanır. Hazırlanan Discord kopyaları **Videolar → RollClip → Paylaşım** klasöründe kalır.
+3. Uzun klipler için **Bağlantı oluştur** seçeneğini kullanabilirsiniz. Yalnızca istediğiniz kesiti yüklemek için önce **Kırpılmış kopyayı kaydet** deyin. Litterbox bağlantılarında arşiv bitiş saatini gösterir ve yeni bağlantı üretebilir.
 
-Kütüphane ve ayarlar `%LOCALAPPDATA%\RollClip` altında saklanır. Uygulama pencere kapatıldığında tepsiye iner. Tepsideki **Çıkış** RollClip'i kapatır. Bekleyen yüklemeler sonraki açılışta devam eder. Önceki isteğin sunucuya ulaşıp ulaşmadığı belirsiz kalan kesintilerde arşivden tekrar deneyebilirsiniz. Yerel video dosyaları korunur.
+Kütüphane ve ayarlar `%LOCALAPPDATA%\RollClip` altında saklanır. Uygulama pencere kapatıldığında tepsiye iner. Tepsideki **Çıkış** RollClip’i kapatır. Bekleyen yüklemeler sonraki açılışta devam eder. Yerel video dosyaları korunur.
 
 ## F8 ile replay
 
 1. Oyunu açın. RollClip'de **Pencereleri yenile** ile oyun penceresini seçin.
-2. İstiyorsanız **Yeni klipleri otomatik yükle** seçeneğini açın. **Sistem sesi** açıkken Discord ve diğer uygulamaların sesi de kayda girebilir. Mikrofon ayrı bir seçenektir.
-3. **Kaydı başlat** düğmesine basın. Varsayılan hedef 60 saniyedir. Tampon doldukça daha uzun klip alabilirsiniz.
+2. Ayarlarda **Yalnız seçili oyunun sesi** ile oyun işleminin sesini alın. **Sistem sesi** bütün varsayılan çıkışı kaydeder. Mikrofonu ayrıca açarsanız ikinci ses izi olarak saklanır ve paylaşırken dahil edilebilir.
+3. **Kaydı başlat** düğmesine basın. İsterseniz oyun penceresi seçiliyken **Seçilen oyun açılınca kaydı başlat** ayarını kaydedin. **Test klibi al ve kontrol et** seçeneği, otomatik yükleme açık olsa bile yerel bir klip açar. Tampon doldukça daha uzun klip alabilirsiniz.
 4. **F8** ile son tamamlanan parçalar MP4'e kaydolur. Kesim yaklaşık bir saniyelik parçalara göre yapılır. Otomatik yükleme açıksa bağlantı arşive eklenir ve pano ayarı açıksa panoya kopyalanır.
 5. **Kaydı durdur** ile geçici tamponu kapatın. Kalıcı MP4 dosyaları Videolar altındaki `RollClip` klasöründe kalır.
 
@@ -52,6 +52,16 @@ Yakalama yalnızca seçilen pencereyi hedefler. Kayıt, seçilen profil için s�
 RollClip yerel kopyayı oluşturur. Drive’a yüklemeyi Google Drive for desktop yapar. Eşitleme tamamlanınca dosyayı Drive web arayüzünde kontrol edin. Paylaşım bağlantısının sona ermesi arşivdeki MP4’ü etkilemez.
 
 ![RollClip uzun süreli arşiv ayarları](docs/screenshots/archive.png)
+
+## Oyun içi doğrulama
+
+Kıyaslama için aynı çözünürlük, FPS, klip süresi ve bağlantıyla ShadowPlay, Moments, Medal ve RollClip’i deneyin. Valorant, CS2 ve bir GPU ağırlıklı oyunda şu değerleri kaydedin:
+
+- F8’den diskte oynatılabilir dosyaya ve Discord’da izlenebilir klibe kadar geçen süre.
+- Kaçırılan klipler, boş görüntü ve ses senkronu. Arka arkaya iki F8, Alt+Tab ve oyunu kapatıp açmayı da deneyin.
+- Kayıt kapalı ve açıkken yüzde birlik düşük FPS, 95. yüzdelik kare süresi ve süreçlerin toplam CPU/GPU kullanımı.
+
+Windows CI masaüstü yakalamayı ve Discord çıktısını sınar. Donanım kodlama, seçili oyun sesi ve Discord’da gerçek oynatma için fiziksel Windows doğrulaması gerekir.
 
 ## Tanılama raporu
 

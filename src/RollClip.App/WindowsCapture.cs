@@ -21,11 +21,17 @@ internal sealed class WindowsCapture : IAsyncDisposable
     public (int Width, int Height, int Fps) VideoFormat { get; private set; }
     public string FormatLabel => FormattableString.Invariant(
         $"{VideoFormat.Width}x{VideoFormat.Height} @ {VideoFormat.Fps} FPS");
-    public Task Completion => _recorder!.Completion;
+    public bool SeparateMicrophone { get; private set; }
+    public Task Completion => WatchCompletionAsync(_recorder!.Completion, _audio.Select(feed => feed.Failure).ToArray());
+
+    private static async Task WatchCompletionAsync(Task recorder, Task[] failures)
+    {
+        await await Task.WhenAny(failures.Prepend(recorder));
+    }
     public TimeSpan? BufferedDuration => _recorder?.BufferedDuration;
 
     public async Task StartAsync(nint window, string cache, int seconds, bool desktopAudio, bool microphone,
-        CancellationToken cancellationToken, RecordingQuality quality = RecordingQuality.High)
+        CancellationToken cancellationToken, RecordingQuality quality = RecordingQuality.High, bool gameOnlyAudio = false)
     {
         var executable = Path.Combine(AppContext.BaseDirectory, "ffmpeg", "bin", "ffmpeg.exe");
         if (!File.Exists(executable))
@@ -52,7 +58,13 @@ internal sealed class WindowsCapture : IAsyncDisposable
             startup.CancelAfter(TimeSpan.FromSeconds(12));
             try
             {
-                if (desktopAudio)
+                if (gameOnlyAudio)
+                {
+                    var game = new ProcessLoopbackCapture(ProcessId(window));
+                    _audio.Add(new AudioFeed(game));
+                    await Task.Run(game.StartRecording, startup.Token);
+                }
+                else if (desktopAudio)
                     _audio.Add(new AudioFeed(new WasapiLoopbackCapture()));
                 if (microphone)
                     _audio.Add(new AudioFeed(new WasapiCapture()));
@@ -82,11 +94,11 @@ internal sealed class WindowsCapture : IAsyncDisposable
                 }
                 args.AddRange(["-r", fpsArg, "-fps_mode", "cfr", "-b:v", bitrate, "-maxrate", maxRate, "-bufsize", maxRate,
                     "-g", fpsArg, "-bf", "0", "-force_key_frames", "expr:gte(t,n_forced)"]);
-                if (_audio.Count == 1)
-                    args.AddRange(["-map", "1:a:0", "-c:a", "aac", "-b:a", "160k", "-ar", "48000"]);
-                if (_audio.Count == 2)
-                    args.AddRange(["-filter_complex", "[1:a][2:a]amix=inputs=2:duration=longest[mix]", "-map", "[mix]",
-                        "-c:a", "aac", "-b:a", "160k", "-ar", "48000"]);
+                for (var index = 1; index <= _audio.Count; index++)
+                    args.AddRange(["-map", FormattableString.Invariant($"{index}:a:0")]);
+                if (_audio.Count > 0)
+                    args.AddRange(["-c:a", "aac", "-b:a", "160k", "-ar", "48000"]);
+                SeparateMicrophone = _audio.Count == 2;
 
                 _recorder = new ReplayRecorder(executable, cache, seconds, inputs, args);
                 await _recorder.WaitUntilReadyAsync(startup.Token);
@@ -162,15 +174,41 @@ internal sealed class WindowsCapture : IAsyncDisposable
 
     internal sealed record CaptureWindow(nint Handle, string Title);
 
+    private static uint ProcessId(nint window)
+    {
+        GetWindowThreadProcessId(window, out var processId);
+        return processId;
+    }
+
+    public static bool WindowExists(nint window) => window != 0 && IsWindow(window);
+
+    public static string? ProcessName(nint window)
+    {
+        var processId = window == 0 ? 0 : ProcessId(window);
+        if (processId == 0)
+            return null;
+        try
+        {
+            using var process = Process.GetProcessById((int)processId);
+            return process.ProcessName;
+        }
+        catch (Exception error) when (error is ArgumentException or InvalidOperationException or Win32Exception)
+        {
+            return null;
+        }
+    }
+
     private sealed class AudioFeed : IAsyncDisposable
     {
-        private readonly WasapiCapture _capture;
+        private readonly IWaveIn _capture;
         private readonly NamedPipeServerStream _pipe;
         private readonly BufferedWaveProvider _buffer;
         private readonly CancellationTokenSource _stop = new();
         private readonly Task _pump;
 
-        public AudioFeed(WasapiCapture capture)
+        private readonly TaskCompletionSource _failure = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public AudioFeed(IWaveIn capture)
         {
             _capture = capture;
             try
@@ -194,6 +232,7 @@ internal sealed class WindowsCapture : IAsyncDisposable
                     format.SampleRate.ToString(CultureInfo.InvariantCulture), "-ac",
                     format.Channels.ToString(CultureInfo.InvariantCulture), "-i", @"\\.\pipe\" + name];
                 capture.DataAvailable += OnData;
+                capture.RecordingStopped += OnRecordingStopped;
                 _pump = Task.Run(PumpAsync);
             }
             catch
@@ -204,6 +243,13 @@ internal sealed class WindowsCapture : IAsyncDisposable
         }
 
         public string[] Arguments { get; }
+        public Task Failure => _failure.Task;
+
+        private void OnRecordingStopped(object? sender, StoppedEventArgs args)
+        {
+            if (args.Exception is { } error && !_stop.IsCancellationRequested)
+                _failure.TrySetException(new CaptureException("Ses kaynağı durdu. " + error.Message));
+        }
 
         private void OnData(object? sender, WaveInEventArgs args) => _buffer.AddSamples(args.Buffer, 0, args.BytesRecorded);
 
@@ -234,6 +280,11 @@ internal sealed class WindowsCapture : IAsyncDisposable
             }
             catch (OperationCanceledException) when (_stop.IsCancellationRequested) { }
             catch (IOException) when (!_pipe.IsConnected || _stop.IsCancellationRequested) { }
+            catch (Exception error) when (error is IOException or COMException or InvalidOperationException or TimeoutException)
+            {
+                if (!_stop.IsCancellationRequested)
+                    _failure.TrySetException(new CaptureException("Ses kaynağı başlatılamadı. " + error.Message));
+            }
             finally { _pipe.Dispose(); }
         }
 
@@ -245,6 +296,7 @@ internal sealed class WindowsCapture : IAsyncDisposable
             finally
             {
                 _capture.DataAvailable -= OnData;
+                _capture.RecordingStopped -= OnRecordingStopped;
                 _capture.Dispose();
                 _stop.Dispose();
             }
@@ -255,6 +307,7 @@ internal sealed class WindowsCapture : IAsyncDisposable
 
     [DllImport("user32.dll")] private static extern bool EnumWindows(EnumWindowsProc callback, nint parameter);
     [DllImport("user32.dll")] private static extern bool IsWindow(nint window);
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(nint window, out uint processId);
     [DllImport("user32.dll")] private static extern bool IsWindowVisible(nint window);
     [DllImport("user32.dll")] private static extern bool IsIconic(nint window);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
