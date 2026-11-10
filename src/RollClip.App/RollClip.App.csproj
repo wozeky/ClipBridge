@@ -17,6 +17,7 @@
     <Using Remove="System.Drawing" />
     <None Include="../../LICENSE" Link="LICENSE" CopyToPublishDirectory="PreserveNewest" />
     <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
+    <None Include="../../docs/licenses/FluentSystemIcons.txt" Link="licenses/FluentSystemIcons.txt" CopyToPublishDirectory="PreserveNewest" />
     <None Include="../../docs/licenses/WKI-Clipper.txt" Link="licenses/WKI-Clipper.txt" CopyToPublishDirectory="PreserveNewest" />
     <None Include="../../docs/licenses/NAudio.txt" Link="licenses/NAudio.txt" CopyToPublishDirectory="PreserveNewest" />
     <ProjectReference Include="../RollClip.Core/RollClip.Core.csproj" />

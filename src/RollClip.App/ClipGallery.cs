@@ -100,6 +100,7 @@ public partial class MainWindow
     {
         RefreshButtons();
         var row = _galleryRows.FirstOrDefault(item => item.Clip.Id == _gallerySelection);
+        GallerySelection.DataContext = row;
         GallerySelection.Text = row is null ? "" : string.Join(" · ", new[] { row.Title, row.ShareLabel }.OfType<string>());
     }
 

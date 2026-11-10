@@ -282,6 +282,14 @@ public partial class MainWindow : Window
                 using var output = File.Create(Path.ChangeExtension(_smokeMarker!, suffix + ".png"));
                 encoder.Save(output);
             }
+            void VerifyIcon(System.Windows.Controls.ContentControl icon, string resource)
+            {
+                icon.ApplyTemplate();
+                if (icon.Template.FindName("IconPath", icon) is not System.Windows.Shapes.Path path ||
+                    !ReferenceEquals(path.Data, FindResource(resource)) || path.Fill is null)
+                    throw new InvalidOperationException($"The icon did not render the expected Fluent geometry: {resource}.");
+            }
+
             ShowPanel("home");
             ExportPng("");
             void VerifySwitch(System.Windows.Controls.Control control, string name, string knobName, bool on)
@@ -317,6 +325,17 @@ public partial class MainWindow : Window
             if (CaptureTarget.Template.FindName("DropDownToggle", CaptureTarget) is not FrameworkElement toggle
                 || toggle.ActualWidth < CaptureTarget.ActualWidth - 3)
                 throw new InvalidOperationException("The source selector surface does not fill its hit target.");
+            var comboToggle = (System.Windows.Controls.Primitives.ToggleButton)toggle;
+            comboToggle.ApplyTemplate();
+            if (comboToggle.Template.FindName("DropDownChevron", comboToggle) is not System.Windows.Controls.ContentControl chevron)
+                throw new InvalidOperationException("The selector is missing its Fluent chevron.");
+            VerifyIcon(chevron, "FluentChevronDown");
+            comboToggle.IsChecked = true;
+            if (!CaptureTarget.IsDropDownOpen)
+                throw new InvalidOperationException("The selector no longer opens from its toggle.");
+            comboToggle.IsChecked = false;
+            if (CaptureTarget.IsDropDownOpen)
+                throw new InvalidOperationException("The selector no longer closes from its toggle.");
             SettingsNav.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
             ExportPng("settings");
             ArchiveFolderBox.BringIntoView();
@@ -342,6 +361,12 @@ public partial class MainWindow : Window
                 throw new InvalidOperationException("Could not restore default settings in the isolated smoke profile.");
             StatusMessage.Text = "";
             ShowPanel("library");
+            UpdateLayout();
+            VerifyIcon(FavoriteFilterIcon, "FluentStar");
+            GalleryFavorites.IsChecked = true;
+            VerifyIcon(FavoriteFilterIcon, "FluentStarFilled");
+            GalleryFavorites.IsChecked = false;
+            VerifyIcon(GalleryViewIcon, "FluentList");
             var fixtureFolder = Path.Combine(Path.GetDirectoryName(_smokeMarker!)!, "rollclip-replay");
             var firstReplay = Path.Combine(fixtureFolder, "replay-0.mp4");
             var secondReplay = Path.Combine(fixtureFolder, "replay-1.mp4");
@@ -362,6 +387,7 @@ public partial class MainWindow : Window
                     throw new InvalidOperationException("Gallery text filtering did not find the correct clip.");
                 GallerySearch.Clear();
                 GalleryGrid.IsChecked = true;
+                VerifyIcon(GalleryViewIcon, "FluentGrid");
                 RefreshLibrary(first.Id);
                 if (Library.Items.Count != 1 || _galleryRows.Count != 2 || SelectedClip?.Id != first.Id)
                     throw new InvalidOperationException("Gallery grid or clip selection failed.");
@@ -377,7 +403,30 @@ public partial class MainWindow : Window
             DiagnosticsButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
             if (!Clipboard.GetText().Contains("Tanılama raporu", StringComparison.Ordinal))
                 throw new InvalidOperationException("Diagnostics clipboard failed.");
-            File.WriteAllText(_smokeMarker!, "PASS: native WPF home/settings/library, 3 window ratios, disabled actions, motion isolation, persisted profile and shortcut, diagnostics clipboard.");
+            VerifyIcon(MinimizeWindowIcon, "FluentMinimize");
+            VerifyIcon(CloseWindowIcon, "FluentDismiss");
+            VerifyIcon(MaximizeWindowIcon, "FluentMaximize");
+            var click = System.Windows.Controls.Primitives.ButtonBase.ClickEvent;
+            MaximizeWindowButton.RaiseEvent(new RoutedEventArgs(click));
+            if (WindowState != WindowState.Maximized)
+                throw new InvalidOperationException("The window did not maximize.");
+            VerifyIcon(MaximizeWindowIcon, "FluentRestore");
+            MaximizeWindowButton.RaiseEvent(new RoutedEventArgs(click));
+            if (WindowState != WindowState.Normal)
+                throw new InvalidOperationException("The window did not restore.");
+            VerifyIcon(MaximizeWindowIcon, "FluentMaximize");
+            MinimizeWindowButton.RaiseEvent(new RoutedEventArgs(click));
+            if (WindowState != WindowState.Minimized)
+                throw new InvalidOperationException("The window did not minimize.");
+            WindowState = WindowState.Normal;
+            var closing = false;
+            void CheckClose(object? _, CancelEventArgs closeArgs) { closing = true; closeArgs.Cancel = true; }
+            Closing += CheckClose;
+            CloseWindowButton.RaiseEvent(new RoutedEventArgs(click));
+            Closing -= CheckClose;
+            if (!closing)
+                throw new InvalidOperationException("The close control did not raise Closing.");
+            File.WriteAllText(_smokeMarker!, "PASS: native WPF home/settings/library, 3 window ratios, disabled actions, motion isolation, persisted profile and shortcut, diagnostics clipboard, Fluent icons and window controls.");
             Application.Current.Shutdown();
         }
         catch (Exception error)
@@ -1307,7 +1356,7 @@ public partial class MainWindow : Window
 
     private sealed record ClipRow(Clip Clip, bool English)
     {
-        public string Title => Clip.Favorite ? $"★ {Clip.Name}" : Clip.Name;
+        public string Title => Clip.Name;
         public string Details => $"{Duration} · {Size} · {Date}";
         public string GalleryStatus => string.Join(" · ", new[]
         {
