@@ -4,18 +4,20 @@
 
 ## İndir
 
-- **[Windows yükleyicisi](https://github.com/wozeky/RollClip/releases/download/v0.4.0/RollClip-Setup-win-x64.exe)** · Türkçe/İngilizce, kullanıcı hesabına kurulum ve Başlat menüsü kısayolu.
-- **[Taşınabilir Windows ZIP](https://github.com/wozeky/RollClip/releases/download/v0.4.0/RollClip-win-x64.zip)** · ZIP’in tamamını çıkarıp `RollClip.exe` dosyasını çalıştırın.
+- **[Windows yükleyicisi](https://github.com/wozeky/RollClip/releases/download/v0.4.1/RollClip-Setup-win-x64.exe)** · Türkçe/İngilizce, kullanıcı hesabına kurulum ve Başlat menüsü kısayolu.
+- **[Taşınabilir Windows ZIP](https://github.com/wozeky/RollClip/releases/download/v0.4.1/RollClip-win-x64.zip)** · ZIP’in tamamını çıkarıp `RollClip.exe` dosyasını çalıştırın.
 
-İki paket de bu ön sürümde imzasızdır. SHA-256 dosyaları [Release sayfasında](https://github.com/wozeky/RollClip/releases/tag/v0.4.0) bulunur. **Ayarlar → Dil** üzerinden Türkçe ve İngilizce temel arayüz arasında geçebilirsiniz. Dili kaydedip uygulamayı yeniden açın. Bazı hata ve tanılama metinleri Türkçe kalır.
+İki paket de bu ön sürümde imzasızdır. SHA-256 dosyaları [Release sayfasında](https://github.com/wozeky/RollClip/releases/tag/v0.4.1) bulunur. **Ayarlar → Dil** üzerinden Türkçe ve İngilizce temel arayüz arasında geçebilirsiniz. Dili kaydedip uygulamayı yeniden açın. Bazı hata ve tanılama metinleri Türkçe kalır.
 
 ## Ekran görüntüleri
 
-![RollClip ana ekranı](https://github.com/wozeky/RollClip/releases/download/v0.4.0/RollClip-Ana-Ekran.png)
+Görüntüler, Windows üzerinde çalışan RollClip v0.4.1’den alınmıştır.
+
+![RollClip ana ekranı](docs/screenshots/home.png)
 
 | Ayarlar | Klip arşivi |
 | --- | --- |
-| ![RollClip ayarları](https://github.com/wozeky/RollClip/releases/download/v0.4.0/RollClip-Ayarlar.png) | ![RollClip klip arşivi](https://github.com/wozeky/RollClip/releases/download/v0.4.0/RollClip-Klip-Galerisi.png) |
+| ![RollClip ayarları](docs/screenshots/settings.png) | ![RollClip klip arşivi](docs/screenshots/library.png) |
 
 ## ClipBridge'den geçiş
 
@@ -54,6 +56,10 @@ Ana ekrandan oyun penceresini seçin. Kalite, süre, ses, etiket, yöntem ve oto
 - NVENC, AMF ve Intel QSV denenir. Donanım kodlama açılmazsa yazılımsal Media Foundation kullanılır. Video SDR olarak kaydedilir.
 - Klip diske yazılınca isteğe bağlı Windows bildirimi ve ses çalar. Windows bildirim ayarları ve Rahatsız Etmeyin modu bildirimin görünmesini etkileyebilir.
 
+## v0.4.1 ile gelenler
+
+Pencere kontrolleri, galeri filtreleri, favoriler ve araç çubuğu Microsoft Fluent vektör simgelerine geçti. Pencere büyütüldüğünde geri yükleme simgesi gösterilir.
+
 ## v0.4.0 ile gelenler
 
 - **Galeri:** Grid/liste, isim araması, oyun/tarih/yükleme/favori filtreleri ve tarih/süre/boyut sıralaması. FFmpeg küçük resimleri yalnızca görünen kartlar için üretir ve dosya değişmediği sürece tekrar kullanır.
@@ -74,7 +80,7 @@ Windows CI temel WPF yerleşimini sınar. Farklı ekran ölçekleri, global kıs
 
 RollClip yerel kopyayı oluşturur. Drive’a yüklemeyi Google Drive for desktop yapar. Eşitleme tamamlanınca dosyayı Drive web arayüzünde kontrol edin. Paylaşım bağlantısının sona ermesi arşivdeki MP4’ü etkilemez.
 
-![RollClip uzun süreli arşiv ayarları](https://github.com/wozeky/RollClip/releases/download/v0.4.0/RollClip-Arsiv.png)
+![RollClip uzun süreli arşiv ayarları](docs/screenshots/archive.png)
 
 ## Oyun içi doğrulama
 
