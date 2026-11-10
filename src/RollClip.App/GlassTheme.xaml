@@ -1,5 +1,8 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <ResourceDictionary.MergedDictionaries>
+  <ResourceDictionary Source="FluentIcons.xaml"/>
+ </ResourceDictionary.MergedDictionaries>
  <SolidColorBrush x:Key="TextBrush" Color="#E8EBE8"/>
  <SolidColorBrush x:Key="MutedBrush" Color="#939894"/>
  <SolidColorBrush x:Key="NeonBrush" Color="#8FFF39"/>
@@ -97,7 +100,7 @@
   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBox">
    <Grid>
     <ToggleButton x:Name="DropDownToggle" Style="{x:Null}" OverridesDefaultStyle="True" Focusable="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
-     <ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border CornerRadius="20" Background="#AA080B08" BorderBrush="{StaticResource MetalRim}" BorderThickness="1"><TextBlock Text="⌄" HorizontalAlignment="Right" Margin="0,0,12,3" VerticalAlignment="Center"/></Border></ControlTemplate></ToggleButton.Template>
+     <ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border CornerRadius="20" Background="#AA080B08" BorderBrush="{StaticResource MetalRim}" BorderThickness="1"><ContentControl x:Name="DropDownChevron" Style="{StaticResource FluentMeasuredIcon}" Content="&#x2304;" Tag="{StaticResource FluentChevronDown}" Foreground="{StaticResource TextBrush}" HorizontalAlignment="Right" Margin="0,0,12,3" VerticalAlignment="Center"/></Border></ControlTemplate></ToggleButton.Template>
     </ToggleButton>
     <ContentPresenter IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" Margin="12,7,30,7" VerticalAlignment="Center"/>
     <TextBlock x:Name="Placeholder" Text="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" Foreground="{StaticResource MutedBrush}" Margin="12,7,30,7" VerticalAlignment="Center" IsHitTestVisible="False" Visibility="Collapsed"/>
