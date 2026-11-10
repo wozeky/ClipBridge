@@ -8,7 +8,9 @@
 
 - [Segra](https://github.com/Segergren/Segra) kayıt kalitesi ve kısayolu kullanıcı ayarlarına ayırır. [Snag dışa aktarma kodu](https://github.com/focatdev/snag/blob/main/internal/ffmpeg/ffmpeg.go) dönüştürme süreçlerini normalin altında öncelikle çalıştırır.
 
-RollClip bu desenleri kendi C# akışıyla uygular. Yukarıdaki klip uygulamalarından kaynak kod alınmadı.
+- [WKI Clipper](https://github.com/WKImods/WKI-Clipper/tree/528f370) 20 MB Discord dışa aktarma ve süreç bazlı WASAPI örneğidir. WASAPI’nin ham COM erişimi MIT lisanslı bu kaynaktan uyarlandı. Atıf ve lisans pakette `licenses/WKI-Clipper.txt` altında yer alır.
+
+RollClip’in klip düzenleyicisi ve boyuta göre yeniden kodlama akışı bu repo için uygulanmıştır.
 
 ## Uygulama
 
@@ -16,7 +18,7 @@ RollClip bu desenleri kendi C# akışıyla uygular. Yukarıdaki klip uygulamalar
 
 `ReplayRecorder` yaklaşık bir saniyelik anahtar kareli MPEG-TS parçaları kullanır. Yalnızca FFmpeg'in tamamlandı diye bildirdiği parçalar kayda alınır. Zaman aralığının dışına düşen geçici parçalar silinir. Klip kısayolu, eldeki parçaları yeniden kodlamadan MP4 olarak birleştirir. Windows’ta bu birleştirme süreci normalin altında öncelikle çalıştırılmaya çalışılır. Dışa aktarma bitmeden yerel arşive veya yükleme kuyruğuna giriş açılmaz. Gecikme ve süre sapması, son parçanın kapanması ve anahtar kare konumuna bağlıdır.
 
-Sistem sesi ve isteğe bağlı mikrofon, NAudio üzerinden Windows WASAPI ile alınır ve yerel adlandırılmış kanallardan FFmpeg'e aktarılır. İkisi seçilirse tek AAC izinde birleştirilir. Sistem sesi tüm varsayılan çıkışı kapsar. Oyuna özel ses ayrımı ve 1440p ayrı geliştirme işleridir.
+Sistem sesi ve isteğe bağlı mikrofon, NAudio üzerinden Windows WASAPI ile alınır ve yerel adlandırılmış kanallardan FFmpeg'e aktarılır. Sistem sesi tüm varsayılan çıkışı kapsar. Oyun sesi modu Windows WASAPI process loopback ile seçilen pencerenin işlem ağacını yakalar. Oyun veya sistem sesiyle mikrofon birlikte kaydedildiğinde MP4 iki AAC izi içerir. Paylaşım kopyasına mikrofon eklemek isteğe bağlıdır. Tek izli eski kayıtlarda tüm ses susturulabilir.
 
 ## Dağıtım ve doğrulama
 
