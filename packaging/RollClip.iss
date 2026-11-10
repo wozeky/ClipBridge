@@ -2,7 +2,7 @@
   #error PackageDir must point to the verified Windows publish directory
 #endif
 #ifndef ReleaseVersion
-  #define ReleaseVersion "0.3.0"
+  #define ReleaseVersion "0.3.1"
 #endif
 
 [Setup]
