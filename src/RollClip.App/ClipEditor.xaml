@@ -1,12 +1,12 @@
 <Window x:Class="RollClip.App.ClipEditor"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Title="RollClip · Klibi hazırla" Width="720" Height="560" MinWidth="560" MinHeight="470"
+ Title="RollClip · Klibi hazırla" Width="720" Height="620" MinWidth="560" MinHeight="540"
  WindowStartupLocation="CenterOwner" Background="#151715" Foreground="#F1F5EF" FontSize="13">
  <Grid Margin="20">
   <Grid.RowDefinitions>
    <RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-   <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+   <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
   </Grid.RowDefinitions>
   <Border Background="#080908" CornerRadius="8">
    <MediaElement x:Name="Preview" LoadedBehavior="Manual" UnloadedBehavior="Close" Stretch="Uniform"
@@ -18,7 +18,16 @@
    <Slider x:Name="Timeline" Minimum="0" IsMoveToPointEnabled="True" ValueChanged="Timeline_Changed"
     AutomationProperties.Name="Önizleme konumu"/>
   </DockPanel>
-  <WrapPanel Grid.Row="2" Margin="0,12,0,0">
+  <StackPanel Grid.Row="2" Margin="0,6,0,0">
+   <Canvas x:Name="BookmarkRail" Height="14" Background="#262A26" SizeChanged="BookmarkRail_Resized"
+    AutomationProperties.Name="Zaman çizelgesi yer imleri"/>
+   <DockPanel Margin="0,5,0,0">
+    <Button Content="Yer imi ekle" Click="AddBookmark_Click" DockPanel.Dock="Left" Padding="8,4" Margin="0,0,8,0"/>
+    <Button Content="Sil" Click="RemoveBookmark_Click" DockPanel.Dock="Right" Padding="8,4" Margin="8,0,0,0"/>
+    <ComboBox x:Name="BookmarkChoice" SelectionChanged="Bookmark_Changed" AutomationProperties.Name="Yer imine git"/>
+   </DockPanel>
+  </StackPanel>
+  <WrapPanel Grid.Row="3" Margin="0,12,0,0">
    <Button Content="Başlangıcı burada yap" Click="SetStart_Click" Padding="8,4" Margin="0,0,8,5"/>
    <TextBox x:Name="StartBox" Width="65" Margin="0,0,14,5" AutomationProperties.Name="Başlangıç, saniye"/>
    <Button Content="Bitişi burada yap" Click="SetEnd_Click" Padding="8,4" Margin="0,0,8,5"/>
@@ -26,13 +35,14 @@
    <CheckBox x:Name="IncludeMic" Content="Mikrofonu ekle" IsChecked="True" Foreground="#F1F5EF" Margin="0,4,12,5"/>
    <CheckBox x:Name="Mute" Content="Sesi kapat" Foreground="#F1F5EF" Margin="0,4,0,5"/>
   </WrapPanel>
-  <WrapPanel Grid.Row="3" Margin="0,9,0,0">
-   <Button x:Name="DiscordButton" Content="Discord için dosyayı kopyala" Click="Discord_Click" Padding="12,6" Margin="0,0,8,5"/>
+  <WrapPanel Grid.Row="4" Margin="0,9,0,0">
+   <ComboBox x:Name="ExportSizeChoice" Width="112" Margin="0,0,8,5" AutomationProperties.Name="Dosya boyutu hedefi"/>
+   <Button x:Name="DiscordButton" Content="Paylaşım dosyasını kopyala" Click="Discord_Click" Padding="12,6" Margin="0,0,8,5"/>
    <Button x:Name="SaveButton" Content="Kırpılmış kopyayı kaydet" Click="Save_Click" Padding="12,6" Margin="0,0,8,5"/>
    <Button x:Name="OpenCopyButton" Content="Paylaşım kopyasını aç" Click="OpenCopy_Click" Padding="10,6" Margin="0,0,8,5" IsEnabled="False"/>
    <Button x:Name="CancelButton" Content="İptal" Click="Cancel_Click" Padding="10,6" IsEnabled="False"/>
   </WrapPanel>
-  <TextBlock x:Name="Feedback" Grid.Row="4" Margin="0,6,0,0" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"
-   Text="Başlangıç ve bitiş saniye cinsinden. Discord kopyası en fazla 19 MB olur."/>
+  <TextBlock x:Name="Feedback" Grid.Row="5" Margin="0,6,0,0" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"
+   Text="Başlangıç ve bitiş saniye cinsinden. Paylaşım kopyası seçilen boyut sınırına uyar."/>
  </Grid>
 </Window>
