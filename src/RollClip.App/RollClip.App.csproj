@@ -8,10 +8,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>RollClip</AssemblyName>
-    <Version>0.4.4</Version>
+    <Version>0.4.5</Version>
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Assets/ChromePoster*.png" />
+    <Resource Include="Assets/Fonts/Manrope-SemiBold.ttf" />
+    <None Include="../../docs/licenses/Manrope.txt" Link="licenses/Manrope.txt" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="Assets/ChromeLoop*.mp4" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Using Remove="System.Windows.Forms" />
     <Using Remove="System.Drawing" />

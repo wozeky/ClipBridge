@@ -27,7 +27,7 @@
      <StackPanel Canvas.Left="178" Canvas.Top="295" Orientation="Horizontal">
       <Button local:UiSounds.Cue="Home1" Style="{StaticResource RoundButton}" Click="Home_Click" ToolTip="Ana ekran" AutomationProperties.Name="Ana ekran" Foreground="{StaticResource NeonBrush}"><ContentControl Style="{StaticResource FluentIcon}" FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}" Tag="{StaticResource FluentVideo}"/></Button>
       <StackPanel Margin="12,3,0,0"><TextBlock Text="Klip al, kes, Discord’a gönder." Style="{StaticResource Caption}"/>
-       <TextBlock Text="RollClip" FontSize="17" FontWeight="SemiBold" Margin="0,2,0,0"/>
+       <TextBlock x:Name="RollClipHeading" Text="RollClip" FontFamily="{StaticResource HeadingFont}" FontSize="17" FontWeight="SemiBold" Margin="0,2,0,0"/>
       </StackPanel>
      </StackPanel>
      <Button local:UiSounds.Cue="CopyDiagnostics1" Canvas.Left="465" Canvas.Top="295" Style="{StaticResource RoundButton}" Click="CopyDiagnostics_Click" ToolTip="Tanılama raporunu kopyala" AutomationProperties.Name="Tanılama raporunu kopyala"><ContentControl Style="{StaticResource FluentIcon}" FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}" Tag="{StaticResource FluentClipboard}"/></Button>
@@ -41,7 +41,7 @@
      </local:ChromeGlass>
      <local:ChromeGlass Canvas.Left="178" Canvas.Top="433" Width="402" Height="174" Radius="38">
       <Grid Margin="27,23,27,19"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-       <TextBlock Text="Klip süresi" FontWeight="SemiBold" FontSize="17"/>
+       <TextBlock Text="Klip süresi" FontFamily="{StaticResource HeadingFont}" FontWeight="SemiBold" FontSize="17"/>
        <TextBlock Grid.Row="1" Text="Son anları tek tuşla kaydet." Style="{StaticResource Caption}" Margin="0,6,0,0"/>
        <ListBox x:Name="ReplayLength" Grid.Row="2" Background="Transparent" BorderThickness="0" VerticalAlignment="Bottom"
         ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled"
@@ -59,7 +59,7 @@
      </local:ChromeGlass>
      <local:ChromeGlass Canvas.Left="620" Canvas.Top="305" Width="196" Height="196" Radius="36">
       <Grid ClipToBounds="True">
-       <StackPanel Margin="25,24,18,0" VerticalAlignment="Top"><TextBlock Text="Kayıt" FontSize="17" FontWeight="SemiBold"/>
+       <StackPanel Margin="25,24,18,0" VerticalAlignment="Top"><TextBlock Text="Kayıt" FontFamily="{StaticResource HeadingFont}" FontSize="17" FontWeight="SemiBold"/>
         <TextBlock x:Name="CaptureStatus" Text="Kayıt kapalı" Style="{StaticResource Caption}" Margin="0,8,0,0" TextWrapping="Wrap" MaxWidth="147" HorizontalAlignment="Left"/>
        </StackPanel>
        <Button ToolTipService.ShowOnDisabled="True" ToolTip="{Binding Content, RelativeSource={RelativeSource Self}}" x:Name="ArmButton" Style="{StaticResource ArmSwitch}" Content="Kaydı başlat" Click="Arm_Click" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,24,20,0"/>
@@ -72,7 +72,7 @@
      </local:ChromeGlass>
      <local:ChromeGlass Canvas.Left="827" Canvas.Top="305" Width="196" Height="196" Radius="36">
       <Grid ClipToBounds="True">
-       <StackPanel Margin="25,23,20,0" VerticalAlignment="Top"><TextBlock Text="Paylaşım" FontSize="17" FontWeight="SemiBold"/>
+       <StackPanel Margin="25,23,20,0" VerticalAlignment="Top"><TextBlock Text="Paylaşım" FontFamily="{StaticResource HeadingFont}" FontSize="17" FontWeight="SemiBold"/>
         <CheckBox x:Name="AutoUpload" Content="Otomatik" Click="QuickSettings_Click" ToolTip="Yeni klipleri otomatik yükle"/>
        </StackPanel>
        <Button ToolTipService.ShowOnDisabled="True" x:Name="QuickUploadButton" Click="LatestClip_Click" IsEnabled="False" ToolTip="Son klibi kes ve paylaş" AutomationProperties.Name="Son klibi kes ve paylaş" Width="153" Height="84" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,20" Cursor="Hand">
@@ -102,7 +102,7 @@
      <local:ChromeGlass Canvas.Left="178" Canvas.Top="245" Width="845" Height="420" Radius="36">
       <Grid Margin="28">
        <Grid.RowDefinitions><RowDefinition Height="45"/><RowDefinition Height="*"/><RowDefinition Height="47"/></Grid.RowDefinitions>
-       <TextBlock Text="Ayarlar" FontSize="20" FontWeight="SemiBold"/>
+       <TextBlock Text="Ayarlar" FontFamily="{StaticResource HeadingFont}" FontSize="20" FontWeight="SemiBold"/>
        <Button local:UiSounds.Cue="Home3" Style="{StaticResource RoundButton}" Width="34" Height="34" Click="Home_Click" HorizontalAlignment="Right" VerticalAlignment="Top" ToolTip="Ana ekrana dön" AutomationProperties.Name="Ayarları kapat"><ContentControl Style="{StaticResource FluentIcon}" FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}" Tag="{StaticResource FluentDismiss}"/></Button>
        <ScrollViewer x:Name="SettingsScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto"><Grid Margin="0,0,12,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="32"/><ColumnDefinition/></Grid.ColumnDefinitions>
         <StackPanel>
@@ -230,7 +230,7 @@
      <Canvas.RenderTransform><TranslateTransform/></Canvas.RenderTransform>
      <local:ChromeGlass Canvas.Left="178" Canvas.Top="245" Width="845" Height="420" Radius="36">
       <Grid Margin="26"><Grid.RowDefinitions><RowDefinition Height="42"/><RowDefinition Height="42"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-       <TextBlock Text="Klip arşivi" FontSize="20" FontWeight="SemiBold"/>
+       <TextBlock Text="Klip arşivi" FontFamily="{StaticResource HeadingFont}" FontSize="20" FontWeight="SemiBold"/>
        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
         <Button local:UiSounds.Cue="Import2" Style="{StaticResource GlassButton}" Content="MP4 içe aktar" Click="Import_Click" Margin="0,0,10,0"/>
         <Button local:UiSounds.Cue="Home4" Style="{StaticResource RoundButton}" Width="34" Height="34" Click="Home_Click" ToolTip="Ana ekrana dön" AutomationProperties.Name="Arşivi kapat"><ContentControl Style="{StaticResource FluentIcon}" FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}" Tag="{StaticResource FluentDismiss}"/></Button>

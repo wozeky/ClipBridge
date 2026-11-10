@@ -336,6 +336,12 @@ public partial class MainWindow : Window
             comboToggle.IsChecked = false;
             if (CaptureTarget.IsDropDownOpen)
                 throw new InvalidOperationException("The selector no longer closes from its toggle.");
+            var titleTypeface = new Typeface(RollClipHeading.FontFamily, RollClipHeading.FontStyle,
+                RollClipHeading.FontWeight, RollClipHeading.FontStretch);
+            if (!titleTypeface.TryGetGlyphTypeface(out var titleFace)
+                || !titleFace.FontUri.ToString().Contains("manrope-semibold.ttf", StringComparison.OrdinalIgnoreCase)
+                || titleFace.Weight != FontWeights.SemiBold)
+                throw new InvalidOperationException("Manrope SemiBold did not resolve from the bundled font.");
             UiSounds.VerifyWaves();
             SettingsNav.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
             ExportPng("settings");
@@ -432,7 +438,7 @@ public partial class MainWindow : Window
             Closing -= CheckClose;
             if (!closing)
                 throw new InvalidOperationException("The close control did not raise Closing.");
-            File.WriteAllText(_smokeMarker!, "PASS: native WPF home/settings/library, 3 window ratios, disabled actions, motion isolation, persisted profile and shortcut, diagnostics clipboard, Fluent icons, window controls and UI sound preferences.");
+            File.WriteAllText(_smokeMarker!, "PASS: native WPF home/settings/library, 3 window ratios, disabled actions, motion isolation, persisted profile and shortcut, diagnostics clipboard, Fluent icons, window controls UI sound preferences and bundled Manrope headings.");
             Application.Current.Shutdown();
         }
         catch (Exception error)
