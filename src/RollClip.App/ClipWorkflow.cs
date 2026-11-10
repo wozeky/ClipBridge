@@ -163,6 +163,12 @@ public partial class MainWindow
                 _displayedExpired = expired;
                 RefreshLibrary();
             }
+            if (_capture is not null && !_captureBusy && !WindowsCapture.WindowExists(_activeCaptureWindow))
+            {
+                await ToggleCaptureAsync(automatic: true);
+                ShowReplayStatus("Oyun penceresi kapandı. Otomatik kayıt seçiliyse yeniden açılmasını bekliyor.",
+                    System.Windows.Forms.ToolTipIcon.Info);
+            }
             if (_settings.AutoGame && _settings.AutoGameProcess is { } game && !_autoGamePaused &&
                 !_captureBusy && _capture is null && !_recovering && DateTimeOffset.UtcNow >= _nextAutoCapture)
             {
