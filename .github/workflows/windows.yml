@@ -50,6 +50,16 @@ jobs:
         run: |
           $ffmpeg = (Resolve-Path ./artifacts/win-x64/ffmpeg/bin/ffmpeg.exe).Path
           dotnet run --project tools/RollClip.Bench -c Release --no-build -- replay-smoke $ffmpeg (Join-Path $env:RUNNER_TEMP "rollclip-replay")
+      - name: Verify trimmed Discord MP4
+        shell: pwsh
+        run: |
+          $ffmpeg = (Resolve-Path ./artifacts/win-x64/ffmpeg/bin/ffmpeg.exe).Path
+          $directory = Join-Path $env:RUNNER_TEMP "rollclip-replay"
+          $output = Join-Path $directory "discord.mp4"
+          dotnet run --project tools/RollClip.Bench -c Release --no-build -- export-smoke $ffmpeg (Join-Path $directory "replay-0.mp4") $output
+          if ($LASTEXITCODE -ne 0) { throw "Discord export failed." }
+          & $ffmpeg -v error -xerror -i $output -map 0:v -map 0:a -f null -
+          if ($LASTEXITCODE -ne 0) { throw "Discord MP4 did not decode with video and audio." }
       - name: Verify WPF startup and diagnostics clipboard
         shell: pwsh
         run: |
@@ -119,7 +129,7 @@ jobs:
       - name: Verify distribution contents
         shell: pwsh
         run: |
-          foreach ($file in 'RollClip.exe', 'RollClip.dll', 'RollClip.Core.dll', 'RollClip.runtimeconfig.json', 'Assets/ChromeLoop.mp4', 'Assets/ChromeLoopOverlay.mp4', 'ffmpeg/bin/ffmpeg.exe', 'LICENSE') {
+          foreach ($file in 'RollClip.exe', 'RollClip.dll', 'RollClip.Core.dll', 'RollClip.runtimeconfig.json', 'Assets/ChromeLoop.mp4', 'Assets/ChromeLoopOverlay.mp4', 'ffmpeg/bin/ffmpeg.exe', 'licenses/WKI-Clipper.txt', 'LICENSE') {
             if (-not (Test-Path -LiteralPath (Join-Path 'artifacts/win-x64' $file) -PathType Leaf)) {
               throw "Missing distribution file: $file"
             }
@@ -130,3 +140,35 @@ jobs:
           path: artifacts/win-x64/
           if-no-files-found: error
           retention-days: 30
+
+  release:
+    name: Publish verified Windows preview
+    needs: windows
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release v0.2.0]')
+    runs-on: windows-2025
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: RollClip-win-x64
+          path: release/win-x64
+      - name: Create ZIP and publish GitHub prerelease
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          $tag = 'v0.2.0'
+          $asset = 'RollClip-win-x64.zip'
+          Compress-Archive -Path './release/win-x64/*' -DestinationPath $asset
+          $checksum = (Get-FileHash -LiteralPath $asset -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$checksum  $asset" | Set-Content -LiteralPath "$asset.sha256" -Encoding ascii
+          @'
+          Discord için 19 MB’a kadar MP4 kopyası, önizleme ve kırpma.
+          Mevcut MP4’leri sürükleyip bırakın veya bir kayıt klasörünü izleyin.
+          Oyun sesi yakalama, ayrı mikrofon izi ve yerel test klibi.
+          Windows 11 x64. ZIP'i çıkarıp RollClip.exe'yi açın. Paket imzasızdır.
+          '@ | Set-Content -LiteralPath release-notes.md -Encoding utf8
+          gh release create $tag $asset "$asset.sha256" --target $env:GITHUB_SHA --title "RollClip $tag · Discord paylaşımı" --notes-file release-notes.md --prerelease
+          if ($LASTEXITCODE -ne 0) { throw "GitHub prerelease could not be published." }
