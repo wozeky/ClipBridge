@@ -336,6 +336,7 @@ public partial class MainWindow : Window
             comboToggle.IsChecked = false;
             if (CaptureTarget.IsDropDownOpen)
                 throw new InvalidOperationException("The selector no longer closes from its toggle.");
+            UiSounds.VerifyWaves();
             SettingsNav.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
             ExportPng("settings");
             ArchiveFolderBox.BringIntoView();
@@ -349,11 +350,16 @@ public partial class MainWindow : Window
             RecordingQualityChoice.SelectedIndex = (int)RecordingQuality.Light;
             var backupFolder = Path.Combine(_root, "backup");
             ArchiveFolderBox.Text = backupFolder;
+            InterfaceSounds.IsChecked = false;
+            InterfaceSounds_Click(InterfaceSounds, new RoutedEventArgs());
+            if (UiSounds.Enabled || AtomicJson.Read<ClipSettings>(Path.Combine(_root, "settings.json")) is not { InterfaceSounds: false })
+                throw new InvalidOperationException("UI sound preference was not persisted.");
             if (!SaveSettings() || SaveReplayButton.Content as string != "F9"
                 || AtomicJson.Read<ClipSettings>(Path.Combine(_root, "settings.json")) is not
                     { ReplayKey: 9, Quality: RecordingQuality.Light, Motion: false } saved
                 || saved.ArchiveFolder != backupFolder || !ArchiveExistingButton.IsEnabled)
                 throw new InvalidOperationException("Recording controls did not persist or update the hotkey label.");
+            InterfaceSounds.IsChecked = true;
             ReplayKeyChoice.SelectedIndex = 2;
             RecordingQualityChoice.SelectedIndex = 0;
             ArchiveFolderBox.Text = "";
@@ -426,7 +432,7 @@ public partial class MainWindow : Window
             Closing -= CheckClose;
             if (!closing)
                 throw new InvalidOperationException("The close control did not raise Closing.");
-            File.WriteAllText(_smokeMarker!, "PASS: native WPF home/settings/library, 3 window ratios, disabled actions, motion isolation, persisted profile and shortcut, diagnostics clipboard, Fluent icons and window controls.");
+            File.WriteAllText(_smokeMarker!, "PASS: native WPF home/settings/library, 3 window ratios, disabled actions, motion isolation, persisted profile and shortcut, diagnostics clipboard, Fluent icons, window controls and UI sound preferences.");
             Application.Current.Shutdown();
         }
         catch (Exception error)
@@ -537,6 +543,7 @@ public partial class MainWindow : Window
             UpdateImportFolderLabel();
             CaptureMethodChoice.SelectedIndex = (int)_settings.Method;
             SaveSound.IsChecked = _settings.SaveSound;
+            InterfaceSounds.IsChecked = UiSounds.Enabled = _settings.InterfaceSounds;
             SaveNotice.IsChecked = _settings.SaveNotice;
             LanguageChoice.SelectedIndex = _settings.English ? 1 : 0;
             LoadGameProfiles();
@@ -1058,6 +1065,25 @@ public partial class MainWindow : Window
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
     }
 
+    private void InterfaceSounds_Click(object sender, RoutedEventArgs args)
+    {
+        var enabled = InterfaceSounds.IsChecked == true;
+        try
+        {
+            var settings = _settings with { InterfaceSounds = enabled };
+            AtomicJson.Write(Path.Combine(_root, "settings.json"), settings);
+            Volatile.Write(ref _settings, settings);
+            UiSounds.Enabled = enabled;
+            if (enabled)
+                UiSounds.Play("button/InterfaceSounds/on");
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            InterfaceSounds.IsChecked = UiSounds.Enabled = _settings.InterfaceSounds;
+            StatusMessage.Text = T("Arayüz sesi ayarı kaydedilemedi.", "Could not save the interface sound preference.") + " " + error.Message;
+        }
+    }
+
     private void SaveSettings_Click(object sender, RoutedEventArgs args) => SaveSettings();
 
     private bool SaveSettings()
@@ -1096,12 +1122,13 @@ public partial class MainWindow : Window
                     ?? _settings.AutoGameProcess, SelectedCaptureMethod, SaveSound.IsChecked == true,
                 SaveNotice.IsChecked == true, LanguageChoice.SelectedIndex == 1, _shortcutDraft.ToArray(), ReadAudioControls(), (long)(storageGb * 1_000_000_000),
                 AutoCleanup.IsChecked == true, KeepUnshared.IsChecked == true,
-                AutoUpdates.IsChecked == true, IncludePreviews.IsChecked == true);
+                AutoUpdates.IsChecked == true, IncludePreviews.IsChecked == true, InterfaceSounds.IsChecked == true);
             AtomicJson.Write(Path.Combine(_root, "settings.json"), settings);
             if (_settings.ArchiveFolder != settings.ArchiveFolder)
                 ArchiveStatus.Text = "";
             var languageChanged = _settings.English != settings.English;
             Volatile.Write(ref _settings, settings);
+            UiSounds.Enabled = settings.InterfaceSounds;
             RefreshArchiveControls();
             UpdateImportFolderLabel();
             if (!_armed)
@@ -1281,13 +1308,13 @@ public partial class MainWindow : Window
     private void CreateTrayIcon()
     {
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add(T("RollClip'i aç", "Open RollClip"), null, (_, _) => ShowWindow());
-        _traySave = menu.Items.Add(T($"Klip al ({ReplayKeyLabel})", $"Save clip ({ReplayKeyLabel})"), null, async (_, _) => await SaveReplayAsync());
-        menu.Items.Add(T("Son klibi kes ve paylaş", "Trim and share latest clip"), null, async (_, _) => await EditLatestClipAsync());
-        menu.Items.Add(T("Çıkış", "Exit"), null, (_, _) => { _exit = true; Close(); });
+        menu.Items.Add(T("RollClip'i aç", "Open RollClip"), null, (_, _) => { UiSounds.Play("tray/open"); ShowWindow(); });
+        _traySave = menu.Items.Add(T($"Klip al ({ReplayKeyLabel})", $"Save clip ({ReplayKeyLabel})"), null, async (_, _) => { UiSounds.Play("tray/save"); await SaveReplayAsync(); });
+        menu.Items.Add(T("Son klibi kes ve paylaş", "Trim and share latest clip"), null, async (_, _) => { UiSounds.Play("tray/share"); await EditLatestClipAsync(); });
+        menu.Items.Add(T("Çıkış", "Exit"), null, (_, _) => { UiSounds.Play("tray/exit"); _exit = true; Close(); });
         _tray = new Forms.NotifyIcon { Icon = System.Drawing.SystemIcons.Application, Text = "RollClip",
             ContextMenuStrip = menu, Visible = true };
-        _tray.DoubleClick += (_, _) => ShowWindow();
+        _tray.DoubleClick += (_, _) => { UiSounds.Play("tray/double-click"); ShowWindow(); };
         RefreshCaptureStatus();
     }
 
@@ -1347,7 +1374,7 @@ public partial class MainWindow : Window
         string? ImportFolder = null, DateTimeOffset? ImportSince = null, bool GameOnlyAudio = false,
         bool AutoGame = false, string? AutoGameProcess = null, CaptureMethod Method = CaptureMethod.Auto,
         bool SaveSound = false, bool SaveNotice = true, bool English = false, ReplayShortcut[]? Shortcuts = null, CaptureAudio? Audio = null,
-        long QuotaBytes = 0, bool AutoCleanup = false, bool KeepUnshared = true, bool AutoUpdates = false, bool IncludePreviews = false)
+        long QuotaBytes = 0, bool AutoCleanup = false, bool KeepUnshared = true, bool AutoUpdates = false, bool IncludePreviews = false, bool InterfaceSounds = true)
     {
         [System.Text.Json.Serialization.JsonIgnore]
         public Provider? FallbackProvider => AutoFallback

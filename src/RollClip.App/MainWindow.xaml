@@ -25,17 +25,17 @@
      </Ellipse>
      <!-- Coordinates measured from the 1600 × 1200 reference at 75% scale. -->
      <StackPanel Canvas.Left="178" Canvas.Top="295" Orientation="Horizontal">
-      <Button Style="{StaticResource RoundButton}" Click="Home_Click" ToolTip="Ana ekran" AutomationProperties.Name="Ana ekran" Foreground="{StaticResource NeonBrush}"><ContentControl Style="{StaticResource FluentIcon}" FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}" Tag="{StaticResource FluentVideo}"/></Button>
+      <Button local:UiSounds.Cue="Home1" Style="{StaticResource RoundButton}" Click="Home_Click" ToolTip="Ana ekran" AutomationProperties.Name="Ana ekran" Foreground="{StaticResource NeonBrush}"><ContentControl Style="{StaticResource FluentIcon}" FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}" Tag="{StaticResource FluentVideo}"/></Button>
       <StackPanel Margin="12,3,0,0"><TextBlock Text="Klip al, kes, Discord’a gönder." Style="{StaticResource Caption}"/>
        <TextBlock Text="RollClip" FontSize="17" FontWeight="SemiBold" Margin="0,2,0,0"/>
       </StackPanel>
      </StackPanel>
-     <Button Canvas.Left="465" Canvas.Top="295" Style="{StaticResource RoundButton}" Click="CopyDiagnostics_Click" ToolTip="Tanılama raporunu kopyala" AutomationProperties.Name="Tanılama raporunu kopyala"><ContentControl Style="{StaticResource FluentIcon}" FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}" Tag="{StaticResource FluentClipboard}"/></Button>
-     <Button Canvas.Left="529" Canvas.Top="295" Style="{StaticResource RoundButton}" Click="Library_Click" ToolTip="Klip arşivi" AutomationProperties.Name="Klip arşivi"><ContentControl Style="{StaticResource FluentIcon}" FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}" Tag="{StaticResource FluentVideoClip}"/></Button>
+     <Button local:UiSounds.Cue="CopyDiagnostics1" Canvas.Left="465" Canvas.Top="295" Style="{StaticResource RoundButton}" Click="CopyDiagnostics_Click" ToolTip="Tanılama raporunu kopyala" AutomationProperties.Name="Tanılama raporunu kopyala"><ContentControl Style="{StaticResource FluentIcon}" FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}" Tag="{StaticResource FluentClipboard}"/></Button>
+     <Button local:UiSounds.Cue="Library1" Canvas.Left="529" Canvas.Top="295" Style="{StaticResource RoundButton}" Click="Library_Click" ToolTip="Klip arşivi" AutomationProperties.Name="Klip arşivi"><ContentControl Style="{StaticResource FluentIcon}" FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}" Tag="{StaticResource FluentVideoClip}"/></Button>
 
      <local:ChromeGlass Canvas.Left="178" Canvas.Top="362" Width="402" Height="55" Radius="28">
       <Grid Margin="7"><Grid.ColumnDefinitions><ColumnDefinition Width="43"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-       <Button Style="{StaticResource RoundButton}" Width="38" Height="38" Click="RefreshWindows_Click" ToolTip="Pencereleri yenile" AutomationProperties.Name="Pencereleri yenile"><ContentControl Style="{StaticResource FluentIcon}" FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}" Tag="{StaticResource FluentRefresh}"/></Button>
+       <Button local:UiSounds.Cue="RefreshWindows1" Style="{StaticResource RoundButton}" Width="38" Height="38" Click="RefreshWindows_Click" ToolTip="Pencereleri yenile" AutomationProperties.Name="Pencereleri yenile"><ContentControl Style="{StaticResource FluentIcon}" FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}" Tag="{StaticResource FluentRefresh}"/></Button>
        <ComboBox x:Name="CaptureTarget" Tag="Oyun penceresini seç" Grid.Column="1" DisplayMemberPath="Title" Margin="7,0,3,0" AutomationProperties.Name="Kaydedilecek pencere" ToolTip="Kaydedilecek oyun penceresi"/>
       </Grid>
      </local:ChromeGlass>
@@ -87,10 +87,10 @@
      </local:ChromeGlass>
      <local:ChromeGlass Canvas.Left="632" Canvas.Top="518" Width="382" Height="82" Radius="40">
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-       <Button ToolTip="Ana ekran" Style="{StaticResource NeonButton}" Click="Home_Click" Height="48" Margin="0,0,7,0"><StackPanel Orientation="Horizontal"><ContentControl Style="{StaticResource FluentMeasuredIcon}" Tag="{StaticResource FluentHome}" Content="&#xE80F;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{StaticResource NeonBrush}" Margin="0,0,8,0"/><TextBlock Text="Ana ekran" FontSize="11"/></StackPanel></Button>
-       <Button Style="{StaticResource RoundButton}" Click="Library_Click" Margin="3,0" ToolTip="Klip arşivi" AutomationProperties.Name="Klip arşivi"><ContentControl Style="{StaticResource FluentIcon}" FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}" Tag="{StaticResource FluentVideoClip}"/></Button>
+       <Button local:UiSounds.Cue="Home2" ToolTip="Ana ekran" Style="{StaticResource NeonButton}" Click="Home_Click" Height="48" Margin="0,0,7,0"><StackPanel Orientation="Horizontal"><ContentControl Style="{StaticResource FluentMeasuredIcon}" Tag="{StaticResource FluentHome}" Content="&#xE80F;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{StaticResource NeonBrush}" Margin="0,0,8,0"/><TextBlock Text="Ana ekran" FontSize="11"/></StackPanel></Button>
+       <Button local:UiSounds.Cue="Library2" Style="{StaticResource RoundButton}" Click="Library_Click" Margin="3,0" ToolTip="Klip arşivi" AutomationProperties.Name="Klip arşivi"><ContentControl Style="{StaticResource FluentIcon}" FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}" Tag="{StaticResource FluentVideoClip}"/></Button>
        <Button x:Name="SettingsNav" Style="{StaticResource RoundButton}" Click="Settings_Click" Margin="3,0" ToolTip="Ayarlar" AutomationProperties.Name="Ayarlar"><ContentControl Style="{StaticResource FluentIcon}" FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}" Tag="{StaticResource FluentSettings}"/></Button>
-       <Button Style="{StaticResource RoundButton}" Click="Import_Click" Margin="3,0" ToolTip="MP4 içe aktar" AutomationProperties.Name="MP4 içe aktar"><ContentControl Style="{StaticResource FluentIcon}" FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}" Tag="{StaticResource FluentAdd}"/></Button>
+       <Button local:UiSounds.Cue="Import1" Style="{StaticResource RoundButton}" Click="Import_Click" Margin="3,0" ToolTip="MP4 içe aktar" AutomationProperties.Name="MP4 içe aktar"><ContentControl Style="{StaticResource FluentIcon}" FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}" Tag="{StaticResource FluentAdd}"/></Button>
        <Button x:Name="DiagnosticsButton" Style="{StaticResource RoundButton}" Click="CopyDiagnostics_Click" Margin="3,0" ToolTip="Tanılama raporunu kopyala" AutomationProperties.Name="Tanılama raporunu kopyala"><ContentControl Style="{StaticResource FluentIcon}" FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}" Tag="{StaticResource FluentCopy}"/></Button>
       </StackPanel>
      </local:ChromeGlass>
@@ -103,7 +103,7 @@
       <Grid Margin="28">
        <Grid.RowDefinitions><RowDefinition Height="45"/><RowDefinition Height="*"/><RowDefinition Height="47"/></Grid.RowDefinitions>
        <TextBlock Text="Ayarlar" FontSize="20" FontWeight="SemiBold"/>
-       <Button Style="{StaticResource RoundButton}" Width="34" Height="34" Click="Home_Click" HorizontalAlignment="Right" VerticalAlignment="Top" ToolTip="Ana ekrana dön" AutomationProperties.Name="Ayarları kapat"><ContentControl Style="{StaticResource FluentIcon}" FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}" Tag="{StaticResource FluentDismiss}"/></Button>
+       <Button local:UiSounds.Cue="Home3" Style="{StaticResource RoundButton}" Width="34" Height="34" Click="Home_Click" HorizontalAlignment="Right" VerticalAlignment="Top" ToolTip="Ana ekrana dön" AutomationProperties.Name="Ayarları kapat"><ContentControl Style="{StaticResource FluentIcon}" FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}" Tag="{StaticResource FluentDismiss}"/></Button>
        <ScrollViewer x:Name="SettingsScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto"><Grid Margin="0,0,12,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="32"/><ColumnDefinition/></Grid.ColumnDefinitions>
         <StackPanel>
          <TextBlock Text="KAYIT" Style="{StaticResource Caption}" Margin="0,0,0,10"/>
@@ -129,9 +129,9 @@
           <ComboBox x:Name="ShortcutLength" Width="74" Margin="0,0,4,4" AutomationProperties.Name="Ek kısayol süresi"/>
          </WrapPanel>
          <WrapPanel>
-          <Button Style="{StaticResource GlassButton}" Content="Yeni" Click="NewShortcut_Click" Margin="0,0,4,4"/>
-          <Button Style="{StaticResource GlassButton}" Content="Ekle / uygula" Click="ApplyShortcut_Click" Margin="0,0,4,4"/>
-          <Button Style="{StaticResource GlassButton}" Content="Kaldır" Click="RemoveShortcut_Click" Margin="0,0,4,4"/>
+          <Button local:UiSounds.Cue="NewShortcut1" Style="{StaticResource GlassButton}" Content="Yeni" Click="NewShortcut_Click" Margin="0,0,4,4"/>
+          <Button local:UiSounds.Cue="ApplyShortcut1" Style="{StaticResource GlassButton}" Content="Ekle / uygula" Click="ApplyShortcut_Click" Margin="0,0,4,4"/>
+          <Button local:UiSounds.Cue="RemoveShortcut1" Style="{StaticResource GlassButton}" Content="Kaldır" Click="RemoveShortcut_Click" Margin="0,0,4,4"/>
          </WrapPanel>
          <TextBlock x:Name="ShortcutStatus" TextWrapping="Wrap" Style="{StaticResource Caption}"/>
          <TextBlock Text="Oyun etiketi" Style="{StaticResource Caption}" Margin="0,9,0,6"/><TextBox x:Name="GameName" MaxLength="80" AutomationProperties.Name="Oyun etiketi"/>
@@ -140,7 +140,7 @@
          <CheckBox x:Name="Microphone" Content="Mikrofonu ayrı kaydet"/>
          <TextBlock Text="Mikrofon aygıtı" Style="{StaticResource Caption}"/>
          <DockPanel>
-          <Button DockPanel.Dock="Right" Style="{StaticResource GlassButton}" Content="Yenile" Click="RefreshMicrophones_Click" Margin="5,0,0,0"/>
+          <Button local:UiSounds.Cue="RefreshMicrophones1" DockPanel.Dock="Right" Style="{StaticResource GlassButton}" Content="Yenile" Click="RefreshMicrophones_Click" Margin="5,0,0,0"/>
           <ComboBox x:Name="MicrophoneDevice" AutomationProperties.Name="Mikrofon aygıtı"/>
          </DockPanel>
          <TextBlock x:Name="AudioDeviceStatus" Style="{StaticResource Caption}" TextWrapping="Wrap"/>
@@ -156,9 +156,9 @@
          <TextBlock Text="OYUN PROFİLLERİ" Style="{StaticResource Caption}" Margin="0,12,0,4"/>
          <ComboBox x:Name="GameProfilesChoice" AutomationProperties.Name="Kayıtlı oyun profilleri"/>
          <WrapPanel Margin="0,4,0,0">
-          <Button Content="Seçili oyun için kaydet" Click="SaveGameProfile_Click" Style="{StaticResource GlassButton}" Margin="0,0,5,4"/>
-          <Button Content="Profili yükle" Click="LoadGameProfile_Click" Style="{StaticResource GlassButton}" Margin="0,0,5,4"/>
-          <Button Content="Profili sil" Click="RemoveGameProfile_Click" Style="{StaticResource GlassButton}" Margin="0,0,0,4"/>
+          <Button local:UiSounds.Cue="SaveGameProfile1" Content="Seçili oyun için kaydet" Click="SaveGameProfile_Click" Style="{StaticResource GlassButton}" Margin="0,0,5,4"/>
+          <Button local:UiSounds.Cue="LoadGameProfile1" Content="Profili yükle" Click="LoadGameProfile_Click" Style="{StaticResource GlassButton}" Margin="0,0,5,4"/>
+          <Button local:UiSounds.Cue="RemoveGameProfile1" Content="Profili sil" Click="RemoveGameProfile_Click" Style="{StaticResource GlassButton}" Margin="0,0,0,4"/>
          </WrapPanel>
          <CheckBox x:Name="SaveSound" Content="Klip kaydedilince ses çal"/>
          <CheckBox x:Name="SaveNotice" Content="Klip kaydedilince Windows bildirimi"/>
@@ -167,8 +167,8 @@
          <TextBlock Text="KLİP KAYNAĞI" Style="{StaticResource Caption}" Margin="0,12,0,4"/>
          <TextBlock x:Name="ImportFolderLabel" Text="Klasör izleme kapalı" TextTrimming="CharacterEllipsis"/>
          <WrapPanel Margin="0,4,0,0">
-          <Button Content="Klip klasörü izle" Click="WatchFolder_Click" Style="{StaticResource GlassButton}" Margin="0,0,5,4"/>
-          <Button Content="İzlemeyi kapat" Click="StopWatching_Click" Style="{StaticResource GlassButton}" Margin="0,0,0,4"/>
+          <Button local:UiSounds.Cue="WatchFolder1" Content="Klip klasörü izle" Click="WatchFolder_Click" Style="{StaticResource GlassButton}" Margin="0,0,5,4"/>
+          <Button local:UiSounds.Cue="StopWatching1" Content="İzlemeyi kapat" Click="StopWatching_Click" Style="{StaticResource GlassButton}" Margin="0,0,0,4"/>
          </WrapPanel>
          <TextBlock Text="Yeni MP4’ler yerel arşive alınır. Mevcut klipleri sürükleyip bırakabilirsiniz." Style="{StaticResource Caption}" TextWrapping="Wrap"/>
          <CheckBox x:Name="StartWithWindows" Content="Windows ile tepside başlat"/>
@@ -186,15 +186,16 @@
          </ComboBox>
          <TextBlock Text="GÖRÜNÜM" Style="{StaticResource Caption}" Margin="0,12,0,2"/>
          <CheckBox x:Name="MotionEnabled" Content="Hareketli krom arka plan" Click="Motion_Click"/>
+         <CheckBox x:Name="InterfaceSounds" Content="Arayüz sesleri" Click="InterfaceSounds_Click"/>
          <TextBlock Text="Kayıt sırasında ve arka planda durur." Style="{StaticResource Caption}"/>
          <TextBlock Text="UZUN SÜRELİ ARŞİV" Style="{StaticResource Caption}" Margin="0,12,0,4"/>
          <TextBlock x:Name="ArchiveState" Text="Otomatik kopya kapalı" FontWeight="SemiBold" Margin="0,0,0,4"/>
          <TextBlock Text="Drive ile eşitlenen bir klasör seçin. Yeni klipler buraya da kopyalanır." Style="{StaticResource Caption}" TextWrapping="Wrap"/>
          <TextBox x:Name="ArchiveFolderBox" IsReadOnly="True" Margin="0,6,0,0" AutomationProperties.Name="Yedek klasörü"/>
          <WrapPanel Margin="0,6,0,0">
-          <Button ToolTip="{Binding Content, RelativeSource={RelativeSource Self}}" Style="{StaticResource GlassButton}" Content="Klasör seç" Click="ChooseArchiveFolder_Click" Margin="0,0,5,4"/>
+          <Button local:UiSounds.Cue="ChooseArchiveFolder1" ToolTip="{Binding Content, RelativeSource={RelativeSource Self}}" Style="{StaticResource GlassButton}" Content="Klasör seç" Click="ChooseArchiveFolder_Click" Margin="0,0,5,4"/>
           <Button ToolTipService.ShowOnDisabled="True" ToolTip="{Binding Content, RelativeSource={RelativeSource Self}}" x:Name="OpenArchiveButton" Style="{StaticResource GlassButton}" Content="Klasörü aç" Click="OpenArchiveFolder_Click" Margin="0,0,5,4" IsEnabled="False"/>
-          <Button ToolTip="Arşiv yedeklemeyi kapat" Style="{StaticResource GlassButton}" Content="Kapat" Click="ClearArchiveFolder_Click" Margin="0,0,5,4"/>
+          <Button local:UiSounds.Cue="ClearArchiveFolder1" ToolTip="Arşiv yedeklemeyi kapat" Style="{StaticResource GlassButton}" Content="Kapat" Click="ClearArchiveFolder_Click" Margin="0,0,5,4"/>
           <Button ToolTipService.ShowOnDisabled="True" x:Name="ArchiveExistingButton" Style="{StaticResource GlassButton}" Content="Eski klipleri yedekle" Click="ArchiveExisting_Click" ToolTip="Mevcut ve daha önce kopyalanamayan klipleri arşive kopyala" IsEnabled="False"/>
          </WrapPanel>
          <TextBlock Text="Bulut yüklemesini Drive yapar. Eşitleme durumunu Drive’dan kontrol edin." Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,3,0,0"/>
@@ -202,8 +203,8 @@
          <TextBlock Text="DEPOLAMA" Style="{StaticResource Caption}" Margin="0,12,0,4"/>
          <TextBlock x:Name="StorageStatus" Style="{StaticResource Caption}" TextWrapping="Wrap"/>
          <WrapPanel>
-          <Button Style="{StaticResource GlassButton}" Content="Kullanımı ölç" Click="StorageUsage_Click" Margin="0,0,5,4"/>
-          <Button Style="{StaticResource GlassButton}" Content="Küçük resimleri temizle" Click="ClearThumbnails_Click" Margin="0,0,0,4"/>
+          <Button local:UiSounds.Cue="StorageUsage1" Style="{StaticResource GlassButton}" Content="Kullanımı ölç" Click="StorageUsage_Click" Margin="0,0,5,4"/>
+          <Button local:UiSounds.Cue="ClearThumbnails1" Style="{StaticResource GlassButton}" Content="Küçük resimleri temizle" Click="ClearThumbnails_Click" Margin="0,0,0,4"/>
          </WrapPanel>
          <DockPanel><TextBlock DockPanel.Dock="Left" Text="Klip sınırı (GB)" Margin="0,0,8,0"/>
           <TextBox x:Name="StorageLimit" Text="0" AutomationProperties.Name="Klip depolama sınırı, GB"/>
@@ -216,12 +217,12 @@
          <CheckBox x:Name="IncludePreviews" Content="Ön sürümleri dahil et"/>
          <WrapPanel>
           <Button x:Name="CheckUpdateButton" Style="{StaticResource GlassButton}" Content="Kontrol et" Click="CheckUpdate_Click" Margin="0,0,5,4"/>
-          <Button Style="{StaticResource GlassButton}" Content="Sürüm notları / indir" Click="OpenRelease_Click" Margin="0,0,0,4"/>
+          <Button local:UiSounds.Cue="OpenRelease1" Style="{StaticResource GlassButton}" Content="Sürüm notları / indir" Click="OpenRelease_Click" Margin="0,0,0,4"/>
          </WrapPanel>
          <TextBlock x:Name="UpdateStatus" Style="{StaticResource Caption}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
         </StackPanel>
        </Grid></ScrollViewer>
-       <Button ToolTip="{Binding Content, RelativeSource={RelativeSource Self}}" Grid.Row="2" Style="{StaticResource NeonButton}" Content="Ayarları kaydet" Click="SaveSettings_Click" HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
+       <Button local:UiSounds.Cue="SaveSettings1" ToolTip="{Binding Content, RelativeSource={RelativeSource Self}}" Grid.Row="2" Style="{StaticResource NeonButton}" Content="Ayarları kaydet" Click="SaveSettings_Click" HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
       </Grid>
      </local:ChromeGlass>
     </Canvas>
@@ -231,8 +232,8 @@
       <Grid Margin="26"><Grid.RowDefinitions><RowDefinition Height="42"/><RowDefinition Height="42"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
        <TextBlock Text="Klip arşivi" FontSize="20" FontWeight="SemiBold"/>
        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
-        <Button Style="{StaticResource GlassButton}" Content="MP4 içe aktar" Click="Import_Click" Margin="0,0,10,0"/>
-        <Button Style="{StaticResource RoundButton}" Width="34" Height="34" Click="Home_Click" ToolTip="Ana ekrana dön" AutomationProperties.Name="Arşivi kapat"><ContentControl Style="{StaticResource FluentIcon}" FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}" Tag="{StaticResource FluentDismiss}"/></Button>
+        <Button local:UiSounds.Cue="Import2" Style="{StaticResource GlassButton}" Content="MP4 içe aktar" Click="Import_Click" Margin="0,0,10,0"/>
+        <Button local:UiSounds.Cue="Home4" Style="{StaticResource RoundButton}" Width="34" Height="34" Click="Home_Click" ToolTip="Ana ekrana dön" AutomationProperties.Name="Arşivi kapat"><ContentControl Style="{StaticResource FluentIcon}" FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}" Tag="{StaticResource FluentDismiss}"/></Button>
        </StackPanel>
        <WrapPanel Grid.Row="1">
         <TextBox x:Name="GallerySearch" Width="155" Margin="0,0,6,4" ToolTip="Klip adına göre ara" AutomationProperties.Name="Klip adına göre ara" TextChanged="GalleryFilter_Changed"/>
@@ -250,7 +251,7 @@
          <ItemsControl ItemsSource="{Binding}">
           <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate><DataTemplate>
-           <Button Style="{StaticResource GlassButton}" Margin="2" Padding="6" HorizontalContentAlignment="Stretch" Click="GalleryCard_Click" MouseDoubleClick="GalleryCard_Open">
+           <Button local:UiSounds.Cue="{Binding Clip.Id, StringFormat=GalleryCard/{0}}" Style="{StaticResource GlassButton}" Margin="2" Padding="6" HorizontalContentAlignment="Stretch" Click="GalleryCard_Click" MouseDoubleClick="GalleryCard_Open">
             <Grid>
              <Grid.ColumnDefinitions><ColumnDefinition Width="80"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
              <Border Background="#101510" CornerRadius="5" Height="45">
@@ -282,7 +283,7 @@
          <Button x:Name="FavoriteButton" Style="{StaticResource GlassButton}" Content="Favori" Click="Favorite_Click" Margin="0,0,5,5"/>
          <Button x:Name="ShowLocationButton" Style="{StaticResource GlassButton}" Content="Konumu aç" Click="ShowLocation_Click" Margin="0,0,5,5"/>
          <Button x:Name="DeleteClipButton" Style="{StaticResource GlassButton}" Content="Sil" Click="DeleteClip_Click" Margin="0,0,5,5"/>
-         <Button Style="{StaticResource GlassButton}" Content="Klip klasörü" Click="Folder_Click" Margin="0,0,5,5"/>
+         <Button local:UiSounds.Cue="Folder1" Style="{StaticResource GlassButton}" Content="Klip klasörü" Click="Folder_Click" Margin="0,0,5,5"/>
          <Button x:Name="RecoverClipsButton" Style="{StaticResource GlassButton}" Content="Klasörü tara" Click="RecoverClips_Click" Margin="0,0,5,5"/>
         </WrapPanel>
         <DockPanel>

@@ -19,12 +19,14 @@ public partial class App : Application
                 Shutdown();
                 return;
             }
+            UiSounds.Register();
         }
         base.OnStartup(args);
     }
 
     protected override void OnExit(ExitEventArgs args)
     {
+        UiSounds.Dispose();
         _instance?.Dispose();
         base.OnExit(args);
     }

@@ -43,6 +43,7 @@ internal static class EnglishUi
         ["0 = sınırsız"] = "0 = unlimited", ["Limitte alternatif servisi dene"] = "Try fallback service at limit",
         ["Hazır bağlantıyı panoya kopyala"] = "Copy share link to clipboard",
         ["Bağlantıya sahip kişiler yüklenen klibi görebilir."] = "Anyone with the link can view the uploaded clip.",
+        ["Arayüz sesleri"] = "Interface sounds",
         ["GÖRÜNÜM"] = "APPEARANCE", ["Hareketli krom arka plan"] = "Animate chrome background",
         ["Kayıt sırasında ve arka planda durur."] = "Paused during capture and in the background.",
         ["UZUN SÜRELİ ARŞİV"] = "LONG-TERM BACKUP", ["Otomatik kopya kapalı"] = "Automatic backup off",

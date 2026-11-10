@@ -6,6 +6,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using RollClip.Core;
@@ -66,6 +67,31 @@ public partial class ClipEditor : Window
             _updating = false;
         };
         _timer.Start();
+    }
+
+    protected override void OnSourceInitialized(EventArgs args)
+    {
+        base.OnSourceInitialized(args);
+        if (PresentationSource.FromVisual(this) is HwndSource source)
+            source.AddHook(PlayCaptionSound);
+    }
+
+    private static IntPtr PlayCaptionSound(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        const int systemCommand = 0x0112;
+        if (message != systemCommand)
+            return IntPtr.Zero;
+        var cue = (wParam.ToInt64() & 0xfff0) switch
+        {
+            0xf020 => "editor/minimize",
+            0xf030 => "editor/maximize",
+            0xf060 => "editor/close",
+            0xf120 => "editor/restore",
+            _ => null
+        };
+        if (cue is not null)
+            UiSounds.Play(cue);
+        return IntPtr.Zero;
     }
 
     private static string Seconds(double value) => value.ToString("0.###", CultureInfo.CurrentCulture);
@@ -183,6 +209,7 @@ public partial class ClipEditor : Window
         {
             var mark = new Button { Width = 9, Height = 14, Padding = new Thickness(0), Background = Brushes.Chartreuse,
                 ToolTip = $"{Seconds(time)} s", Focusable = false };
+            UiSounds.SetCue(mark, "editor/bookmark/" + time.ToString("R", CultureInfo.InvariantCulture));
             mark.Click += (_, _) => Timeline.Value = time;
             Canvas.SetLeft(mark, Math.Clamp(time / _duration, 0, 1) * Math.Max(0, BookmarkRail.ActualWidth - mark.Width));
             BookmarkRail.Children.Add(mark);
