@@ -3,7 +3,9 @@ namespace RollClip.Core;
 public enum CaptureMethod { Auto, Wgc, Dxgi, Gdi }
 
 public sealed record CaptureProfile(RecordingQuality Quality, int Seconds, bool DesktopAudio, bool Microphone,
-    bool GameOnlyAudio, CaptureMethod Method, string? Label, bool AutoStart = false);
+    bool GameOnlyAudio, CaptureMethod Method, string? Label, bool AutoStart = false, CaptureAudio? Audio = null);
+
+public sealed record CaptureAudio(string? MicrophoneId = null, int SystemPercent = 100, int MicrophonePercent = 100);
 
 public static class CaptureTargets
 {

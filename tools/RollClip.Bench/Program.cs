@@ -25,14 +25,26 @@ if (args is ["replay-smoke", var executable, var outputDirectory])
         Console.WriteLine($"{clip} · {duration.TotalSeconds:F2}s");
         await Task.Delay(1200, stop.Token);
     }
+    var shortClip = await recorder.SaveAsync(Path.Combine(outputDirectory, "replay-short.mp4"), stop.Token, requestedSeconds: 1);
+    if (Mp4.ReadDuration(shortClip) is not { TotalSeconds: >= 0.9 and < 1.25 })
+        throw new InvalidDataException("The shorter shortcut did not use the final replay segment.");
     return 0;
 }
 
 if (args is ["export-smoke", var ffmpeg, var source, var output])
 {
     using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+    var progress = new ExportProbe();
     await ClipExport.CreateAsync(ffmpeg, source, output, 0.25, 1.75, discord: true,
-        mixMicrophone: true, mute: false, stop.Token, OperatingSystem.IsWindows() ? "h264_mf" : "libx264");
+        mixMicrophone: true, mute: false, stop.Token, OperatingSystem.IsWindows() ? "h264_mf" : "libx264", progress: progress);
+    if (!progress.SawEncoding || progress.Last != 1)
+        throw new InvalidDataException("FFmpeg progress did not reach completion after publishing the MP4.");
+    if (Mp4.ReadDuration(source) is { } originalDuration)
+    {
+        var remux = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(output))!, "full-muted.mp4");
+        await ClipExport.CreateAsync(ffmpeg, source, remux, 0, originalDuration.TotalSeconds, discord: false,
+            mixMicrophone: false, mute: true, stop.Token, encoder: "unused-for-stream-copy", copyWholeClip: true);
+    }
     if (new FileInfo(output).Length > ClipExport.DiscordBytes ||
         Mp4.ReadDuration(output) is not { TotalSeconds: >= 1.4 and <= 1.65 })
         throw new InvalidDataException("Discord export did not meet the size or trim target.");
@@ -127,4 +139,16 @@ catch (Exception error) when (error is HttpRequestException or UploadException o
 finally
 {
     dataDirectory.Delete(recursive: true);
+}
+
+sealed class ExportProbe : IProgress<double>
+{
+    public double Last { get; private set; }
+    public bool SawEncoding { get; private set; }
+
+    public void Report(double value)
+    {
+        SawEncoding |= value < 1;
+        Last = value;
+    }
 }

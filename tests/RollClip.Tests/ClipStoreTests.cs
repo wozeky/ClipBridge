@@ -62,4 +62,57 @@ public sealed class ClipStoreTests
         }
         finally { root.Delete(recursive: true); }
     }
+    [Fact]
+    public void FavoritePersistsAndDeletionRejectsActiveUploadsAndExternalFiles()
+    {
+        using var root = new TemporaryDirectory();
+        var managed = Directory.CreateDirectory(Path.Combine(root.Path, "managed")).FullName;
+        var local = Path.Combine(managed, "owned.mp4");
+        var external = Path.Combine(root.Path, "external.mp4");
+        File.WriteAllBytes(local, [1, 2, 3]);
+        File.WriteAllBytes(external, [4, 5, 6]);
+        var index = Path.Combine(root.Path, "library.json");
+        var store = new ClipStore(index);
+        var clip = new Clip(Guid.NewGuid(), local, "Local", DateTimeOffset.UtcNow, 3, null);
+        var other = clip with { Id = Guid.NewGuid(), FilePath = external };
+        store.Add(clip);
+        store.Add(other);
+        store.Change(clip.Id, item => item with { Favorite = true, State = UploadState.Queued });
+
+        store = new ClipStore(index);
+        Assert.True(store.Find(clip.Id)!.Favorite);
+        Assert.False(store.DeleteLocal(clip.Id, managed, out _));
+        Assert.False(store.DeleteLocal(other.Id, managed, out _));
+        store.Change(clip.Id, item => item with { State = UploadState.Local });
+        Assert.True(store.DeleteLocal(clip.Id, managed, out var pending));
+        Assert.Null(pending);
+        Assert.False(File.Exists(local));
+        Assert.True(File.Exists(external));
+        Assert.Null(new ClipStore(index).Find(clip.Id));
+    }
+
+    [Fact]
+    public void StorageCleanupCanRetainUploadHistory()
+    {
+        using var root = new TemporaryDirectory();
+        var local = Path.Combine(root.Path, "owned.mp4");
+        File.WriteAllBytes(local, [1, 2, 3]);
+        var index = Path.Combine(root.Path, "library.json");
+        var store = new ClipStore(index);
+        var clip = new Clip(Guid.NewGuid(), local, "Local", DateTimeOffset.UtcNow, 3, null,
+            State: UploadState.Uploaded, ShareUrl: "https://example.com/clip");
+        store.Add(clip);
+
+        Assert.True(store.DeleteLocal(clip.Id, root.Path, out _, keepHistory: true));
+        var retained = Assert.Single(new ClipStore(index).Snapshot());
+        Assert.NotNull(retained.LocalRemovedAt);
+        Assert.Equal(clip.ShareUrl, retained.ShareUrl);
+        Assert.False(File.Exists(local));
+    }
+
+    private sealed class TemporaryDirectory : IDisposable
+    {
+        public string Path { get; } = Directory.CreateTempSubdirectory().FullName;
+        public void Dispose() => Directory.Delete(Path, recursive: true);
+    }
 }

@@ -90,7 +90,7 @@ public sealed class ReplayRecorder : IAsyncDisposable
         }
     }
 
-    public async Task<string> SaveAsync(string destination, CancellationToken cancellationToken)
+    public async Task<string> SaveAsync(string destination, CancellationToken cancellationToken, int? requestedSeconds = null)
     {
         var outputPath = Path.GetFullPath(destination);
         await _gate.WaitAsync(cancellationToken);
@@ -101,7 +101,7 @@ public sealed class ReplayRecorder : IAsyncDisposable
             if (BufferedDuration is null)
                 throw new CaptureException("Pencereden yeni görüntü gelmiyor. Pencereyi geri açın.");
             var manifest = new StringBuilder("ffconcat version 1.0\n");
-            foreach (var part in _segments)
+            foreach (var part in SelectSegments(requestedSeconds))
             {
                 manifest.Append("file ").Append(part.File).Append('\n');
                 manifest.Append("duration ").Append((part.End - part.Start).ToString("F6", CultureInfo.InvariantCulture))
@@ -141,6 +141,14 @@ public sealed class ReplayRecorder : IAsyncDisposable
             }
         }
         finally { _gate.Release(); }
+    }
+
+    private IEnumerable<Segment> SelectSegments(int? requestedSeconds)
+    {
+        if (requestedSeconds is not { } seconds || seconds >= _seconds)
+            return _segments;
+        var cutoff = _segments.Last().End - Math.Max(1, seconds) + 0.05;
+        return _segments.Where(segment => segment.End > cutoff);
     }
 
     public async ValueTask DisposeAsync()

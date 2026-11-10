@@ -6,7 +6,8 @@ public enum UploadState
     Queued,
     Uploading,
     Uploaded,
-    Failed
+    Failed,
+    Cancelled
 }
 
 public enum Provider
@@ -20,8 +21,12 @@ public sealed record Clip(
     string? Game = null, Provider Provider = Provider.Litterbox, UploadState State = UploadState.Local,
     string? ShareUrl = null, string? Error = null, int Attempts = 0, DateTimeOffset? NextAttempt = null,
     UploadTiming? Timing = null, Provider? FallbackProvider = null, string? PendingArchiveFolder = null,
-    DateTimeOffset? LinkExpiresAt = null, bool SeparateMicrophone = false, string? ImportKey = null, double[]? Bookmarks = null)
+    DateTimeOffset? LinkExpiresAt = null, bool SeparateMicrophone = false, string? ImportKey = null, double[]? Bookmarks = null,
+    bool Favorite = false, DateTimeOffset? BackupCopiedAt = null, string? BackupFolder = null, DateTimeOffset? LocalRemovedAt = null)
 {
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool CanReplaceLocal => LocalRemovedAt is null && State == UploadState.Local && ShareUrl is null && BackupCopiedAt is null && PendingArchiveFolder is null;
+
     public bool LinkExpired(DateTimeOffset now) => LinkExpiresAt is { } expires && expires <= now;
 }
 

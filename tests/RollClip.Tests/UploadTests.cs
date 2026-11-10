@@ -142,6 +142,54 @@ public sealed class UploadTests : IDisposable
         Assert.True(File.Exists(clip.FilePath));
     }
 
+    [Fact]
+    public async Task CancelsActiveAndWaitingUploadsWithoutDeletingLocalFiles()
+    {
+        var clip = await CreateLocalClip();
+        var waiting = clip with { Id = Guid.NewGuid() };
+        var path = Path.Combine(_directory, "library.json");
+        var store = new ClipStore(path);
+        store.Add(clip);
+        store.Add(waiting);
+        var provider = new BlockingProvider();
+        var queue = new UploadQueue(store, [provider], () => 0);
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        queue.Enqueue(clip.Id, provider.Id);
+        queue.Enqueue(waiting.Id, provider.Id);
+        Assert.True(queue.Cancel(waiting.Id));
+        var worker = queue.RunAsync(stop.Token);
+        await provider.Started.Task.WaitAsync(stop.Token);
+        Assert.True(queue.Cancel(clip.Id));
+        await provider.Stopped.Task.WaitAsync(stop.Token);
+        await stop.CancelAsync();
+        try { await worker; }
+        catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
+
+        var reopened = new ClipStore(path);
+        Assert.Equal(UploadState.Cancelled, reopened.Find(clip.Id)?.State);
+        Assert.Equal(UploadState.Cancelled, reopened.Find(waiting.Id)?.State);
+        Assert.True(File.Exists(clip.FilePath));
+    }
+
+    private sealed class BlockingProvider : IUploadProvider
+    {
+        public Provider Id => Provider.Litterbox;
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Stopped { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async Task<UploadResult> UploadAsync(string path, int limitKibPerSecond, IProgress<double>? progress,
+            CancellationToken cancellationToken)
+        {
+            Started.TrySetResult();
+            try
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+                throw new InvalidOperationException();
+            }
+            finally { Stopped.TrySetResult(); }
+        }
+    }
+
     private async Task<Clip> CreateLocalClip()
     {
         var path = Path.Combine(_directory, "test.mp4");

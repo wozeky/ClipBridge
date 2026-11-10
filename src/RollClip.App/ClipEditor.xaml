@@ -10,10 +10,13 @@
   </Grid.RowDefinitions>
   <Border Background="#080908" CornerRadius="8">
    <MediaElement x:Name="Preview" LoadedBehavior="Manual" UnloadedBehavior="Close" Stretch="Uniform"
-    MediaOpened="Preview_Opened" MediaFailed="Preview_Failed" MediaEnded="Preview_Ended"/>
+    Volume="{Binding ElementName=PreviewVolume, Path=Value}" MediaOpened="Preview_Opened" MediaFailed="Preview_Failed" MediaEnded="Preview_Ended"/>
   </Border>
   <DockPanel Grid.Row="1" Margin="0,10,0,0">
    <Button x:Name="PlayButton" Content="Oynat" Width="78" Click="Play_Click" IsEnabled="False" Margin="0,0,12,0"/>
+   <Button x:Name="PreviewRangeButton" Content="Seçimi oynat" IsEnabled="False" Click="PreviewRange_Click" Margin="0,0,8,0" Padding="8,3"/>
+   <Slider x:Name="PreviewVolume" DockPanel.Dock="Right" Width="64" Minimum="0" Maximum="1" Value=".7" Margin="6,0,0,0"
+    AutomationProperties.Name="Önizleme ses seviyesi" ToolTip="Önizleme ses seviyesi"/>
    <TextBlock x:Name="PositionText" DockPanel.Dock="Right" Width="90" Margin="12,0,0,0" VerticalAlignment="Center"/>
    <Slider x:Name="Timeline" Minimum="0" IsMoveToPointEnabled="True" ValueChanged="Timeline_Changed"
     AutomationProperties.Name="Önizleme konumu"/>
@@ -42,7 +45,11 @@
    <Button x:Name="OpenCopyButton" Content="Paylaşım kopyasını aç" Click="OpenCopy_Click" Padding="10,6" Margin="0,0,8,5" IsEnabled="False"/>
    <Button x:Name="CancelButton" Content="İptal" Click="Cancel_Click" Padding="10,6" IsEnabled="False"/>
   </WrapPanel>
-  <TextBlock x:Name="Feedback" Grid.Row="5" Margin="0,6,0,0" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"
-   Text="Başlangıç ve bitiş saniye cinsinden. Paylaşım kopyası seçilen boyut sınırına uyar."/>
+  <StackPanel Grid.Row="5" Margin="0,6,0,0">
+   <CheckBox x:Name="ReplaceOriginal" Content="Yerel orijinalin yerine kaydet" Foreground="#F1F5EF" Margin="0,0,0,6"/>
+   <ProgressBar x:Name="ExportProgress" Height="4" Minimum="0" Maximum="100" Visibility="Collapsed" AutomationProperties.Name="Dışa aktarma ilerlemesi"/>
+   <TextBlock x:Name="Feedback" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"
+    Text="Başlangıç ve bitiş saniye cinsinden. Paylaşım kopyası seçilen boyut sınırına uyar."/>
+  </StackPanel>
  </Grid>
 </Window>
