@@ -33,6 +33,7 @@ public partial class MainWindow : Window
     private const int ReplayHotkey = 1;
     private const int WmHotkey = 0x0312;
     private WindowsCapture? _capture;
+    private nint _activeCaptureWindow;
     private readonly ReplayDiagnostics _diagnostics = new();
     private HwndSource? _windowSource;
     private bool _hotkeyRegistered;
@@ -550,6 +551,7 @@ public partial class MainWindow : Window
             await capture.StartAsync(target.Handle, Path.Combine(_root, "replay"), _settings.ReplaySeconds,
                 _settings.DesktopAudio, _settings.Microphone, _shutdown.Token, _settings.Quality, _settings.GameOnlyAudio);
             _capture = capture;
+            _activeCaptureWindow = target.Handle;
             _diagnostics.CaptureStarted(capture.Source, capture.Encoder, capture.FallbackDetails, capture.VideoFormat);
             SetReplayArmed(true);
             StatusMessage.Text = $"Kayıt hazır · {capture.Source} · {capture.Encoder} · {capture.FormatLabel} · hedef {_settings.ReplaySeconds} sn. " +
@@ -761,7 +763,7 @@ public partial class MainWindow : Window
 
         if (clip.State == UploadState.Uploaded)
         {
-            var copied = _settings.AutoCopy && TryCopy(clip.ShareUrl);
+            var copied = _settings.AutoCopy && TryCopyAutomaticLink(clip.ShareUrl);
             var timing = clip.Timing is null ? "" : $" · {clip.Timing.LinkReady.TotalSeconds:F1} sn";
             var lifetime = clip.Provider == Provider.Litterbox ? " · Litterbox: 24 saat" : "";
             StatusMessage.Text = (copied ? "Bağlantı panoya kopyalandı" : "Paylaşım bağlantısı hazır") + timing + lifetime;
@@ -1079,6 +1081,12 @@ public partial class MainWindow : Window
         var version = typeof(MainWindow).Assembly.GetName().Version ?? new Version(0, 0, 0);
         StatusMessage.Text = TryCopy(_diagnostics.BuildReport(version, _hotkeyRegistered, ReplayKeyLabel))
             ? "Tanılama raporu panoya kopyalandı." : "Tanılama raporu kopyalanamadı.";
+    }
+
+    private static bool TryCopyAutomaticLink(string? url)
+    {
+        try { return !Clipboard.ContainsFileDropList() && TryCopy(url); }
+        catch (ExternalException) { return false; }
     }
 
     private static bool TryCopy(string? text)
