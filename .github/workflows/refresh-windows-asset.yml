@@ -1,0 +1,87 @@
+name: Update the Windows download on v0.1.0
+on:
+  push:
+    branches: [release/refresh-windows-42764820745]
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: v0.1.0-windows-download
+
+jobs:
+  replace-asset:
+    if: github.repository == 'wozeky/RollClip'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Stage, verify and replace the Windows ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          release="repos/$GH_REPO/releases/438499607"
+          assets="repos/$GH_REPO/releases/assets"
+          ref="repos/$GH_REPO/git/ref/tags/v0.1.0"
+          tag_sha=$(gh api "$ref" --jq '.object.sha')
+          old_id=728778013
+          zip=RollClip-win-x64.zip
+          staged=RollClip-win-x64-42764820745-staged.zip
+          backup=RollClip-win-x64-728778013-backup.zip
+          digest=85d72c8cf39f83c50cd33aa93114205706e7c6bf143b9240fa9adf7efb9e2af2
+          gh api "$release" |
+            jq -e --arg zip "$zip" --argjson old "$old_id" '.tag_name == "v0.1.0" and .draft == false and .immutable != true and any(.assets[]; .id == $old and .name == $zip)' >/dev/null
+          gh api "repos/$GH_REPO/actions/runs/42764820745" |
+            jq -e '.conclusion == "success" and .head_sha == "3ec81e24679cb23a843bcf2ee19969bd9b0e2a3f"' >/dev/null
+          gh api "repos/$GH_REPO/actions/artifacts/13739088026" |
+            jq -e --arg digest "sha256:$digest" '.expired == false and .name == "RollClip-win-x64" and .workflow_run.id == 42764820745 and .digest == $digest' >/dev/null
+          gh api "repos/$GH_REPO/actions/artifacts/13739088026/zip" > "$staged"
+          printf '%s  %s\n' "$digest" "$staged" | sha256sum --check
+          unzip -tq "$staged"
+          unzip -Z1 "$staged" > entries.txt
+          grep -Fx RollClip.exe entries.txt
+          grep -Fx RollClip.dll entries.txt
+          grep -Fx ffmpeg/bin/ffmpeg.exe entries.txt
+          gh release upload v0.1.0 "$staged"
+
+          new_id=$(gh api "$release" |
+            jq -er --arg n "$staged" --arg d "sha256:$digest" '.assets[] | select(.name == $n and .digest == $d and .state == "uploaded") | .id')
+          moved_old=false
+          moved_new=false
+          rollback() {
+            rc=$?
+            if (( rc != 0 )) && [ "$moved_old" = true ]; then
+              if [ "$moved_new" = true ]; then
+                gh api --method PATCH "$assets/$new_id" -f "name=$staged" >/dev/null || true
+              fi
+              gh api --method PATCH "$assets/$old_id" -f "name=$zip" >/dev/null || true
+            fi
+          }
+          trap rollback EXIT
+          gh api --method PATCH "$assets/$old_id" -f "name=$backup" >/dev/null
+          moved_old=true
+          gh api --method PATCH "$assets/$new_id" -f "name=$zip" >/dev/null
+          moved_new=true
+
+          url=$(gh api "$assets/$new_id" --jq '.browser_download_url')
+          curl --fail --silent --show-error --location --retry 4 --max-time 120 "$url" -o verified.zip
+          printf '%s  verified.zip\n' "$digest" | sha256sum --check
+          test "$tag_sha" = "$(gh api "$ref" --jq '.object.sha')"
+          gh api --method DELETE "$assets/$old_id"
+          trap - EXIT
+          gh api "$release" |
+            jq -e --arg zip "$zip" --argjson new "$new_id" --argjson old "$old_id" 'any(.assets[]; .id == $new and .name == $zip) and all(.assets[]; .id != $old)' >/dev/null
+          printf 'Verified: %s\n' "$url"
+          notes=$(cat <<'NOTES'
+          Windows x64 paketi. ZIP'in tamamını çıkarın ve `RollClip.exe` dosyasını açın.
+
+          - Fare düğmelerin üzerine gelince adları gösterilir. Kayıt düğmesinin etiketi duruma göre değişir.
+          - Drive ile eşitlenen bir klasöre uzun süreli klip arşivi.
+          - Bekleyen kopyaları yeniden açılışta deneme, mevcut kopyaları içerik karşılaştırmasıyla doğrulama ve arşiv klasörünü açma.
+          - [Windows testleri](https://github.com/wozeky/RollClip/actions/runs/42764820745) · [Arayüz görüntüleri](https://github.com/wozeky/RollClip#ekran-g%C3%B6r%C3%BCnt%C3%BCleri)
+          NOTES
+          )
+          gh api --method PATCH "$release" -f 'name=RollClip v0.1.0' -f "body=$notes" >/dev/null
