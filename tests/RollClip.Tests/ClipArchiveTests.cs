@@ -24,8 +24,10 @@ public sealed class ClipArchiveTests
             Assert.Equal(Path.Combine(archive, "2026", "11"), Path.GetDirectoryName(copy));
             Assert.Equal(bytes, File.ReadAllBytes(copy));
             Assert.Equal(bytes, File.ReadAllBytes(original));
+            Assert.True(await ClipArchive.VerifyAsync(archive, clip, CancellationToken.None));
 
             File.WriteAllBytes(copy, [4, 3, 2, 1]);
+            Assert.False(await ClipArchive.VerifyAsync(archive, clip, CancellationToken.None));
             await Assert.ThrowsAsync<IOException>(() => ClipArchive.CopyAsync(archive, clip, CancellationToken.None));
             Assert.Equal(new byte[] { 4, 3, 2, 1 }, File.ReadAllBytes(copy));
         }

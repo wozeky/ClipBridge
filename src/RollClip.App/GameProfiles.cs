@@ -37,7 +37,7 @@ public partial class MainWindow
         if (process is not null && _gameProfiles.TryGetValue(process, out var profile))
             return profile;
         return new CaptureProfile(_settings.Quality, _settings.ReplaySeconds, _settings.DesktopAudio,
-            _settings.Microphone, _settings.GameOnlyAudio, _settings.Method, _settings.Game);
+            _settings.Microphone, _settings.GameOnlyAudio, _settings.Method, _settings.Game, Audio: _settings.Audio);
     }
 
     private bool CanStartAutomatically(nint window)
@@ -73,7 +73,7 @@ public partial class MainWindow
         {
             [process] = new(quality, ReplayLength.SelectedItem as int? ?? ReplayDurations.Default,
                 DesktopAudio.IsChecked == true, Microphone.IsChecked == true, GameOnlyAudio.IsChecked == true,
-                SelectedCaptureMethod, label, AutoGame.IsChecked == true)
+                SelectedCaptureMethod, label, AutoGame.IsChecked == true, ReadAudioControls())
         };
         StoreGameProfiles(updated, process);
     }
@@ -90,6 +90,7 @@ public partial class MainWindow
         AutoGame.IsChecked = profile.AutoStart;
         CaptureMethodChoice.SelectedIndex = (int)profile.Method;
         GameName.Text = profile.Label ?? "";
+        _ = LoadAudioControlsAsync(profile.Audio);
         StatusMessage.Text = EnglishUi.Choose(_settings.English, $"Profil yüklendi · {process}", $"Profile loaded · {process}");
     }
 
@@ -117,12 +118,18 @@ public partial class MainWindow
         }
     }
 
+    private void NotifyStatus(string message, Forms.ToolTipIcon icon = Forms.ToolTipIcon.Info)
+    {
+        if (_settings.SaveNotice)
+            _tray?.ShowBalloonTip(2500, "RollClip", message, icon);
+    }
+
     private void NotifyClipSaved(bool test)
     {
         var text = EnglishUi.Choose(_settings.English, "MP4 hazır. Klip diske kaydedildi.", "MP4 ready. Clip saved to disk.");
         StatusMessage.Text = text;
-        if (!test && _settings.SaveNotice)
-            _tray?.ShowBalloonTip(2500, "RollClip", text, Forms.ToolTipIcon.Info);
+        if (!test)
+            NotifyStatus(text);
         if (!test && _settings.SaveSound)
             SystemSounds.Asterisk.Play();
     }

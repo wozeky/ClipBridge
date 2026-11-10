@@ -4,18 +4,18 @@
 
 ## İndir
 
-- **[Windows yükleyicisi](https://github.com/wozeky/RollClip/releases/download/v0.3.1/RollClip-Setup-win-x64.exe)** · Türkçe/İngilizce, kullanıcı hesabına kurulum ve Başlat menüsü kısayolu.
-- **[Taşınabilir Windows ZIP](https://github.com/wozeky/RollClip/releases/download/v0.3.1/RollClip-win-x64.zip)** · ZIP’in tamamını çıkarıp `RollClip.exe` dosyasını çalıştırın.
+- **[Windows yükleyicisi](https://github.com/wozeky/RollClip/releases/download/v0.4.0/RollClip-Setup-win-x64.exe)** · Türkçe/İngilizce, kullanıcı hesabına kurulum ve Başlat menüsü kısayolu.
+- **[Taşınabilir Windows ZIP](https://github.com/wozeky/RollClip/releases/download/v0.4.0/RollClip-win-x64.zip)** · ZIP’in tamamını çıkarıp `RollClip.exe` dosyasını çalıştırın.
 
-İki paket de bu ön sürümde imzasızdır. SHA-256 dosyaları [Release sayfasında](https://github.com/wozeky/RollClip/releases/tag/v0.3.1) bulunur. **Ayarlar → Dil** üzerinden Türkçe ve İngilizce temel arayüz arasında geçebilirsiniz. Dili kaydedip uygulamayı yeniden açın. Bazı hata ve tanılama metinleri Türkçe kalır.
+İki paket de bu ön sürümde imzasızdır. SHA-256 dosyaları [Release sayfasında](https://github.com/wozeky/RollClip/releases/tag/v0.4.0) bulunur. **Ayarlar → Dil** üzerinden Türkçe ve İngilizce temel arayüz arasında geçebilirsiniz. Dili kaydedip uygulamayı yeniden açın. Bazı hata ve tanılama metinleri Türkçe kalır.
 
 ## Ekran görüntüleri
 
-![RollClip ana ekranı](docs/screenshots/home.png)
+![RollClip ana ekranı](https://github.com/wozeky/RollClip/releases/download/v0.4.0/RollClip-Ana-Ekran.png)
 
 | Ayarlar | Klip arşivi |
 | --- | --- |
-| ![RollClip ayarları](docs/screenshots/settings.png) | ![RollClip klip arşivi](docs/screenshots/library.png) |
+| ![RollClip ayarları](https://github.com/wozeky/RollClip/releases/download/v0.4.0/RollClip-Ayarlar.png) | ![RollClip klip arşivi](https://github.com/wozeky/RollClip/releases/download/v0.4.0/RollClip-Klip-Galerisi.png) |
 
 ## ClipBridge'den geçiş
 
@@ -54,6 +54,17 @@ Ana ekrandan oyun penceresini seçin. Kalite, süre, ses, etiket, yöntem ve oto
 - NVENC, AMF ve Intel QSV denenir. Donanım kodlama açılmazsa yazılımsal Media Foundation kullanılır. Video SDR olarak kaydedilir.
 - Klip diske yazılınca isteğe bağlı Windows bildirimi ve ses çalar. Windows bildirim ayarları ve Rahatsız Etmeyin modu bildirimin görünmesini etkileyebilir.
 
+## v0.4.0 ile gelenler
+
+- **Galeri:** Grid/liste, isim araması, oyun/tarih/yükleme/favori filtreleri ve tarih/süre/boyut sıralaması. FFmpeg küçük resimleri yalnızca görünen kartlar için üretir ve dosya değişmediği sürece tekrar kullanır.
+- **Editör:** Seçili aralığı oynatın, önizleme sesini değiştirin ve gerçek FFmpeg ilerlemesini izleyin. Hassas kesimler yeniden kodlanır. Tam aralıkta uygun ses seçenekleriyle stream copy kullanılır. Paylaşılmış veya yedeklenmiş klipler için yerel orijinali değiştirme devre dışıdır.
+- **Kayıt:** Mevcut tuşa ek olarak Ctrl/Shift ve klip süresi içeren en fazla sekiz kısayol ekleyin. Tampon, kayıttaki en uzun seçili süreyi hedefler. Arka arkaya gelen en fazla üç istek bekleyebilir. Sıradaki klip, işlenmeye başladığı anda elde olan tamponu kullanır.
+- **Ses:** Mikrofon aygıtı ve oyun/sistem ile mikrofon seviyeleri genel ayarda veya oyun profilinde saklanır. Oyun sesi modu başka uygulamaların sesine otomatik geçmez. Kayıt sırasında ses aygıtı hata verirse ilgili iz sessiz kalabilir.
+- **Paylaşım ve depolama:** Yükleme iptal edilebilir ve hız/süre tahmini gösterilir. Otomatik temizleme isteğe bağlıdır. Favoriler korunur. Klip dosyasının ayrı yedekle içeriği doğrulanır ve temizleme sonrası arşiv ile paylaşım geçmişi kalır. Doğrulama, Drive bulut senkronizasyonunu onaylamaz.
+- **Güncellemeler:** Ayarlarda sürümü görün, GitHub sürümlerini kontrol edin ve sürüm notlarını tarayıcıda açın. Otomatik kontrol ve ön sürümleri dahil etme ayrı tercihlerdir.
+
+Windows CI temel WPF yerleşimini sınar. Farklı ekran ölçekleri, global kısayol kayıtları, WASAPI aygıt geçişi, gerçek oyun FPS etkisi ve tam ekran bildirimleri fiziksel Windows’ta ayrıca sınanmalıdır. Bildirimler için Windows sistem tepsisi kullanılır. Özel bildirim konumu, canlı ses ölçer, ayrı Discord izi ve duraklatılabilir transfer bu sürümde bulunmuyor.
+
 ## Google Drive arşivi
 
 1. Google Drive for desktop uygulamasında eşitlenen **Drive’ım** klasöründe bir RollClip arşiv klasörü oluşturun.
@@ -63,7 +74,7 @@ Ana ekrandan oyun penceresini seçin. Kalite, süre, ses, etiket, yöntem ve oto
 
 RollClip yerel kopyayı oluşturur. Drive’a yüklemeyi Google Drive for desktop yapar. Eşitleme tamamlanınca dosyayı Drive web arayüzünde kontrol edin. Paylaşım bağlantısının sona ermesi arşivdeki MP4’ü etkilemez.
 
-![RollClip uzun süreli arşiv ayarları](docs/screenshots/archive.png)
+![RollClip uzun süreli arşiv ayarları](https://github.com/wozeky/RollClip/releases/download/v0.4.0/RollClip-Arsiv.png)
 
 ## Oyun içi doğrulama
 

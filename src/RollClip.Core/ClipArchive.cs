@@ -10,12 +10,8 @@ public static class ClipArchive
         if (!Directory.Exists(archiveFolder))
             throw new DirectoryNotFoundException("Yedek klasörüne erişilemiyor.");
 
-        var date = clip.CreatedAt.UtcDateTime;
-        var directory = Path.Combine(archiveFolder, date.ToString("yyyy", CultureInfo.InvariantCulture),
-            date.ToString("MM", CultureInfo.InvariantCulture));
-        var label = string.Concat((clip.Game ?? clip.Name).Take(48)
-            .Select(c => char.IsLetterOrDigit(c) || c is ' ' or '-' or '_' ? c : '_')).Trim();
-        var destination = Path.Combine(directory, FormattableString.Invariant($"{date:yyyy-MM-dd_HH-mm-ss}Z_{label}_{clip.Id:N}.mp4"));
+        var destination = Destination(archiveFolder, clip);
+        var directory = Path.GetDirectoryName(destination)!;
         if (string.Equals(Path.GetFullPath(clip.FilePath), Path.GetFullPath(destination),
             OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
             return false;
@@ -50,6 +46,26 @@ public static class ClipArchive
             if (File.Exists(temporary))
                 File.Delete(temporary);
         }
+    }
+
+    private static string Destination(string archiveFolder, Clip clip)
+    {
+        var date = clip.CreatedAt.UtcDateTime;
+        var directory = Path.Combine(archiveFolder, date.ToString("yyyy", CultureInfo.InvariantCulture),
+            date.ToString("MM", CultureInfo.InvariantCulture));
+        var label = string.Concat((clip.Game ?? clip.Name).Take(48)
+            .Select(c => char.IsLetterOrDigit(c) || c is ' ' or '-' or '_' ? c : '_')).Trim();
+        return Path.Combine(directory, FormattableString.Invariant($"{date:yyyy-MM-dd_HH-mm-ss}Z_{label}_{clip.Id:N}.mp4"));
+    }
+
+    public static async Task<bool> VerifyAsync(string archiveFolder, Clip clip, CancellationToken token)
+    {
+        var path = Destination(archiveFolder, clip);
+        if (!File.Exists(path) || string.Equals(Path.GetFullPath(path), Path.GetFullPath(clip.FilePath), StringComparison.OrdinalIgnoreCase))
+            return false;
+        await using var source = new FileStream(clip.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read,
+            65536, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        return source.Length > 0 && await MatchesAsync(source, path, token);
     }
 
     private static async Task<bool> MatchesAsync(FileStream source, string destination, CancellationToken token)

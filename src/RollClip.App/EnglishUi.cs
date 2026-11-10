@@ -61,6 +61,23 @@ internal static class EnglishUi
         ["Mikrofonu ekle"] = "Include microphone", ["Sesi kapat"] = "Mute", ["Dosya boyutu hedefi"] = "File size target",
         ["Paylaşım dosyasını kopyala"] = "Copy share file", ["Kırpılmış kopyayı kaydet"] = "Save trimmed copy",
         ["Paylaşım kopyasını aç"] = "Open share copy", ["İptal"] = "Cancel",
+        ["Klip adına göre ara"] = "Search clip names", ["Oyun filtresi"] = "Game filter",
+        ["Tarih filtresi"] = "Date filter", ["Yükleme filtresi"] = "Upload filter", ["Sıralama"] = "Sort",
+        ["Yalnız favoriler"] = "Favorites only", ["Izgara görünümü"] = "Grid view",
+        ["Konumu aç"] = "Show in folder", ["Yüklemeyi iptal et"] = "Cancel upload",
+        ["Seçimi oynat"] = "Play selection", ["Önizleme ses seviyesi"] = "Preview volume",
+        ["Dışa aktarma ilerlemesi"] = "Export progress", ["Yerel orijinalin yerine kaydet"] = "Replace local original",
+        ["EK KLİP KISAYOLLARI"] = "EXTRA CLIP SHORTCUTS", ["Ek kısayollar"] = "Extra shortcuts",
+        ["Ek kısayol tuşu"] = "Extra shortcut key", ["Ek kısayol süresi"] = "Extra shortcut duration",
+        ["Yeni"] = "New", ["Ekle / uygula"] = "Add / apply", ["Kaldır"] = "Remove", ["Yenile"] = "Refresh",
+        ["Mikrofon aygıtı"] = "Microphone device", ["Oyun / sistem %"] = "Game / system %",
+        ["Mikrofon %"] = "Microphone %", ["DEPOLAMA"] = "STORAGE", ["Kullanımı ölç"] = "Measure usage",
+        ["Küçük resimleri temizle"] = "Clear thumbnails", ["Klip sınırı (GB)"] = "Clip limit (GB)",
+        ["Yedeği doğrulanan eski klipleri otomatik temizle"] = "Clean up old clips with verified backups",
+        ["Paylaşılmamış klipleri koru"] = "Keep unshared clips", ["GÜNCELLEMELER"] = "UPDATES",
+        ["Güncellemeleri otomatik kontrol et"] = "Check for updates automatically",
+        ["Ön sürümleri dahil et"] = "Include prereleases", ["Kontrol et"] = "Check now",
+        ["Sürüm notları / indir"] = "Release notes / download",
         ["Başlangıç ve bitiş saniye cinsinden. Paylaşım kopyası seçilen boyut sınırına uyar."] =
             "Start and end are in seconds. The share copy fits the selected size limit."
     };

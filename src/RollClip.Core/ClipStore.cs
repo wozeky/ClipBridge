@@ -98,6 +98,86 @@ public sealed class ClipStore
         }
     }
 
+    public Clip? ReplaceLocal(Guid id, string prepared, string managedFolder, double[] bookmarks, string? archiveFolder)
+    {
+        lock (_gate)
+        {
+            if (!_clips.TryGetValue(id, out var clip) || !clip.CanReplaceLocal ||
+                !IsManagedFile(clip, managedFolder) || !File.Exists(clip.FilePath) ||
+                (File.GetAttributes(clip.FilePath) & FileAttributes.ReparsePoint) != 0 ||
+                Mp4.ReadDuration(prepared) is not { } duration)
+                return null;
+            var updated = clip with { Bytes = new FileInfo(prepared).Length, Duration = duration,
+                Bookmarks = bookmarks, SeparateMicrophone = false, PendingArchiveFolder = archiveFolder };
+            var previous = clip.FilePath + "." + Guid.NewGuid().ToString("N") + ".original";
+            File.Replace(prepared, clip.FilePath, previous);
+            try { Save(new Dictionary<Guid, Clip>(_clips) { [id] = updated }); }
+            catch
+            {
+                File.Move(previous, clip.FilePath, overwrite: true);
+                throw;
+            }
+            try { File.Delete(previous); }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+            { System.Diagnostics.Trace.WriteLine(error.Message); }
+            return updated;
+        }
+    }
+
+    private bool IsManagedFile(Clip clip, string managedFolder)
+    {
+        var path = Path.GetFullPath(clip.FilePath);
+        var parent = Path.TrimEndingDirectorySeparator(Path.GetFullPath(managedFolder));
+        return string.Equals(Path.GetDirectoryName(path), parent, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(Path.GetExtension(path), ".mp4", StringComparison.OrdinalIgnoreCase) &&
+            (File.GetAttributes(parent) & FileAttributes.ReparsePoint) == 0 &&
+            !_clips.Values.Any(other => other.Id != clip.Id &&
+                string.Equals(Path.GetFullPath(other.FilePath), path, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public bool DeleteLocal(Guid id, string managedFolder, out string? deferredDelete, Func<Clip, bool>? allow = null, bool keepHistory = false)
+    {
+        deferredDelete = null;
+        lock (_gate)
+        {
+            if (!_clips.TryGetValue(id, out var clip) || clip.State is UploadState.Queued or UploadState.Uploading ||
+                (allow is not null && !allow(clip)))
+                return false;
+            var path = Path.GetFullPath(clip.FilePath);
+            if (!IsManagedFile(clip, managedFolder))
+                return false;
+            var staged = path + "." + Guid.NewGuid().ToString("N") + ".deleting";
+            var moved = File.Exists(path);
+            if (moved)
+            {
+                if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+                    return false;
+                File.Move(path, staged);
+            }
+            try
+            {
+                var updated = new Dictionary<Guid, Clip>(_clips);
+                if (keepHistory)
+                    updated[id] = clip with { LocalRemovedAt = DateTimeOffset.UtcNow };
+                else
+                    updated.Remove(id);
+                Save(updated);
+            }
+            catch
+            {
+                if (moved)
+                    File.Move(staged, path);
+                throw;
+            }
+            if (moved)
+            {
+                try { File.Delete(staged); }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException) { deferredDelete = staged; }
+            }
+            return true;
+        }
+    }
+
     private void Save(Dictionary<Guid, Clip> updated)
     {
         AtomicJson.Write(_path, updated.Values.ToArray());

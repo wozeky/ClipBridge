@@ -56,7 +56,7 @@ public partial class MainWindow : Window
     private bool _busy;
     private bool _recovering;
     private Guid? _progressId;
-    private Guid? _thumbnailId;
+    private long _uploadStarted;
     private bool _refreshingLibrary;
 
     private static string ResolveDataFolder(Environment.SpecialFolder folder)
@@ -235,7 +235,12 @@ public partial class MainWindow : Window
 
     private void Home_Click(object sender, RoutedEventArgs args) => ShowPanel("home");
     private void Library_Click(object sender, RoutedEventArgs args) => ShowPanel("library");
-    private void Settings_Click(object sender, RoutedEventArgs args) => ShowPanel("settings");
+    private void Settings_Click(object sender, RoutedEventArgs args)
+    {
+        ShowPanel("settings");
+        if (MicrophoneDevice.Items.Count == 0)
+            _ = LoadAudioControlsAsync(_settings.Audio);
+    }
     private void Minimize_Click(object sender, RoutedEventArgs args) => WindowState = WindowState.Minimized;
     private void Maximize_Click(object sender, RoutedEventArgs args) =>
         WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
@@ -246,7 +251,7 @@ public partial class MainWindow : Window
         if (SaveSettings()) UpdateInterfaceMotion();
     }
 
-    private void OnSmokeRendered(object? sender, EventArgs args)
+    private async void OnSmokeRendered(object? sender, EventArgs args)
     {
         ContentRendered -= OnSmokeRendered;
         try
@@ -314,7 +319,7 @@ public partial class MainWindow : Window
                 throw new InvalidOperationException("The source selector surface does not fill its hit target.");
             SettingsNav.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
             ExportPng("settings");
-            SettingsScroll.ScrollToBottom();
+            ArchiveFolderBox.BringIntoView();
             UpdateLayout();
             ExportPng("archive");
             SettingsScroll.ScrollToTop();
@@ -337,6 +342,32 @@ public partial class MainWindow : Window
                 throw new InvalidOperationException("Could not restore default settings in the isolated smoke profile.");
             StatusMessage.Text = "";
             ShowPanel("library");
+            var fixtureFolder = Path.Combine(Path.GetDirectoryName(_smokeMarker!)!, "rollclip-replay");
+            var firstReplay = Path.Combine(fixtureFolder, "replay-0.mp4");
+            var secondReplay = Path.Combine(fixtureFolder, "replay-1.mp4");
+            if (File.Exists(firstReplay) && File.Exists(secondReplay))
+            {
+                var first = new Clip(Guid.NewGuid(), firstReplay, "Antrenman klibi", DateTimeOffset.UtcNow,
+                    new FileInfo(firstReplay).Length, Mp4.ReadDuration(firstReplay), Game: "Test oyunu", Favorite: true);
+                var second = new Clip(Guid.NewGuid(), secondReplay, "Maç özeti", first.CreatedAt.AddMinutes(-2),
+                    new FileInfo(secondReplay).Length, Mp4.ReadDuration(secondReplay), Game: "Test oyunu");
+                foreach (var clip in new[] { first, second })
+                {
+                    _store.Add(clip);
+                    if (await VideoThumbnail.LoadAsync(clip, Path.Combine(_root, "thumbnails"), _shutdown.Token) is null)
+                        throw new InvalidOperationException("The gallery could not render a thumbnail for the synthetic replay.");
+                }
+                GallerySearch.Text = "Antrenman";
+                if (Library.Items.Count != 1 || _galleryRows.Single().Clip.Id != first.Id)
+                    throw new InvalidOperationException("Gallery text filtering did not find the correct clip.");
+                GallerySearch.Clear();
+                GalleryGrid.IsChecked = true;
+                RefreshLibrary(first.Id);
+                if (Library.Items.Count != 1 || _galleryRows.Count != 2 || SelectedClip?.Id != first.Id)
+                    throw new InvalidOperationException("Gallery grid or clip selection failed.");
+                UpdateLayout();
+                await Task.Delay(450, _shutdown.Token);
+            }
             ExportPng("library");
             if (!Library.IsVisible || Library.ActualHeight <= 0 || !RecoverClipsButton.IsVisible)
                 throw new InvalidOperationException("Library navigation failed.");
@@ -426,11 +457,20 @@ public partial class MainWindow : Window
                 throw new IOException("Windows video klasörü bulunamadı.");
             Directory.CreateDirectory(_clipsPath);
             _settings = AtomicJson.Read<ClipSettings>(Path.Combine(_root, "settings.json")) ?? new ClipSettings();
+            _loadedAudio = _settings.Audio ?? new CaptureAudio();
+            SystemGain.Value = Math.Clamp(_loadedAudio.SystemPercent, 0, 200);
+            MicrophoneGain.Value = Math.Clamp(_loadedAudio.MicrophonePercent, 0, 200);
             ProviderChoice.SelectedIndex = _settings.Provider == Provider.Gofile ? 1 : 0;
             SpeedLimit.Text = _settings.SpeedLimit.ToString(CultureInfo.InvariantCulture);
             AutoUpload.IsChecked = _settings.AutoUpload;
             AutoCopy.IsChecked = _settings.AutoCopy;
             AutoFallback.IsChecked = _settings.AutoFallback;
+            StorageLimit.Text = (_settings.QuotaBytes / 1_000_000_000d).ToString("0.###", CultureInfo.CurrentCulture);
+            AutoCleanup.IsChecked = _settings.AutoCleanup;
+            KeepUnshared.IsChecked = _settings.KeepUnshared;
+            AutoUpdates.IsChecked = _settings.AutoUpdates;
+            IncludePreviews.IsChecked = _settings.IncludePreviews;
+            CurrentVersionLabel.Text = "RollClip " + InstalledVersion.ToString(3);
             if (_smokeMarker is null)
             {
                 try { StartWithWindows.IsChecked = ReadAndMigrateStartup(); }
@@ -460,8 +500,10 @@ public partial class MainWindow : Window
             RecordingQualityChoice.SelectedIndex = Enum.IsDefined(_settings.Quality) ? (int)_settings.Quality : 0;
             ReplayKeyChoice.ItemsSource = Enumerable.Range(6, 6).Select(key => $"F{key}").ToArray();
             ReplayKeyChoice.SelectedIndex = _settings.ReplayKey is >= 6 and <= 11 ? _settings.ReplayKey - 6 : 2;
+            InitializeShortcuts();
             UpdateReplayKeyLabel();
             _store = new ClipStore(Path.Combine(_root, "library.json"));
+            InitializeGallery();
             _queue = new UploadQueue(_store,
                 [new FreeUploadProvider(_http, Provider.Litterbox), new FreeUploadProvider(_http, Provider.Gofile)],
                 () => Volatile.Read(ref _settings).SpeedLimit);
@@ -477,6 +519,14 @@ public partial class MainWindow : Window
                 UploadProgress.Value = percent;
                 if (percent >= 100)
                     StatusMessage.Text = "Dosya gönderildi. Servisten bağlantı bekleniyor…";
+                else if (_store?.Find(id) is { } active && Stopwatch.GetElapsedTime(_uploadStarted).TotalSeconds > 0.5)
+                {
+                    var elapsed = Stopwatch.GetElapsedTime(_uploadStarted).TotalSeconds;
+                    var sent = active.Bytes * Math.Clamp(percent, 0, 100) / 100;
+                    var rate = sent / elapsed;
+                    var remaining = rate > 0 ? $" · ~{(active.Bytes - sent) / rate:F0} s" : "";
+                    StatusMessage.Text = $"{active.Provider} · %{percent:F0} · {rate / 1024:F0} KiB/s{remaining}";
+                }
             });
             RefreshLibrary();
             if (_smokeMarker is not null)
@@ -519,10 +569,18 @@ public partial class MainWindow : Window
 
     private nint WindowMessage(nint window, int message, nint parameter, nint data, ref bool handled)
     {
-        if (message == WmHotkey && parameter == ReplayHotkey && _armed)
+        if (message == WmHotkey && _armed)
         {
-            handled = true;
-            _ = SaveReplayAsync(viaHotkey: true);
+            if (parameter == ReplayHotkey && _hotkeyRegistered)
+            {
+                handled = true;
+                _ = SaveReplayAsync(viaHotkey: true);
+            }
+            else if (_activeShortcuts.TryGetValue((int)parameter, out var shortcut))
+            {
+                handled = true;
+                _ = SaveReplayAsync(viaHotkey: true, requestedSeconds: shortcut.Seconds);
+            }
         }
         return 0;
     }
@@ -590,8 +648,11 @@ public partial class MainWindow : Window
         try
         {
             StatusMessage.Text = "Windows pencere kaydı başlatılıyor…";
-            await capture.StartAsync(target.Handle, Path.Combine(_root, "replay"), profile.Seconds,
-                profile.DesktopAudio, profile.Microphone, _shutdown.Token, profile.Quality, profile.GameOnlyAudio, profile.Method);
+            _activeDefaultDuration = profile.Seconds;
+            var bufferSeconds = Math.Max(profile.Seconds, (_settings.Shortcuts ?? []).Select(item => item.Seconds).DefaultIfEmpty().Max());
+            await capture.StartAsync(target.Handle, Path.Combine(_root, "replay"), bufferSeconds,
+                profile.DesktopAudio, profile.Microphone, _shutdown.Token, profile.Quality, profile.GameOnlyAudio, profile.Method, profile.Audio);
+            AudioDeviceStatus.Text = capture.AudioStatus;
             _capture = capture;
             _activeCaptureWindow = target.Handle;
             _activeGameLabel = profile.Label;
@@ -599,6 +660,7 @@ public partial class MainWindow : Window
             SetReplayArmed(true);
             StatusMessage.Text = $"Kayıt hazır · {capture.Source} · {capture.Encoder} · {capture.FormatLabel} · hedef {profile.Seconds} sn. " +
                 (_hotkeyRegistered ? $"Klip için {ReplayKeyLabel}." : "Klip al düğmesini kullanın.");
+            NotifyStatus(T("Kayıt başladı.", "Capture started."));
             _ = WatchCaptureAsync(capture);
         }
         catch (Exception error) when (IsReplayError(error))
@@ -628,14 +690,19 @@ public partial class MainWindow : Window
 
     private async void SaveReplay_Click(object sender, RoutedEventArgs args) => await SaveReplayAsync();
 
-    private async Task SaveReplayAsync(bool viaHotkey = false, bool test = false)
+    private async Task SaveReplayAsync(bool viaHotkey = false, bool test = false, int? requestedSeconds = null)
     {
         if (_captureBusy)
         {
             if (viaHotkey && _armed)
             {
-                _replayPending = true;
-                ShowReplayStatus("Bir sonraki klip sıraya alındı.", Forms.ToolTipIcon.Info);
+                if (_pendingReplays.Count < 3)
+                {
+                    _pendingReplays.Enqueue(requestedSeconds ?? _activeDefaultDuration);
+                    StatusMessage.Text = T("Klip isteği sıraya alındı.", "Clip request queued.");
+                }
+                else
+                    StatusMessage.Text = T("Klip sırası dolu.", "Clip queue is full.");
             }
             return;
         }
@@ -653,7 +720,8 @@ public partial class MainWindow : Window
             var id = Guid.NewGuid();
             var name = (test ? "Test klibi " : "Klip ") + DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss", CultureInfo.InvariantCulture);
             var destination = Path.Combine(_clipsPath, $"{name}-{id:N}.mp4");
-            var path = await capture.SaveAsync(destination, timeout.Token);
+            StatusMessage.Text = T("Klip kaydediliyor…", "Saving clip…");
+            var path = await capture.SaveAsync(destination, timeout.Token, requestedSeconds ?? _activeDefaultDuration);
             _diagnostics.Mp4Ready(id, saveStartedAt, Stopwatch.GetTimestamp());
             mp4Ready = true;
             NotifyClipSaved(test);
@@ -672,12 +740,8 @@ public partial class MainWindow : Window
         finally
         {
             SetCaptureBusy(false);
-            if (_replayPending)
-            {
-                _replayPending = false;
-                if (!_shutdown.IsCancellationRequested)
-                    _ = Dispatcher.InvokeAsync(() => SaveReplayAsync(viaHotkey: true));
-            }
+            if (_armed && !_shutdown.IsCancellationRequested && _pendingReplays.TryDequeue(out var next))
+                _ = Dispatcher.InvokeAsync(() => SaveReplayAsync(viaHotkey: true, requestedSeconds: next));
         }
         if (testClip is not null)
             await EditClipAsync(testClip);
@@ -699,6 +763,9 @@ public partial class MainWindow : Window
                 _hotkeyRegistered = false;
             }
         }
+        RegisterExtraShortcuts(armed);
+        if (!armed)
+            _pendingReplays.Clear();
         TestClipButton.IsEnabled = SaveReplayButton.IsEnabled = !_captureBusy && _armed;
         if (armed)
             _bufferTimer.Start();
@@ -726,6 +793,8 @@ public partial class MainWindow : Window
             status += T($" · {ReplayKeyLabel} kullanılamıyor", $" · {ReplayKeyLabel} unavailable");
         if (CaptureStatus.Text != status)
             CaptureStatus.Text = status;
+        if (_capture is { } current && AudioDeviceStatus.Text != current.AudioStatus)
+            AudioDeviceStatus.Text = current.AudioStatus;
         var trayText = "RollClip · " + status;
         if (_tray is not null && _tray.Text != trayText)
             _tray.Text = trayText;
@@ -756,8 +825,7 @@ public partial class MainWindow : Window
     private void ShowReplayStatus(string message, Forms.ToolTipIcon icon)
     {
         StatusMessage.Text = message;
-        if (!IsVisible)
-            _tray?.ShowBalloonTip(2500, "RollClip", message, icon);
+        NotifyStatus(message, icon);
     }
 
     [DllImport("user32.dll", SetLastError = true)]
@@ -771,13 +839,19 @@ public partial class MainWindow : Window
     private async Task<Clip> AddClipAsync(string path, string name, Guid id, string? game = null,
         bool allowUpload = true, bool separateMicrophone = false, string? importKey = null, double[]? bookmarks = null)
     {
-        var info = new FileInfo(path);
-        var duration = await Task.Run(() => Mp4.ReadDuration(path), _shutdown.Token);
-        var upload = allowUpload && _settings.AutoUpload;
-        var clip = new Clip(id, path, name, DateTimeOffset.UtcNow, info.Length, duration, Game: game, Provider: _settings.Provider,
-            State: upload ? UploadState.Queued : UploadState.Local, FallbackProvider: _settings.FallbackProvider,
-            PendingArchiveFolder: _settings.ArchiveFolder, SeparateMicrophone: separateMicrophone, ImportKey: importKey, Bookmarks: bookmarks);
-        _store!.Add(clip);
+        var settings = _settings;
+        var upload = allowUpload && settings.AutoUpload;
+        var store = _store ?? throw new InvalidOperationException("Klip arşivi hazır değil.");
+        var clip = await Task.Run(() =>
+        {
+            var duration = Mp4.ReadDuration(path) ?? throw new IOException("Klip okunamadı.");
+            var saved = new Clip(id, path, name, DateTimeOffset.UtcNow, new FileInfo(path).Length, duration,
+                Game: game, Provider: settings.Provider, State: upload ? UploadState.Queued : UploadState.Local,
+                FallbackProvider: settings.FallbackProvider, PendingArchiveFolder: settings.ArchiveFolder,
+                SeparateMicrophone: separateMicrophone, ImportKey: importKey, Bookmarks: bookmarks);
+            store.Add(saved);
+            return saved;
+        }, _shutdown.Token);
         _diagnostics.ClipChanged(clip, Stopwatch.GetTimestamp());
         RefreshLibrary(clip.Id);
         StatusMessage.Text = upload ? "Klip kaydedildi, yükleme sıraya alındı." : "Klip yerel arşive kaydedildi.";
@@ -790,14 +864,18 @@ public partial class MainWindow : Window
 
     private void OnClipChanged(Clip clip, long changedAt)
     {
+        if (_store?.Find(clip.Id)?.State != clip.State)
+            return;
         _diagnostics.ClipChanged(clip, changedAt);
         RefreshLibrary();
         if (clip.State == UploadState.Uploading)
         {
             _progressId = clip.Id;
+            _uploadStarted = changedAt;
             UploadProgress.Value = 0;
             UploadProgress.Visibility = Visibility.Visible;
             StatusMessage.Text = "Yerel MP4 hazır. Yükleniyor…";
+            NotifyStatus(T("Klip yükleniyor.", "Uploading clip."));
         }
         else if (_progressId == clip.Id)
         {
@@ -811,11 +889,16 @@ public partial class MainWindow : Window
             var timing = clip.Timing is null ? "" : $" · {clip.Timing.LinkReady.TotalSeconds:F1} sn";
             var lifetime = clip.Provider == Provider.Litterbox ? " · Litterbox: 24 saat" : "";
             StatusMessage.Text = (copied ? "Bağlantı panoya kopyalandı" : "Paylaşım bağlantısı hazır") + timing + lifetime;
-            if (!IsVisible)
-                _tray?.ShowBalloonTip(2500, "RollClip", StatusMessage.Text, Forms.ToolTipIcon.Info);
+            NotifyStatus(StatusMessage.Text);
         }
+        else if (clip.State == UploadState.Cancelled)
+            StatusMessage.Text = T("Yükleme iptal edildi.", "Upload cancelled.");
         else if (clip.Error is not null)
+        {
             StatusMessage.Text = clip.Error + (clip.NextAttempt is null ? "" : " Otomatik yeniden denenecek.");
+            if (clip.State == UploadState.Failed)
+                NotifyStatus(StatusMessage.Text, Forms.ToolTipIcon.Warning);
+        }
     }
 
     private void ChooseArchiveFolder_Click(object sender, RoutedEventArgs args)
@@ -888,9 +971,14 @@ public partial class MainWindow : Window
                         try
                         {
                             var wasCopied = await ClipArchive.CopyAsync(folder, clip, token);
-                            if (clip.PendingArchiveFolder == folder)
-                                _store?.Change(clip.Id, current => current.PendingArchiveFolder == folder
-                                    ? current with { PendingArchiveFolder = null } : null);
+                            _store?.Change(clip.Id, current =>
+                                !wasCopied && current.BackupFolder == folder && current.BackupCopiedAt is not null &&
+                                current.PendingArchiveFolder != folder ? null : current with
+                            {
+                                BackupCopiedAt = DateTimeOffset.UtcNow,
+                                BackupFolder = folder,
+                                PendingArchiveFolder = current.PendingArchiveFolder == folder ? null : current.PendingArchiveFolder
+                            });
                             if (wasCopied)
                                 copied++;
                             else
@@ -908,6 +996,7 @@ public partial class MainWindow : Window
                     }
                     return (copied, existing, failed, reason);
                 }, token);
+                RefreshLibrary();
                 if (_settings.ArchiveFolder != folder)
                     return;
                 ArchiveStatus.Text = clips.Count == 0 ? "Yedeklenecek klip yok."
@@ -930,6 +1019,17 @@ public partial class MainWindow : Window
             StatusMessage.Text = "Hız sınırı için 0–100000 arasında bir sayı girin.";
             return false;
         }
+        if (!double.TryParse(StorageLimit.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var storageGb)
+            || !double.IsFinite(storageGb) || storageGb is < 0 or > 100000)
+        {
+            StatusMessage.Text = T("Depolama sınırı geçersiz. 0 sınırsızdır.", "Invalid storage limit. 0 is unlimited.");
+            return false;
+        }
+        if (AutoCleanup.IsChecked == true && !_settings.AutoCleanup &&
+            MessageBox.Show(this, T("Favori olmayan, yerel yedeği doğrulanmış eski klipler sınır aşılınca silinebilir. Etkinleştirilsin mi?",
+                "Older non-favorite clips with a verified local backup may be deleted when over the limit. Enable?"),
+                "RollClip", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+            AutoCleanup.IsChecked = false;
         try
         {
             var seconds = ReplayLength.SelectedItem as int? ?? ReplayDurations.Default;
@@ -945,7 +1045,9 @@ public partial class MainWindow : Window
                 _pendingImportFolder, _pendingImportSince, GameOnlyAudio.IsChecked == true, AutoGame.IsChecked == true,
                 WindowsCapture.ProcessName((CaptureTarget.SelectedItem as WindowsCapture.CaptureWindow)?.Handle ?? 0)
                     ?? _settings.AutoGameProcess, SelectedCaptureMethod, SaveSound.IsChecked == true,
-                SaveNotice.IsChecked == true, LanguageChoice.SelectedIndex == 1);
+                SaveNotice.IsChecked == true, LanguageChoice.SelectedIndex == 1, _shortcutDraft.ToArray(), ReadAudioControls(), (long)(storageGb * 1_000_000_000),
+                AutoCleanup.IsChecked == true, KeepUnshared.IsChecked == true,
+                AutoUpdates.IsChecked == true, IncludePreviews.IsChecked == true);
             AtomicJson.Write(Path.Combine(_root, "settings.json"), settings);
             if (_settings.ArchiveFolder != settings.ArchiveFolder)
                 ArchiveStatus.Text = "";
@@ -1003,64 +1105,22 @@ public partial class MainWindow : Window
         startup.SetValue(ProductName, $"\"{exe}\" --tray");
     }
 
-    private void RefreshLibrary(Guid? select = null)
-    {
-        select ??= SelectedClip?.Id;
-        var rows = _store?.Snapshot().Select(clip => new ClipRow(clip, _settings.English)).ToArray() ?? [];
-        _refreshingLibrary = true;
-        try
-        {
-            Library.ItemsSource = rows;
-            Library.SelectedItem = rows.FirstOrDefault(row => row.Clip.Id == select);
-        }
-        finally { _refreshingLibrary = false; }
-        UpdateSelection();
-    }
-
-    private Clip? SelectedClip => (Library.SelectedItem as ClipRow)?.Clip;
-
-    private void Library_SelectionChanged(object sender, RoutedEventArgs args)
-    {
-        if (!_refreshingLibrary)
-            UpdateSelection();
-    }
-
-    private void UpdateSelection()
-    {
-        RefreshButtons();
-        var selected = SelectedClip;
-        if (_thumbnailId == selected?.Id)
-            return;
-        _thumbnailId = selected?.Id;
-        Thumbnail.Source = null;
-        Thumbnail.Visibility = Visibility.Collapsed;
-        if (selected is not null)
-            _ = LoadThumbnailAsync(selected);
-    }
-
-    private async Task LoadThumbnailAsync(Clip clip)
-    {
-        // Rapid selection changes do not launch a shell thumbnail worker for every row.
-        await Task.Delay(180);
-        if (_thumbnailId != clip.Id || _shutdown.IsCancellationRequested)
-            return;
-        var image = await VideoThumbnail.LoadAsync(clip.FilePath);
-        if (_thumbnailId == clip.Id && image is not null && !_shutdown.IsCancellationRequested)
-        {
-            Thumbnail.Source = image;
-            Thumbnail.Visibility = Visibility.Visible;
-        }
-    }
-
     private void RefreshButtons()
     {
-        OpenButton.IsEnabled = SelectedClip is not null;
+        OpenButton.IsEnabled = SelectedClip is { LocalRemovedAt: null } && !_galleryMutating;
+        FavoriteButton.IsEnabled = SelectedClip is not null && !_galleryMutating;
+        ShowLocationButton.IsEnabled = OpenButton.IsEnabled;
+        DeleteClipButton.IsEnabled = SelectedClip is not null && !_galleryMutating && SelectedClip?.State is not (UploadState.Queued or UploadState.Uploading);
+        FavoriteButton.Content = SelectedClip?.Favorite == true ? T("Favoriden çıkar", "Unfavorite") : T("Favori", "Favorite");
         var clip = SelectedClip;
         CopyButton.IsEnabled = clip?.ShareUrl is not null && !clip.LinkExpired(DateTimeOffset.UtcNow);
-        UploadButton.IsEnabled = _queue is not null && clip?.State is UploadState.Local or UploadState.Failed or UploadState.Uploaded;
+        UploadButton.IsEnabled = !_galleryMutating && _queue is not null && clip is { LocalRemovedAt: null } &&
+            clip.State is UploadState.Local or UploadState.Failed or UploadState.Cancelled or UploadState.Uploaded;
+        CancelUploadButton.Visibility = clip?.State is UploadState.Queued or UploadState.Uploading ? Visibility.Visible : Visibility.Collapsed;
+        CancelUploadButton.IsEnabled = !_galleryMutating && _queue is not null;
         UploadButton.Content = clip?.State == UploadState.Uploaded ? T("Yeni bağlantı oluştur", "Create new link") :
-            clip?.State == UploadState.Failed ? T("Yeniden dene", "Retry") : T("Bağlantı oluştur", "Create link");
-        QuickUploadButton.IsEnabled = Library.HasItems;
+            clip?.State is UploadState.Failed or UploadState.Cancelled ? T("Yeniden dene", "Retry") : T("Bağlantı oluştur", "Create link");
+        QuickUploadButton.IsEnabled = _galleryCount > 0;
     }
 
     private async void Open_Click(object sender, RoutedEventArgs args)
@@ -1116,7 +1176,7 @@ public partial class MainWindow : Window
 
     private void OpenPath(string path)
     {
-        try { Process.Start(new ProcessStartInfo(path) { UseShellExecute = true }); }
+        try { using var shell = Process.Start(new ProcessStartInfo(path) { UseShellExecute = true }); }
         catch (Win32Exception error) { StatusMessage.Text = "Dosya veya klasör açılamadı. " + error.Message; }
     }
 
@@ -1144,6 +1204,14 @@ public partial class MainWindow : Window
             return false;
         try { Clipboard.SetText(text); return true; }
         catch (ExternalException) { return false; }
+    }
+
+    private async void CancelUpload_Click(object sender, RoutedEventArgs args)
+    {
+        if (SelectedClip is not { } clip || _queue is not { } queue)
+            return;
+        try { await Task.Run(() => queue.Cancel(clip.Id)); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { StatusMessage.Text = error.Message; }
     }
 
     private void Upload_Click(object sender, RoutedEventArgs args)
@@ -1229,7 +1297,8 @@ public partial class MainWindow : Window
         RecordingQuality Quality = RecordingQuality.High, int ReplayKey = 8, string? ArchiveFolder = null,
         string? ImportFolder = null, DateTimeOffset? ImportSince = null, bool GameOnlyAudio = false,
         bool AutoGame = false, string? AutoGameProcess = null, CaptureMethod Method = CaptureMethod.Auto,
-        bool SaveSound = false, bool SaveNotice = true, bool English = false)
+        bool SaveSound = false, bool SaveNotice = true, bool English = false, ReplayShortcut[]? Shortcuts = null, CaptureAudio? Audio = null,
+        long QuotaBytes = 0, bool AutoCleanup = false, bool KeepUnshared = true, bool AutoUpdates = false, bool IncludePreviews = false)
     {
         [System.Text.Json.Serialization.JsonIgnore]
         public Provider? FallbackProvider => AutoFallback
@@ -1238,7 +1307,15 @@ public partial class MainWindow : Window
 
     private sealed record ClipRow(Clip Clip, bool English)
     {
-        public string Title => Clip.Game is null ? Clip.Name : $"{Clip.Game} · {Clip.Name}";
+        public string Title => Clip.Favorite ? $"★ {Clip.Name}" : Clip.Name;
+        public string Details => $"{Duration} · {Size} · {Date}";
+        public string GalleryStatus => string.Join(" · ", new[]
+        {
+            Clip.Game, Clip.State == UploadState.Local ? Status : $"{Clip.Provider}: {Status}",
+            Clip.LocalRemovedAt is not null ? EnglishUi.Choose(English, "Yalnız yedek kopya", "Backup copy only") : null,
+            Clip.PendingArchiveFolder is not null ? EnglishUi.Choose(English, "Yedek bekliyor", "Backup pending") :
+            Clip.BackupCopiedAt is not null ? EnglishUi.Choose(English, "Arşive kopyalandı", "Copied to backup folder") : null
+        }.Where(value => !string.IsNullOrWhiteSpace(value)));
         public string Date => Clip.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm");
         public string Duration => Clip.Duration?.ToString(@"m\:ss") ?? "—";
         public string Size => $"{Clip.Bytes / 1_000_000d:F1} MB";
@@ -1251,6 +1328,7 @@ public partial class MainWindow : Window
             UploadState.Local => EnglishUi.Choose(English, "Yerel", "Local"),
             UploadState.Queued => Clip.NextAttempt is null ? EnglishUi.Choose(English, "Sırada", "Queued") : EnglishUi.Choose(English, "Yeniden denenecek", "Retry scheduled"),
             UploadState.Uploading => EnglishUi.Choose(English, "Yükleniyor", "Uploading"),
+            UploadState.Cancelled => EnglishUi.Choose(English, "İptal edildi", "Cancelled"),
             UploadState.Uploaded => EnglishUi.Choose(English, "Bağlantı hazır", "Link ready"),
             _ => Clip.Error ?? EnglishUi.Choose(English, "Yüklenemedi", "Upload failed")
         };

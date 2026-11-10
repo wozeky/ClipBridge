@@ -21,6 +21,7 @@ public partial class ClipEditor : Window
     private double _duration;
     private bool _updating;
     private bool _playing;
+    private double? _previewEnd;
     private bool _mediaReady;
     private string? _discordPath;
     private readonly Action<double[]> _storeBookmarks;
@@ -32,6 +33,7 @@ public partial class ClipEditor : Window
     {
         InitializeComponent();
         _clip = clip;
+        ReplaceOriginal.IsEnabled = clip.CanReplaceLocal;
         _folder = folder;
         _english = english;
         _storeBookmarks = storeBookmarks;
@@ -54,6 +56,11 @@ public partial class ClipEditor : Window
             if (!_mediaReady || Timeline.IsMouseCaptureWithin)
                 return;
             _updating = true;
+            if (_playing && _previewEnd is { } end && Preview.Position.TotalSeconds >= end)
+            {
+                SetPlaying(false);
+                Preview.Position = TimeSpan.FromSeconds(end);
+            }
             Timeline.Value = Preview.Position.TotalSeconds;
             PositionText.Text = $"{Seconds(Timeline.Value)} sn";
             _updating = false;
@@ -73,13 +80,13 @@ public partial class ClipEditor : Window
             EndBox.Text = Seconds(_duration);
             DrawBookmarkRail();
         }
-        PlayButton.IsEnabled = true;
+        PlayButton.IsEnabled = PreviewRangeButton.IsEnabled = true;
     }
 
     private void Preview_Failed(object sender, ExceptionRoutedEventArgs args)
     {
         _mediaReady = false;
-        PlayButton.IsEnabled = false;
+        PlayButton.IsEnabled = PreviewRangeButton.IsEnabled = false;
         Feedback.Text = EnglishUi.Choose(_english, "Windows bu videonun önizlemesini açamadı. Saniyeleri girerek dışa aktarmayı deneyebilirsiniz.", "Windows could not preview this video. Enter the time range to try exporting.");
     }
 
@@ -90,13 +97,25 @@ public partial class ClipEditor : Window
     }
 
     private void Play_Click(object sender, RoutedEventArgs args) => SetPlaying(!_playing);
+
+    private void PreviewRange_Click(object sender, RoutedEventArgs args)
+    {
+        if (!_mediaReady || !TryReadRange(out var start, out var end))
+            return;
+        Preview.Position = TimeSpan.FromSeconds(start);
+        _previewEnd = end;
+        SetPlaying(true);
+    }
     private void SetPlaying(bool playing)
     {
         _playing = playing;
         if (playing)
             Preview.Play();
         else
+        {
+            _previewEnd = null;
             Preview.Pause();
+        }
         PlayButton.Content = playing ? EnglishUi.Choose(_english, "Duraklat", "Pause") : EnglishUi.Choose(_english, "Oynat", "Play");
     }
 
@@ -189,19 +208,34 @@ public partial class ClipEditor : Window
 
     internal string? SavedPath { get; private set; }
     internal Guid SavedId { get; private set; }
+    internal bool ReplaceRequested { get; private set; }
     internal double[] SavedBookmarks { get; private set; } = [];
+
+    private bool TryReadRange(out double start, out double end)
+    {
+        end = 0;
+        if (!double.TryParse(StartBox.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out start) ||
+            !double.TryParse(EndBox.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out end) ||
+            !double.IsFinite(start) || !double.IsFinite(end) || start < 0 || end > _duration + 0.001 || end - start < 0.25)
+        {
+            Feedback.Text = EnglishUi.Choose(_english, "Klip içinde en az 0,25 saniyelik geçerli bir aralık seçin.", "Select at least 0.25 seconds within the clip.");
+            return false;
+        }
+
+        return true;
+    }
 
     private async Task ExportAsync(bool discord)
     {
         if (_export is not null)
             return;
-        if (!double.TryParse(StartBox.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var start) ||
-            !double.TryParse(EndBox.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out var end) ||
-            !double.IsFinite(start) || !double.IsFinite(end) || start < 0 || end > _duration + 0.001 || end - start < 0.25)
-        {
-            Feedback.Text = EnglishUi.Choose(_english, "Klip içinde en az 0,25 saniyelik geçerli bir aralık seçin.", "Select at least 0.25 seconds within the clip.");
+        if (!TryReadRange(out var start, out var end))
             return;
-        }
+        var replace = !discord && ReplaceOriginal.IsEnabled && ReplaceOriginal.IsChecked == true;
+        if (replace && MessageBox.Show(this,
+                EnglishUi.Choose(_english, "Yerel orijinal bu düzenlemeyle değiştirilsin mi?", "Replace the local original with this edit?"),
+                "RollClip", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+            return;
 
         using var cancellation = new CancellationTokenSource();
         _export = cancellation;
@@ -222,8 +256,16 @@ public partial class ClipEditor : Window
                 Feedback.Text = EnglishUi.Choose(_english, "Video hazırlanıyor…", "Preparing video…");
                 Directory.CreateDirectory(_folder);
                 var ffmpeg = Path.Combine(AppContext.BaseDirectory, "ffmpeg", "bin", "ffmpeg.exe");
+                ExportProgress.Value = 0;
+                ExportProgress.Visibility = Visibility.Visible;
+                var progress = new Progress<double>(fraction =>
+                {
+                    if (_export == cancellation)
+                        ExportProgress.Value = fraction * 100;
+                });
                 await ClipExport.CreateAsync(ffmpeg, _clip.FilePath, destination, start, Math.Min(end, _duration),
-                    discord, _clip.SeparateMicrophone && IncludeMic.IsChecked == true, Mute.IsChecked == true, cancellation.Token, maxBytes: limit);
+                    discord, _clip.SeparateMicrophone && IncludeMic.IsChecked == true, Mute.IsChecked == true, cancellation.Token, maxBytes: limit,
+                    progress: progress, copyWholeClip: true);
             }
             if (discord)
             {
@@ -234,6 +276,7 @@ public partial class ClipEditor : Window
             }
             else
             {
+                ReplaceRequested = replace;
                 SavedPath = destination;
                 SavedId = id;
                 SavedBookmarks = [.. _bookmarks.Where(value => value >= start && value <= end).Select(value => value - start)];
@@ -250,6 +293,7 @@ public partial class ClipEditor : Window
             _export = null;
             DiscordButton.IsEnabled = SaveButton.IsEnabled = true;
             CancelButton.IsEnabled = false;
+            ExportProgress.Visibility = Visibility.Collapsed;
         }
         if (SavedPath is not null)
             DialogResult = true;

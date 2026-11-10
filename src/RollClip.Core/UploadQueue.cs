@@ -7,6 +7,9 @@ public sealed class UploadQueue
     private readonly Dictionary<Provider, IUploadProvider> _providers;
     private readonly SemaphoreSlim _wake = new(0, 1);
     private readonly Func<int> _speedLimit;
+    private readonly object _activeGate = new();
+    private Guid? _activeId;
+    private CancellationTokenSource? _activeUpload;
 
     public UploadQueue(ClipStore store, IEnumerable<IUploadProvider> providers, Func<int> speedLimit)
     {
@@ -22,7 +25,7 @@ public sealed class UploadQueue
     {
         if (!_providers.ContainsKey(provider) || (fallback is { } other && (other == provider || !_providers.ContainsKey(other))))
             throw new ArgumentOutOfRangeException(nameof(provider));
-        var clip = _store.Change(id, current => (current.State is UploadState.Local or UploadState.Failed || (renew && current.State == UploadState.Uploaded))
+        var clip = _store.Change(id, current => (current.State is UploadState.Local or UploadState.Failed or UploadState.Cancelled || (renew && current.State == UploadState.Uploaded))
             ? current with { State = UploadState.Queued, Provider = provider, Attempts = 0, NextAttempt = null, Error = null,
                 FallbackProvider = fallback }
             : null);
@@ -32,6 +35,26 @@ public sealed class UploadQueue
             Signal();
         }
         return clip;
+    }
+
+    public bool IsActive(Guid id)
+    {
+        lock (_activeGate)
+            return _activeId == id;
+    }
+
+    public bool Cancel(Guid id)
+    {
+        var clip = _store.Change(id, current => current.State is UploadState.Queued or UploadState.Uploading
+            ? current with { State = UploadState.Cancelled, Error = null, NextAttempt = null, FallbackProvider = null } : null);
+        if (clip is null)
+            return false;
+        lock (_activeGate)
+            if (_activeId == id)
+                _activeUpload?.Cancel();
+        Changed?.Invoke(clip);
+        Signal();
+        return true;
     }
 
     public void Signal()
@@ -61,6 +84,25 @@ public sealed class UploadQueue
 
     private async Task UploadAsync(Guid id, CancellationToken cancellationToken)
     {
+        using var active = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        lock (_activeGate)
+        {
+            _activeId = id;
+            _activeUpload = active;
+        }
+        try { await UploadCoreAsync(id, active.Token, cancellationToken); }
+        finally
+        {
+            lock (_activeGate)
+            {
+                _activeUpload = null;
+                _activeId = null;
+            }
+        }
+    }
+
+    private async Task UploadCoreAsync(Guid id, CancellationToken uploadToken, CancellationToken cancellationToken)
+    {
         var clip = _store.Change(id, current => current.State == UploadState.Queued
             ? current with { State = UploadState.Uploading, Attempts = current.Attempts + 1, Error = null }
             : null);
@@ -72,7 +114,7 @@ public sealed class UploadQueue
             if (!_providers.TryGetValue(clip.Provider, out var provider))
                 throw new UploadException("Yükleme servisi bulunamadı.");
             var progress = new CallbackProgress(percent => Progress?.Invoke(id, percent));
-            var uploaded = await provider.UploadAsync(clip.FilePath, _speedLimit(), progress, cancellationToken);
+            var uploaded = await provider.UploadAsync(clip.FilePath, _speedLimit(), progress, uploadToken);
             Update(id, current => current with { State = UploadState.Uploaded, ShareUrl = uploaded.ShareUrl.AbsoluteUri, FallbackProvider = null,
                 Timing = uploaded.Timing, LinkExpiresAt = clip.Provider == Provider.Litterbox ? DateTimeOffset.UtcNow.AddHours(24) : null,
                 Error = null, NextAttempt = null });
@@ -83,6 +125,7 @@ public sealed class UploadQueue
                 Error = "Uygulama kapatılırken yükleme kesildi." });
             throw;
         }
+        catch (OperationCanceledException) when (uploadToken.IsCancellationRequested) { }
         catch (UploadException error) when (error.RejectedForCapacity && clip.FallbackProvider is not null)
         {
             Update(id, current => current with
@@ -116,7 +159,7 @@ public sealed class UploadQueue
 
     private void Update(Guid id, Func<Clip, Clip> update)
     {
-        if (_store.Change(id, update) is { } clip)
+        if (_store.Change(id, item => item.State == UploadState.Uploading ? update(item) : null) is { } clip)
             Changed?.Invoke(clip);
     }
 

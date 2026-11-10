@@ -10,7 +10,7 @@ public partial class MainWindow
 {
     private readonly DispatcherTimer _backgroundTimer = new() { Interval = TimeSpan.FromSeconds(4) };
     private bool _backgroundRunning;
-    private bool _replayPending;
+    private readonly Queue<int> _pendingReplays = new(3);
     private bool _autoGamePaused;
     private bool _editing;
     private string? _pendingImportFolder;
@@ -128,7 +128,7 @@ public partial class MainWindow
                         allowUpload: !watched, importKey: key);
                     imported++;
                 }
-                catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+                catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException)
                 {
                     failed++;
                     if (watched && key is not null)
@@ -173,7 +173,9 @@ public partial class MainWindow
                 !_recovering && DateTimeOffset.UtcNow >= _nextAutoCapture)
             {
                 var windows = WindowsCapture.Windows(_windowSource?.Handle ?? 0);
-                var target = windows.FirstOrDefault(window => CanStartAutomatically(window.Handle));
+                var foreground = WindowsCapture.ForegroundWindow;
+                var target = windows.FirstOrDefault(window => window.Handle == foreground && CanStartAutomatically(window.Handle))
+                    ?? windows.FirstOrDefault(window => CanStartAutomatically(window.Handle));
                 if (target is not null)
                 {
                     _nextAutoCapture = DateTimeOffset.UtcNow.AddSeconds(20);
@@ -182,6 +184,11 @@ public partial class MainWindow
                     await ToggleCaptureAsync(automatic: true);
                 }
             }
+            if (_settings.AutoUpdates && !_armed && !_captureBusy && DateTimeOffset.UtcNow >= _nextUpdateCheck)
+                _ = CheckForUpdateAsync(manual: false);
+            if (DateTimeOffset.UtcNow >= _nextQuotaCheck && _settings.AutoCleanup && _settings.QuotaBytes > 0 &&
+                !_editing && !_galleryMutating && !_captureBusy && !_armed)
+                await EnforceStorageLimitAsync();
             if (_busy || _store is null || _settings.ImportFolder is not { } folder || _settings.ImportSince is not { } since)
                 return;
             var known = _store.Snapshot().Select(clip => clip.ImportKey).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -217,7 +224,7 @@ public partial class MainWindow
 
     private async Task EditClipAsync(Clip clip)
     {
-        if (_editing)
+        if (_editing || _galleryMutating)
             return;
         if (!File.Exists(clip.FilePath))
         {
@@ -232,9 +239,29 @@ public partial class MainWindow
                 bookmarks => _store?.Change(clip.Id, current => current with { Bookmarks = bookmarks })) { Owner = this };
             if (editor.ShowDialog() == true && editor.SavedPath is { } path)
             {
+                if (editor.ReplaceRequested && _store is { } store && _archiveGate.Wait(0))
+                {
+                    try
+                    {
+                        var replaced = await Task.Run(() => store.ReplaceLocal(clip.Id, path, _clipsPath, editor.SavedBookmarks,
+                            _settings.ArchiveFolder));
+                        if (replaced is not null)
+                        {
+                            RefreshLibrary(replaced.Id);
+                            StatusMessage.Text = T("Yerel orijinal değiştirildi.", "Local original replaced.");
+                            if (replaced.PendingArchiveFolder is { } folder)
+                                _ = BackupClipsAsync([replaced], folder);
+                            return;
+                        }
+                    }
+                    finally { _archiveGate.Release(); }
+                }
                 var destination = Path.Combine(_clipsPath, $"Kırpılmış klip-{editor.SavedId:N}.mp4");
                 File.Move(path, destination);
                 await AddClipAsync(destination, clip.Name + " · Kırpılmış", editor.SavedId, clip.Game, allowUpload: false, bookmarks: editor.SavedBookmarks);
+                if (editor.ReplaceRequested)
+                    StatusMessage.Text = T("Orijinal kullanımda veya korumalı. Düzenleme ayrı klip olarak kaydedildi.",
+                        "The original is busy or protected. The edit was saved as a separate clip.");
             }
         }
         catch (OperationCanceledException) when (_shutdown.IsCancellationRequested) { }
