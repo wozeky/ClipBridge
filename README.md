@@ -4,10 +4,10 @@
 
 ## İndir
 
-- **[Windows yükleyicisi](https://github.com/wozeky/RollClip/releases/download/v0.3.0/RollClip-Setup-win-x64.exe)** · Türkçe/İngilizce, kullanıcı hesabına kurulum ve Başlat menüsü kısayolu.
-- **[Taşınabilir Windows ZIP](https://github.com/wozeky/RollClip/releases/download/v0.3.0/RollClip-win-x64.zip)** · ZIP’in tamamını çıkarıp `RollClip.exe` dosyasını çalıştırın.
+- **[Windows yükleyicisi](https://github.com/wozeky/RollClip/releases/download/v0.3.1/RollClip-Setup-win-x64.exe)** · Türkçe/İngilizce, kullanıcı hesabına kurulum ve Başlat menüsü kısayolu.
+- **[Taşınabilir Windows ZIP](https://github.com/wozeky/RollClip/releases/download/v0.3.1/RollClip-win-x64.zip)** · ZIP’in tamamını çıkarıp `RollClip.exe` dosyasını çalıştırın.
 
-İki paket de bu ön sürümde imzasızdır. SHA-256 dosyaları [Release sayfasında](https://github.com/wozeky/RollClip/releases/tag/v0.3.0) bulunur. **Ayarlar → Dil** üzerinden Türkçe ve İngilizce temel arayüz arasında geçebilirsiniz. Dili kaydedip uygulamayı yeniden açın. Bazı hata ve tanılama metinleri Türkçe kalır.
+İki paket de bu ön sürümde imzasızdır. SHA-256 dosyaları [Release sayfasında](https://github.com/wozeky/RollClip/releases/tag/v0.3.1) bulunur. **Ayarlar → Dil** üzerinden Türkçe ve İngilizce temel arayüz arasında geçebilirsiniz. Dili kaydedip uygulamayı yeniden açın. Bazı hata ve tanılama metinleri Türkçe kalır.
 
 ## Ekran görüntüleri
 
