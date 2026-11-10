@@ -4,10 +4,10 @@
 
 ## İndir
 
-- **[Windows yükleyicisi](https://github.com/wozeky/RollClip/releases/download/v0.4.4/RollClip-Setup-win-x64.exe)** · Türkçe/İngilizce, kullanıcı hesabına kurulum ve Başlat menüsü kısayolu.
-- **[Taşınabilir Windows ZIP](https://github.com/wozeky/RollClip/releases/download/v0.4.4/RollClip-win-x64.zip)** · ZIP’in tamamını çıkarıp `RollClip.exe` dosyasını çalıştırın.
+- **[Windows yükleyicisi](https://github.com/wozeky/RollClip/releases/download/v0.4.5/RollClip-Setup-win-x64.exe)** · Türkçe/İngilizce, kullanıcı hesabına kurulum ve Başlat menüsü kısayolu.
+- **[Taşınabilir Windows ZIP](https://github.com/wozeky/RollClip/releases/download/v0.4.5/RollClip-win-x64.zip)** · ZIP’in tamamını çıkarıp `RollClip.exe` dosyasını çalıştırın.
 
-İki paket de bu ön sürümde imzasızdır. SHA-256 dosyaları [Release sayfasında](https://github.com/wozeky/RollClip/releases/tag/v0.4.4) bulunur. **Ayarlar → Dil** üzerinden Türkçe ve İngilizce temel arayüz arasında geçebilirsiniz. Dili kaydedip uygulamayı yeniden açın. Bazı hata ve tanılama metinleri Türkçe kalır.
+İki paket de bu ön sürümde imzasızdır. SHA-256 dosyaları [Release sayfasında](https://github.com/wozeky/RollClip/releases/tag/v0.4.5) bulunur. **Ayarlar → Dil** üzerinden Türkçe ve İngilizce temel arayüz arasında geçebilirsiniz. Dili kaydedip uygulamayı yeniden açın. Bazı hata ve tanılama metinleri Türkçe kalır.
 
 ## Ekran görüntüleri
 
@@ -55,6 +55,10 @@ Ana ekrandan oyun penceresini seçin. Kalite, süre, ses, etiket, yöntem ve oto
 - **DXGI** ekran 0’ın tamamını kaydeder. Başlamadan önce onay ister ve otomatik başlatma için kullanılmaz.
 - NVENC, AMF ve Intel QSV denenir. Donanım kodlama açılmazsa yazılımsal Media Foundation kullanılır. Video SDR olarak kaydedilir.
 - Klip diske yazılınca isteğe bağlı Windows bildirimi ve ses çalar. Windows bildirim ayarları ve Rahatsız Etmeyin modu bildirimin görünmesini etkileyebilir.
+
+## v0.4.5 ile gelenler
+
+Ana ekran kartları, Ayarlar ve Klip arşivi başlıklarında Manrope SemiBold kullanılır. Küçük metinler Segoe UI Variable ile gösterilir. Manrope uygulamayla birlikte gelir.
 
 ## v0.4.4 ile gelenler
 
