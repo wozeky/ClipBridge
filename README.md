@@ -4,14 +4,14 @@
 
 ## İndir
 
-- **[Windows yükleyicisi](https://github.com/wozeky/RollClip/releases/download/v0.4.1/RollClip-Setup-win-x64.exe)** · Türkçe/İngilizce, kullanıcı hesabına kurulum ve Başlat menüsü kısayolu.
-- **[Taşınabilir Windows ZIP](https://github.com/wozeky/RollClip/releases/download/v0.4.1/RollClip-win-x64.zip)** · ZIP’in tamamını çıkarıp `RollClip.exe` dosyasını çalıştırın.
+- **[Windows yükleyicisi](https://github.com/wozeky/RollClip/releases/download/v0.4.2/RollClip-Setup-win-x64.exe)** · Türkçe/İngilizce, kullanıcı hesabına kurulum ve Başlat menüsü kısayolu.
+- **[Taşınabilir Windows ZIP](https://github.com/wozeky/RollClip/releases/download/v0.4.2/RollClip-win-x64.zip)** · ZIP’in tamamını çıkarıp `RollClip.exe` dosyasını çalıştırın.
 
-İki paket de bu ön sürümde imzasızdır. SHA-256 dosyaları [Release sayfasında](https://github.com/wozeky/RollClip/releases/tag/v0.4.1) bulunur. **Ayarlar → Dil** üzerinden Türkçe ve İngilizce temel arayüz arasında geçebilirsiniz. Dili kaydedip uygulamayı yeniden açın. Bazı hata ve tanılama metinleri Türkçe kalır.
+İki paket de bu ön sürümde imzasızdır. SHA-256 dosyaları [Release sayfasında](https://github.com/wozeky/RollClip/releases/tag/v0.4.2) bulunur. **Ayarlar → Dil** üzerinden Türkçe ve İngilizce temel arayüz arasında geçebilirsiniz. Dili kaydedip uygulamayı yeniden açın. Bazı hata ve tanılama metinleri Türkçe kalır.
 
 ## Ekran görüntüleri
 
-Görüntüler, Windows üzerinde çalışan RollClip v0.4.1’den alınmıştır.
+Görüntüler, Windows üzerinde çalışan RollClip uygulamasından alınmıştır.
 
 ![RollClip ana ekranı](docs/screenshots/home.png)
 
@@ -55,6 +55,10 @@ Ana ekrandan oyun penceresini seçin. Kalite, süre, ses, etiket, yöntem ve oto
 - **DXGI** ekran 0’ın tamamını kaydeder. Başlamadan önce onay ister ve otomatik başlatma için kullanılmaz.
 - NVENC, AMF ve Intel QSV denenir. Donanım kodlama açılmazsa yazılımsal Media Foundation kullanılır. Video SDR olarak kaydedilir.
 - Klip diske yazılınca isteğe bağlı Windows bildirimi ve ses çalar. Windows bildirim ayarları ve Rahatsız Etmeyin modu bildirimin görünmesini etkileyebilir.
+
+## v0.4.2 ile gelenler
+
+Ana ekrandaki Paylaşım simgesinin metalik yüzeyi yumuşatıldı.
 
 ## v0.4.1 ile gelenler
 
