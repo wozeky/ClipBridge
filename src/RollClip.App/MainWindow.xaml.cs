@@ -279,25 +279,34 @@ public partial class MainWindow : Window
             }
             ShowPanel("home");
             ExportPng("");
-            void VerifyTrack(System.Windows.Controls.Control control, string name, string brush)
+            void VerifySwitch(System.Windows.Controls.Control control, string name, string knobName, bool on)
             {
                 control.ApplyTemplate();
-                if (control.Template.FindName(name, control) is not System.Windows.Controls.Border track ||
+                var brush = on ? "SwitchOnBrush" : "SwitchOffBrush";
+                var alignment = on ? HorizontalAlignment.Right : HorizontalAlignment.Left;
+                if (control.Template.FindName(knobName, control) is not FrameworkElement knob ||
+                    knob.HorizontalAlignment != alignment || !knob.RenderTransform.Value.IsIdentity ||
+                    control.Template.FindName(name, control) is not System.Windows.Controls.Border track ||
                     track.Background is not SolidColorBrush actual ||
                     control.FindResource(brush) is not SolidColorBrush expected || actual.Color != expected.Color)
-                    throw new InvalidOperationException($"Incorrect switch color: {name}, {brush}.");
+                    throw new InvalidOperationException($"Incorrect switch position or color: {name}, {brush}.");
             }
-            VerifyTrack(ArmButton, "ArmTrack", "SwitchOffBrush");
-            VerifyTrack(AutoUpload, "Track", "SwitchOffBrush");
+            VerifySwitch(ArmButton, "ArmTrack", "Led", false);
+            VerifySwitch(AutoUpload, "Track", "Knob", false);
             SetReplayArmed(true);
             AutoUpload.IsChecked = true;
-            VerifyTrack(ArmButton, "ArmTrack", "SwitchOnBrush");
-            VerifyTrack(AutoUpload, "Track", "SwitchOnBrush");
+            VerifySwitch(ArmButton, "ArmTrack", "Led", true);
+            VerifySwitch(AutoUpload, "Track", "Knob", true);
             ExportPng("switches-on");
             SetReplayArmed(false);
             AutoUpload.IsChecked = false;
-            VerifyTrack(ArmButton, "ArmTrack", "SwitchOffBrush");
-            VerifyTrack(AutoUpload, "Track", "SwitchOffBrush");
+            VerifySwitch(ArmButton, "ArmTrack", "Led", false);
+            VerifySwitch(AutoUpload, "Track", "Knob", false);
+            for (var i = 0; i < 6; i++)
+            {
+                AutoUpload.IsChecked = i % 2 == 0;
+                VerifySwitch(AutoUpload, "Track", "Knob", i % 2 == 0);
+            }
             if (!CaptureTarget.IsVisible || !ReplayLength.IsVisible || HomePanel.ActualHeight <= 0)
                 throw new InvalidOperationException("Home controls are not visible.");
             if (CaptureTarget.Template.FindName("DropDownToggle", CaptureTarget) is not FrameworkElement toggle

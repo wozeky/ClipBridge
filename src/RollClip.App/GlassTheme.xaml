@@ -48,17 +48,17 @@
  </Style>
  <SolidColorBrush x:Key="SwitchOffBrush" Color="#080808"/>
  <SolidColorBrush x:Key="SwitchOnBrush" Color="#218020"/>
+ <SolidColorBrush x:Key="SwitchRimBrush" Color="#626B62"/>
  <Style x:Key="ArmSwitch" TargetType="Button" BasedOn="{StaticResource GlassButton}">
   <Setter Property="Width" Value="44"/><Setter Property="Height" Value="28"/><Setter Property="MinHeight" Value="0"/>
   <Setter Property="ToolTip" Value="{Binding Content, RelativeSource={RelativeSource Self}}"/>
   <Setter Property="AutomationProperties.Name" Value="{Binding Content, RelativeSource={RelativeSource Self}}"/>
   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
-   <Border x:Name="ArmTrack" Background="{StaticResource SwitchOffBrush}" CornerRadius="16" BorderBrush="{StaticResource MetalRim}" BorderThickness="1">
-    <Ellipse x:Name="Led" Width="22" Height="22" Fill="#555B55" HorizontalAlignment="Left" Margin="2"/>
+   <Border x:Name="ArmTrack" Background="{StaticResource SwitchOffBrush}" CornerRadius="14" BorderBrush="{StaticResource SwitchRimBrush}" BorderThickness="1">
+    <Ellipse x:Name="Led" Width="20" Height="20" Fill="#858C85" HorizontalAlignment="Left" Margin="3"/>
    </Border>
    <ControlTemplate.Triggers>
     <Trigger Property="Tag" Value="Armed"><Setter TargetName="ArmTrack" Property="Background" Value="{StaticResource SwitchOnBrush}"/><Setter TargetName="Led" Property="HorizontalAlignment" Value="Right"/><Setter TargetName="Led" Property="Fill" Value="{StaticResource NeonBrush}"/>
-     <Setter TargetName="Led" Property="Effect"><Setter.Value><DropShadowEffect Color="#7FFF25" ShadowDepth="0" BlurRadius="19" Opacity=".85"/></Setter.Value></Setter>
     </Trigger>
     <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="Opacity" Value=".7"/></Trigger>
     <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value=".4"/></Trigger>
@@ -70,18 +70,16 @@
   <Setter Property="Margin" Value="0,7"/>
   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="CheckBox">
    <DockPanel Background="Transparent">
-    <Border x:Name="Track" DockPanel.Dock="Right" Width="38" Height="23" CornerRadius="12" Margin="12,0,0,0" BorderThickness="1" BorderBrush="{StaticResource MetalRim}" Background="{StaticResource SwitchOffBrush}">
-     <Ellipse x:Name="Knob" Width="17" Height="17" HorizontalAlignment="Left" Margin="2" Fill="#5C635C"><Ellipse.RenderTransform><TranslateTransform x:Name="Slide"/></Ellipse.RenderTransform></Ellipse>
+    <Border x:Name="Track" DockPanel.Dock="Right" Width="44" Height="28" CornerRadius="14" Margin="12,0,0,0" BorderThickness="1" BorderBrush="{StaticResource SwitchRimBrush}" Background="{StaticResource SwitchOffBrush}">
+     <Ellipse x:Name="Knob" Width="20" Height="20" HorizontalAlignment="Left" Margin="3" Fill="#858C85"/>
     </Border>
     <ContentPresenter VerticalAlignment="Center"/>
    </DockPanel>
    <ControlTemplate.Triggers>
     <Trigger Property="IsChecked" Value="True">
      <Setter TargetName="Track" Property="Background" Value="{StaticResource SwitchOnBrush}"/>
+     <Setter TargetName="Knob" Property="HorizontalAlignment" Value="Right"/>
      <Setter TargetName="Knob" Property="Fill" Value="{StaticResource NeonBrush}"/>
-     <Setter TargetName="Knob" Property="Effect"><Setter.Value><DropShadowEffect Color="#74FF25" BlurRadius="16" ShadowDepth="0" Opacity=".65"/></Setter.Value></Setter>
-     <Trigger.EnterActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="Slide" Storyboard.TargetProperty="X" To="15" Duration="0:0:.18"/></Storyboard></BeginStoryboard></Trigger.EnterActions>
-     <Trigger.ExitActions><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="Slide" Storyboard.TargetProperty="X" To="0" Duration="0:0:.18"/></Storyboard></BeginStoryboard></Trigger.ExitActions>
     </Trigger>
     <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Track" Property="BorderBrush" Value="{StaticResource NeonBrush}"/></Trigger>
    </ControlTemplate.Triggers>
