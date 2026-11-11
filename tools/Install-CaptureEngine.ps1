@@ -1,4 +1,4 @@
-param([Parameter(Mandatory)][string]$Destination)
+param([Parameter(Mandatory)][string]$Destination, [switch]$IncludeProbe)
 $ErrorActionPreference = "Stop"
 
 $release = "autobuild-2026-11-08-12-35"
@@ -23,6 +23,9 @@ try {
   }
   New-Item -ItemType Directory -Force -Path $Destination, (Join-Path $Destination "bin") | Out-Null
   Copy-Item -LiteralPath $ffmpeg -Destination (Join-Path $Destination "bin/ffmpeg.exe")
+  if ($IncludeProbe) {
+    Copy-Item -LiteralPath (Join-Path $engine.FullName "bin/ffprobe.exe") -Destination (Join-Path $Destination "bin/ffprobe.exe")
+  }
   Get-ChildItem -LiteralPath $engine.FullName -File | Copy-Item -Destination $Destination
   @"
 FFmpeg binary and build release: $url

@@ -1,0 +1,116 @@
+name: RollClip Rust Windows
+on:
+  push:
+    branches: [rust-preview]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-2025
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build and test Rust
+        working-directory: rust-edition
+        run: |
+          rustup show
+          cargo test --release --locked
+          if ($LASTEXITCODE -ne 0) { throw "Rust tests failed." }
+          cargo build --release --locked
+          if ($LASTEXITCODE -ne 0) { throw "Rust build failed." }
+      - name: Bundle Windows capture tools
+        run: |
+          New-Item -ItemType Directory -Force artifacts/rust | Out-Null
+          Copy-Item rust-edition/target/release/rollclip-rust.exe artifacts/rust/RollClip-Rust.exe
+          Copy-Item LICENSE artifacts/rust/LICENSE.txt
+          Copy-Item rust-edition/README.md artifacts/rust/README.md
+          Copy-Item docs/licenses/Manrope.txt artifacts/rust/Manrope-OFL.txt
+          ./tools/Install-CaptureEngine.ps1 -Destination artifacts/rust/ffmpeg -IncludeProbe
+      - name: Copy third-party notices
+        working-directory: rust-edition
+        run: |
+          $graph = cargo metadata --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw "Cargo metadata failed." }
+          $ids = @($graph.resolve.nodes | ForEach-Object { $_.id })
+          $dest = New-Item -ItemType Directory -Force ../artifacts/rust/licenses
+          foreach ($package in $graph.packages) {
+            if ($package.source -and $ids -contains $package.id) {
+              $dir = New-Item -ItemType Directory -Force (Join-Path $dest.FullName "$($package.name)-$($package.version)")
+              "License: $($package.license)`nRepository: $($package.repository)" | Set-Content (Join-Path $dir.FullName "NOTICE.txt")
+              Get-ChildItem (Split-Path $package.manifest_path) -File | Where-Object Name -Match '^(licen[cs]e|copying|copyright|notice)' | Copy-Item -Destination $dir.FullName
+            }
+          }
+      - name: Verify replay, clip editing and archive
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP "rollclip-rust-media"
+          $process = Start-Process (Resolve-Path artifacts/rust/RollClip-Rust.exe) -ArgumentList "--self-test", "`"$root`"" -Wait -PassThru
+          $result = Get-Content (Join-Path $root "test-result.txt")
+          $result
+          if ($process.ExitCode -ne 0 -or $result -notmatch '^PASS:') { throw "Media smoke test failed." }
+      - name: Verify the desktop window
+        run: |
+          $marker = Join-Path $env:RUNNER_TEMP "rollclip-rust-ui.txt"
+          $process = Start-Process (Resolve-Path artifacts/rust/RollClip-Rust.exe) -ArgumentList "--ui-smoke", "`"$marker`"" -PassThru
+          try {
+            $deadline = (Get-Date).AddSeconds(30)
+            while (!(Test-Path $marker) -and !$process.HasExited -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 250 }
+            if (!(Test-Path $marker) -or (Get-Content $marker) -notmatch '^PASS:') { throw "Rust desktop window did not open." }
+            Get-Content $marker
+            $output = New-Item -ItemType Directory -Force artifacts/release
+            Copy-Item ([IO.Path]::ChangeExtension($marker, ".png")) (Join-Path $output.FullName "RollClip-Rust-Ana-Ekran.png")
+          } finally {
+            if (!$process.HasExited) { Stop-Process -Id $process.Id }
+          }
+      - name: Build and verify installer
+        run: |
+          $compiler = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'
+          $package = (Resolve-Path artifacts/rust).Path
+          $output = (New-Item -ItemType Directory -Force artifacts/release).FullName
+          & $compiler "/DPackageDir=$package" "/O$output" packaging/RollClipRust.iss
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup build failed." }
+          $install = Join-Path $env:RUNNER_TEMP "rollclip-rust-install"
+          $setup = Start-Process (Join-Path $output "RollClip-Rust-Setup-win-x64.exe") -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=`"$install`"" -Wait -PassThru
+          if ($setup.ExitCode -ne 0 -or !(Test-Path (Join-Path $install "RollClip-Rust.exe"))) { throw "Rust installation failed." }
+          $uninstall = Start-Process (Join-Path $install "unins000.exe") -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0 -or (Test-Path (Join-Path $install "RollClip-Rust.exe"))) { throw "Rust uninstall failed." }
+      - name: Package portable ZIP and checksums
+        run: |
+          Compress-Archive -Path artifacts/rust/* -DestinationPath artifacts/release/RollClip-Rust-win-x64.zip
+          Get-ChildItem artifacts/release -File | Where-Object Extension -In ".exe", ".zip" | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)" | Set-Content "$($_.FullName).sha256" -Encoding ascii
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RollClip-Rust-Windows
+          path: artifacts/release/*
+          if-no-files-found: error
+
+  release:
+    needs: windows
+    if: github.ref == 'refs/heads/rust-preview' && contains(github.event.head_commit.message, '[rust-release]')
+    runs-on: windows-2025
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: RollClip-Rust-Windows
+          path: artifacts/release
+      - name: Publish Rust preview alongside RollClip
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = (Select-String -Path rust-edition/Cargo.toml -Pattern '^version = "([^"]+)"').Matches[0].Groups[1].Value
+          $assets = @(Get-ChildItem artifacts/release -File | ForEach-Object FullName)
+          if ($assets.Count -ne 5) { throw "Expected Setup, ZIP, two checksums and a screenshot." }
+          gh release create "rust-v$version" @assets --target $env:GITHUB_SHA --title "RollClip Rust v$version · Windows ön sürümü" --notes-file rust-edition/RELEASE.md --prerelease --latest=false
+          if ($LASTEXITCODE -ne 0) { throw "Rust release publication failed." }
