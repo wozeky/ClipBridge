@@ -6,9 +6,9 @@ mod platform;
 mod store;
 
 use anyhow::Result;
+use chrome::MUTED;
 use eframe::egui::{
-    self, Align, Color32, FontData, FontFamily, FontId, Frame, Layout, RichText, Stroke,
-    TextureHandle, Vec2,
+    self, Align, FontData, FontFamily, FontId, Frame, Layout, RichText, Stroke, TextureHandle, Vec2,
 };
 use std::{
     collections::HashMap,
@@ -24,7 +24,6 @@ use std::{
 };
 use store::{Clip, State};
 
-const MUTED: Color32 = Color32::from_rgb(172, 184, 176);
 const DURATIONS: [usize; 5] = [15, 30, 60, 120, 180];
 const RELEASES: &str = "https://github.com/wozeky/RollClip/releases";
 
@@ -138,7 +137,7 @@ fn windows_renderer() -> eframe::egui_wgpu::WgpuConfiguration {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 enum Page {
     Home,
     Library,
@@ -192,7 +191,8 @@ struct App {
     sort: usize,
     delete: Option<String>,
     editor: Option<Editor>,
-    backdrop: TextureHandle,
+    shown_page: Page,
+    page_entered: Option<(Instant, Vec2)>,
     textures: HashMap<String, Option<TextureHandle>>,
     smoke: Option<PathBuf>,
     screenshot_requested: bool,
@@ -208,7 +208,7 @@ impl App {
             .map(|p| p.join("profile"))
             .unwrap_or_else(store::root);
         let (state, status, read_only) = match init(&root).and_then(|()| store::load(&root)) {
-            Ok(state) => (state, "Hazır · Rust Ön Sürüm".to_owned(), false),
+            Ok(state) => (state, "Hazır".to_owned(), false),
             Err(error) => (State::default(), format!("{error:#}"), true),
         };
         let ctx = &context.egui_ctx;
@@ -223,30 +223,20 @@ impl App {
             .families
             .insert(FontFamily::Name("Manrope".into()), vec!["Manrope".into()]);
         ctx.set_fonts(fonts);
-        let mut visuals = egui::Visuals::dark();
-        visuals.override_text_color = Some(Color32::from_rgb(235, 239, 235));
-        visuals.panel_fill = Color32::from_rgb(7, 9, 8);
-        visuals.window_fill = Color32::from_rgb(17, 23, 20);
-        visuals.widgets.inactive.bg_fill = Color32::from_rgb(24, 31, 28);
-        visuals.widgets.hovered.bg_fill = Color32::from_rgb(39, 53, 43);
-        visuals.selection.bg_fill = Color32::from_rgb(42, 60, 25);
-        visuals.selection.stroke = Stroke::new(1.0_f32, chrome::ACCENT);
-        for widget in [
-            &mut visuals.widgets.inactive,
-            &mut visuals.widgets.hovered,
-            &mut visuals.widgets.active,
-        ] {
-            widget.corner_radius = egui::CornerRadius::same(16);
-            widget.bg_stroke = Stroke::new(1.0_f32, Color32::from_white_alpha(58));
-        }
         ctx.set_theme(egui::Theme::Dark);
-        ctx.set_visuals_of(egui::Theme::Dark, visuals);
-        ctx.style_mut(|style| style.spacing.item_spacing = Vec2::new(9.0, 9.0));
-        let image = image::load_from_memory(include_bytes!(
-            "../../src/RollClip.App/Assets/ChromePoster.png"
-        ))
-        .expect("bundled background");
-        let backdrop = texture(ctx, "chrome", image);
+        ctx.set_visuals_of(egui::Theme::Dark, chrome::visuals());
+        ctx.style_mut(|style| {
+            style.spacing.item_spacing = Vec2::splat(8.0);
+            style.spacing.button_padding = Vec2::new(12.0, 6.0);
+            style.spacing.interact_size.y = 32.0;
+            style.spacing.window_margin = egui::Margin::same(16);
+            style
+                .text_styles
+                .insert(egui::TextStyle::Body, FontId::proportional(14.0));
+            style
+                .text_styles
+                .insert(egui::TextStyle::Button, FontId::proportional(14.0));
+        });
         let (tx, rx) = mpsc::channel();
         let (upload_tx, upload_rx) = mpsc::channel();
         let (hotkey_tx, hotkey_rx) = mpsc::channel();
@@ -280,7 +270,8 @@ impl App {
             sort: 0,
             delete: None,
             editor: None,
-            backdrop,
+            shown_page: Page::Home,
+            page_entered: None,
             textures: HashMap::new(),
             smoke,
             screenshot_requested: false,
@@ -528,280 +519,208 @@ impl App {
     }
 
     fn home(&mut self, ui: &mut egui::Ui) {
-        use chrome::{Icon, Stage, ACCENT, TEXT};
-        let stage = Stage::new(ui.max_rect());
-        let rect = |x, y, w, h| stage.rect(x, y, w, h);
-        let painter = ui.painter().clone();
-        let glass = |x, y, w, h, radius| {
-            chrome::glass(&painter, rect(x, y, w, h), radius * stage.scale, false)
-        };
-        if chrome::icon_button(
-            ui,
-            rect(51.0, 208.0, 51.0, 51.0),
-            "RollClip",
-            Icon::Video,
-            true,
-            true,
-        )
-        .clicked()
-        {
-            self.page = Page::Home;
-        }
-        stage.text(
-            &painter,
-            114.0,
-            213.0,
-            "Klip al, kes, Discord’a gönder.",
-            12.0,
-            false,
+        heading(ui, "Oyun klibi kaydet", 32.0);
+        ui.colored_label(
             MUTED,
+            "Oyun penceresini seç, kaydı başlat ve son anları tek tuşla sakla",
         );
-        stage.text(&painter, 114.0, 231.0, "RollClip", 19.0, true, TEXT);
-        if chrome::icon_button(
-            ui,
-            rect(356.0, 208.0, 51.0, 51.0),
-            "Tanılamayı kopyala",
-            Icon::Copy,
-            false,
-            true,
-        )
-        .clicked()
-        {
-            self.copy_status(ui.ctx());
-        }
-        if chrome::icon_button(
-            ui,
-            rect(425.0, 208.0, 51.0, 51.0),
-            "Klip arşivini aç",
-            Icon::Library,
-            false,
-            true,
-        )
-        .clicked()
-        {
-            self.page = Page::Library;
-        }
+        ui.add_space(12.0);
 
-        glass(51.0, 280.0, 425.0, 58.0, 29.0);
-        if chrome::icon_button(
-            ui,
-            rect(57.0, 285.0, 47.0, 47.0),
-            "Pencereleri yenile",
-            Icon::Refresh,
-            false,
-            true,
-        )
-        .clicked()
-        {
-            self.targets = platform::targets();
-        }
-        let selection = rect(111.0, 287.0, 355.0, 44.0);
-        let name = self
-            .targets
-            .iter()
-            .find(|target| Some(target.handle) == self.target)
-            .map(|target| target.title.as_str())
-            .unwrap_or("Oyun penceresini seç");
-        ui.scope_builder(egui::UiBuilder::new().max_rect(selection), |ui| {
-            if self.recorder.is_some() || self.capture_starting {
-                ui.disable();
-            }
-            ui.spacing_mut().interact_size.y = selection.height();
-            egui::ComboBox::from_id_salt("capture-target")
-                .width(selection.width())
-                .selected_text(short(name, 48))
-                .show_ui(ui, |ui| {
-                    for target in &self.targets {
-                        ui.selectable_value(
-                            &mut self.target,
-                            Some(target.handle),
-                            short(&target.title, 65),
+        ui.horizontal_top(|ui| {
+            let gap = 16.0;
+            let width = ui.available_width() - gap;
+            let capture_width = (width * 0.55).floor();
+            ui.spacing_mut().item_spacing.x = gap;
+            ui.vertical(|ui| {
+                ui.set_width(capture_width);
+                surface(ui, 20, |ui| {
+                    ui.set_min_width(ui.available_width());
+                    ui.horizontal(|ui| {
+                        heading(ui, "Kayıt", 20.0);
+                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                            let (label, color) = if self.recorder.is_some() {
+                                ("Kayıt açık", chrome::ACCENT)
+                            } else if self.capture_starting {
+                                ("Başlatılıyor…", chrome::TEXT)
+                            } else {
+                                ("Kayıt kapalı", MUTED)
+                            };
+                            ui.colored_label(color, label);
+                            let (_, rect) = ui.allocate_space(Vec2::splat(8.0));
+                            ui.painter().circle_filled(rect.center(), 3.0, color);
+                        });
+                    });
+                    ui.separator();
+                    ui.label("Oyun penceresi");
+                    ui.horizontal(|ui| {
+                        let selected = self
+                            .targets
+                            .iter()
+                            .find(|target| Some(target.handle) == self.target)
+                            .map(|target| short(&target.title, 34))
+                            .unwrap_or_else(|| "Pencere seç".to_owned());
+                        ui.add_enabled_ui(
+                            self.recorder.is_none() && !self.capture_starting,
+                            |ui| {
+                                egui::ComboBox::from_id_salt("capture-target")
+                                    .width((ui.available_width() - 48.0).max(120.0))
+                                    .selected_text(selected)
+                                    .show_ui(ui, |ui| {
+                                        for target in &self.targets {
+                                            ui.selectable_value(
+                                                &mut self.target,
+                                                Some(target.handle),
+                                                short(&target.title, 65),
+                                            );
+                                        }
+                                    });
+                            },
+                        );
+                        let (_, rect) = ui.allocate_space(Vec2::splat(32.0));
+                        if chrome::icon_button(
+                            ui,
+                            rect,
+                            "Pencereleri yenile",
+                            chrome::Icon::Refresh,
+                            true,
+                        )
+                        .clicked()
+                        {
+                            self.targets = platform::targets();
+                        }
+                    });
+                    ui.add_space(8.0);
+                    ui.label("Klip süresi");
+                    ui.horizontal_wrapped(|ui| {
+                        for seconds in DURATIONS {
+                            if ui
+                                .selectable_label(
+                                    self.state.settings.seconds == seconds,
+                                    format!("{seconds} sn"),
+                                )
+                                .clicked()
+                            {
+                                self.state.settings.seconds = seconds;
+                                self.save();
+                            }
+                        }
+                    });
+                    ui.add_space(12.0);
+                    ui.separator();
+                    let armed = self.recorder.is_some();
+                    ui.horizontal_wrapped(|ui| {
+                        if ui
+                            .add_enabled(
+                                !self.read_only && (!self.busy || armed),
+                                primary(if armed {
+                                    "Kaydı durdur"
+                                } else {
+                                    "Kaydı başlat"
+                                }),
+                            )
+                            .clicked()
+                        {
+                            self.toggle_capture();
+                        }
+                        if ui
+                            .add_enabled(armed && !self.busy, egui::Button::new("Klip al"))
+                            .clicked()
+                        {
+                            self.save_replay();
+                        }
+                        chrome::keycap(ui, self.state.settings.hotkey, armed);
+                    });
+                });
+            });
+            ui.vertical(|ui| {
+                ui.set_width(width - capture_width);
+                surface(ui, 20, |ui| {
+                    ui.set_min_width(ui.available_width());
+                    heading(ui, "Son klip", 20.0);
+                    let clip = self.state.clips.last().cloned();
+                    let width = (ui.available_width() - 2.0).max(128.0);
+                    let size = Vec2::new(width, (width * 9.0 / 16.0).clamp(128.0, 212.0));
+                    if let Some(thumb) = clip
+                        .as_ref()
+                        .and_then(|clip| self.thumbnail(ui.ctx(), clip))
+                    {
+                        ui.add(
+                            egui::Image::new((thumb.id(), thumb.size_vec2()))
+                                .max_size(size)
+                                .fit_to_exact_size(size)
+                                .maintain_aspect_ratio(true)
+                                .corner_radius(8),
+                        );
+                    } else {
+                        let (_, rect) = ui.allocate_space(size);
+                        ui.painter().rect_filled(rect, 8.0, chrome::BACKGROUND);
+                        ui.painter().rect_stroke(
+                            rect,
+                            8.0,
+                            chrome::BORDER,
+                            egui::StrokeKind::Inside,
+                        );
+                        chrome::icon(
+                            ui.painter(),
+                            rect.center() - Vec2::new(0.0, 12.0),
+                            chrome::Icon::Video,
+                            MUTED,
+                        );
+                        ui.painter().text(
+                            rect.center() + Vec2::new(0.0, 12.0),
+                            egui::Align2::CENTER_CENTER,
+                            if clip.is_some() {
+                                "Önizleme yok"
+                            } else {
+                                "Arşivde henüz klip yok"
+                            },
+                            FontId::proportional(14.0),
+                            MUTED,
                         );
                     }
+                    if let Some(clip) = &clip {
+                        ui.label(RichText::new(short(&clip.name, 34)).color(chrome::TEXT))
+                            .on_hover_text(&clip.name);
+                        ui.label(RichText::new(clip_meta(clip)).monospace().color(MUTED));
+                    }
+                    if ui
+                        .add_enabled(
+                            clip.is_some() && !self.busy,
+                            egui::Button::new("Kes ve paylaş"),
+                        )
+                        .clicked()
+                    {
+                        if let Some(clip) = clip {
+                            self.edit(clip);
+                        }
+                    }
+                    ui.separator();
+                    if ui
+                        .add_enabled(
+                            !self.read_only,
+                            egui::Checkbox::new(
+                                &mut self.state.settings.auto_upload,
+                                "Yeni klipleri otomatik yükle",
+                            ),
+                        )
+                        .changed()
+                    {
+                        self.save();
+                    }
                 });
+            });
         });
+    }
 
-        glass(51.0, 356.0, 425.0, 185.0, 38.0);
-        stage.text(&painter, 80.0, 383.0, "Klip süresi", 19.0, true, TEXT);
-        stage.text(
-            &painter,
-            80.0,
-            410.0,
-            "Son anları tek tuşla kaydet.",
-            12.0,
-            false,
-            MUTED,
-        );
-        for (index, seconds) in DURATIONS.into_iter().enumerate() {
-            let slot = rect(81.0 + index as f32 * 73.0, 464.0, 73.0, 55.0);
-            let active = self.state.settings.seconds == seconds;
-            let response = chrome::hit(ui, slot, &format!("{seconds} saniye"), true);
-            if active || response.hovered() {
-                painter.rect_filled(
-                    slot,
-                    5.0,
-                    Color32::from_white_alpha(if active { 17 } else { 10 }),
-                );
-            }
-            if response.has_focus() {
-                painter.rect_stroke(
-                    slot,
-                    5.0,
-                    Stroke::new(1.0_f32, ACCENT),
-                    egui::StrokeKind::Inside,
-                );
-            }
-            painter.text(
-                slot.center(),
-                egui::Align2::CENTER_CENTER,
-                seconds.to_string(),
-                FontId::proportional(stage.scale * if active { 30.0 } else { 15.0 }),
-                if active { TEXT } else { MUTED },
-            );
-            if response.clicked() && !active {
-                self.state.settings.seconds = seconds;
-                self.save();
-            }
-        }
-
-        glass(522.0, 221.0, 207.0, 208.0, 37.0);
-        stage.text(&painter, 548.0, 248.0, "Kayıt", 19.0, true, TEXT);
-        let armed = self.recorder.is_some();
-        stage.text(
-            &painter,
-            548.0,
-            280.0,
-            if armed {
-                "Kayıt açık"
-            } else if self.capture_starting {
-                "Başlatılıyor…"
-            } else {
-                "Kayıt kapalı"
-            },
-            12.0,
-            false,
-            if armed { ACCENT } else { MUTED },
-        );
-        if chrome::switch(
-            ui,
-            rect(660.0, 245.0, 48.0, 27.0),
-            if armed {
-                "Kaydı durdur"
-            } else {
-                "Kaydı başlat"
-            },
-            armed,
-            !self.read_only && (!self.busy || armed),
-        )
-        .clicked()
-        {
-            self.toggle_capture();
-        }
-        let replay = rect(581.0, 327.0, 99.0, 83.0);
-        let replay_button = chrome::hit(
-            ui,
-            replay,
-            "Son klibi MP4 olarak kaydet",
-            armed && !self.busy,
-        );
-        let face = painter.with_clip_rect(rect(523.0, 222.0, 205.0, 205.0));
-        chrome::replay_key(
-            &face,
-            replay,
-            &format!("F{}", self.state.settings.hotkey),
-            armed || replay_button.hovered(),
-        );
-        if replay_button.clicked() {
-            self.save_replay();
-        }
-
-        glass(742.0, 221.0, 207.0, 208.0, 37.0);
-        stage.text(&painter, 767.0, 248.0, "Paylaşım", 19.0, true, TEXT);
-        stage.text(&painter, 767.0, 282.0, "Otomatik", 12.0, false, MUTED);
-        if chrome::switch(
-            ui,
-            rect(883.0, 275.0, 46.0, 26.0),
-            "Yeni klipleri otomatik yükle",
-            self.state.settings.auto_upload,
-            !self.read_only,
-        )
-        .clicked()
-        {
-            self.state.settings.auto_upload = !self.state.settings.auto_upload;
-            self.save();
-        }
-        let clip = self.state.clips.last().cloned();
-        if chrome::upload_plate(
-            ui,
-            rect(765.0, 316.0, 160.0, 82.0),
-            clip.is_some() && !self.busy,
-        )
-        .clicked()
-        {
-            if let Some(clip) = clip {
-                self.edit(clip);
-            }
-        }
-
-        glass(533.0, 449.0, 405.0, 86.0, 43.0);
-        let home = rect(557.0, 467.0, 114.0, 49.0);
-        let response = chrome::hit(ui, home, "Ana ekran", true);
-        chrome::glass(&painter, home, home.height() * 0.5, true);
-        chrome::icon(
-            &painter,
-            rect(574.0, 491.0, 0.0, 0.0).min,
-            15.0 * stage.scale,
-            Icon::Home,
-            ACCENT,
-        );
-        stage.text(
-            &painter,
-            587.0,
-            485.0,
-            "Ana ekran",
-            12.0,
-            false,
-            if response.hovered() { ACCENT } else { TEXT },
-        );
-        for (i, (icon, label)) in [
-            (Icon::Library, "Klip arşivi"),
-            (Icon::Settings, "Ayarlar"),
-            (Icon::Plus, "MP4 içe aktar"),
-            (Icon::Copy, "Durumu kopyala"),
-        ]
-        .into_iter()
-        .enumerate()
-        {
-            if chrome::icon_button(
-                ui,
-                rect(683.0 + 57.0 * i as f32, 467.0, 49.0, 49.0),
-                label,
-                icon,
-                false,
-                i != 2 || !self.busy && !self.read_only,
-            )
-            .clicked()
-            {
-                match icon {
-                    Icon::Library => self.page = Page::Library,
-                    Icon::Settings => self.page = Page::Settings,
-                    Icon::Plus => self.import(None),
-                    Icon::Copy => self.copy_status(ui.ctx()),
-                    _ => {}
-                }
-            }
-        }
-        if self.status != "Hazır · Rust Ön Sürüm" {
-            stage.text(
-                &painter,
-                536.0,
-                551.0,
-                &short(&self.status, 60),
-                12.0,
-                false,
-                if armed { ACCENT } else { MUTED },
-            );
-        }
+    fn thumbnail(&mut self, ctx: &egui::Context, clip: &Clip) -> Option<TextureHandle> {
+        self.textures
+            .entry(clip.id.clone())
+            .or_insert_with(|| {
+                image::open(store::thumbnail(&self.root, &clip.id))
+                    .ok()
+                    .map(|image| texture(ctx, &clip.id, image))
+            })
+            .clone()
     }
 
     fn copy_status(&mut self, ctx: &egui::Context) {
@@ -814,21 +733,9 @@ impl App {
         let maximized = ui
             .ctx()
             .input(|input| input.viewport().maximized.unwrap_or(false));
-        if !maximized {
-            let grip = egui::Rect::from_min_max(bounds.max - Vec2::splat(17.0), bounds.max);
-            let response = ui
-                .interact(grip, ui.id().with("resize-grip"), egui::Sense::drag())
-                .on_hover_cursor(egui::CursorIcon::ResizeNwSe);
-            if response.drag_started() {
-                ui.ctx()
-                    .send_viewport_cmd(egui::ViewportCommand::BeginResize(
-                        egui::ResizeDirection::SouthEast,
-                    ));
-            }
-        }
         let drag = egui::Rect::from_min_max(
             bounds.min,
-            egui::pos2(bounds.right() - 128.0, bounds.top() + 32.0),
+            egui::pos2(bounds.right() - 128.0, bounds.top() + 44.0),
         );
         let response = ui.interact(
             drag,
@@ -863,12 +770,12 @@ impl App {
         {
             let rect = egui::Rect::from_min_size(
                 egui::pos2(
-                    bounds.right() - 116.0 + index as f32 * 37.0,
-                    bounds.top() + 5.0,
+                    bounds.right() - 120.0 + index as f32 * 36.0,
+                    bounds.top() + 8.0,
                 ),
-                Vec2::new(35.0, 25.0),
+                Vec2::new(32.0, 28.0),
             );
-            if chrome::icon_button(ui, rect, label, icon, false, true).clicked() {
+            if chrome::icon_button(ui, rect, label, icon, true).clicked() {
                 ui.ctx().send_viewport_cmd(command);
             }
         }
@@ -876,35 +783,25 @@ impl App {
 
     fn panel_header(&mut self, ui: &mut egui::Ui, title: &str) {
         ui.horizontal(|ui| {
-            heading(ui, title, 23.0);
+            heading(ui, title, 28.0);
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                let (_, rect) = ui.allocate_space(Vec2::splat(31.0));
-                if chrome::icon_button(ui, rect, "Ana ekrana dön", chrome::Icon::Close, false, true)
-                    .clicked()
-                {
-                    self.page = if self.page == Page::Editor {
-                        Page::Library
-                    } else {
-                        Page::Home
-                    };
+                if self.page == Page::Editor && ui.button("Arşive dön").clicked() {
+                    self.page = Page::Library;
                 }
                 if self.page == Page::Library
                     && ui
-                        .add_enabled(
-                            !self.busy && !self.read_only,
-                            egui::Button::new("MP4 içe aktar"),
-                        )
+                        .add_enabled(!self.busy && !self.read_only, primary("MP4 içe aktar"))
                         .clicked()
                 {
                     self.import(None);
                 }
             });
         });
-        ui.add_space(6.0);
+        ui.add_space(8.0);
     }
 
     fn library(&mut self, ui: &mut egui::Ui) {
-        glass_panel(ui, |ui| {
+        page_panel(ui, |ui| {
             self.panel_header(ui, "Klip arşivi");
             ui.horizontal_wrapped(|ui| {
                 ui.add(
@@ -912,7 +809,8 @@ impl App {
                 );
                 ui.toggle_value(&mut self.favorites, "Favoriler");
                 ui.toggle_value(&mut self.shared_only, "Yüklenenler");
-                ui.toggle_value(&mut self.grid, "Izgara");
+                ui.selectable_value(&mut self.grid, true, "Izgara");
+                ui.selectable_value(&mut self.grid, false, "Liste");
                 egui::ComboBox::from_id_salt("sort")
                     .selected_text(["En yeni", "En uzun", "En büyük"][self.sort])
                     .show_ui(ui, |ui| {
@@ -940,64 +838,81 @@ impl App {
                 _ => clips.reverse(),
             }
             if clips.is_empty() {
-                ui.colored_label(MUTED, "Klip bulunamadı. MP4 içe aktar veya F8 ile klip al.");
+                ui.colored_label(
+                    MUTED,
+                    if self.state.clips.is_empty() {
+                        "Arşivde henüz klip yok"
+                    } else {
+                        "Filtrelere uyan klip yok"
+                    },
+                );
             }
-            let height = (ui.available_height() - 124.0).clamp(170.0, 460.0);
+            let height = (ui.ctx().screen_rect().height() - 360.0).clamp(200.0, 560.0);
             egui::ScrollArea::vertical()
                 .max_height(height)
                 .show(ui, |ui| {
                     if self.grid {
-                        let row_width = (ui.available_width() / 3.0 - 28.0).max(130.0);
-                        for row in clips.chunks(3) {
-                            ui.horizontal(|ui| {
+                        let columns = if ui.available_width() >= 720.0 { 3 } else { 2 };
+                        let row_width =
+                            (ui.available_width() - 8.0 * (columns - 1) as f32) / columns as f32;
+                        for row in clips.chunks(columns) {
+                            ui.horizontal_top(|ui| {
                                 for clip in row {
                                     ui.push_id(&clip.id, |ui| {
-                                        let mut edit = false;
+                                        let selected = self.selected.as_ref() == Some(&clip.id);
+                                        let thumb = self.thumbnail(ui.ctx(), clip);
+                                        let mut open = false;
                                         ui.vertical(|ui| {
-                                            glass_surface(ui, 13.0, 17.0, |ui| {
-                                                ui.set_width(row_width - 28.0);
-                                                let thumb = self
-                                                    .textures
-                                                    .entry(clip.id.clone())
-                                                    .or_insert_with(|| {
-                                                        image::open(store::thumbnail(
-                                                            &self.root, &clip.id,
-                                                        ))
-                                                        .ok()
-                                                        .map(|image| {
-                                                            texture(ui.ctx(), &clip.id, image)
-                                                        })
-                                                    });
-                                                let image_size = Vec2::new(
-                                                    row_width - 28.0,
-                                                    (row_width - 28.0) * 0.56,
-                                                );
+                                            ui.set_width(row_width);
+                                            card(ui, 8, selected, |ui| {
+                                                let width = (row_width - 16.0).max(80.0);
+                                                ui.set_width(width);
+                                                let size = Vec2::new(width, width * 9.0 / 16.0);
                                                 if let Some(thumb) = thumb {
                                                     let image =
-                                                        egui::Image::new((thumb.id(), image_size))
-                                                            .corner_radius(10);
+                                                        egui::Image::new((thumb.id(), size))
+                                                            .corner_radius(8);
                                                     let response = ui
-                                                    .add(egui::Button::image(image).frame(false))
-                                                    .on_hover_text(
-                                                        "Klibi seç · Düzenlemek için çift tıkla",
-                                                    );
+                                                        .add(image.sense(egui::Sense::click()))
+                                                        .on_hover_text(
+                                                            "Düzenlemek için çift tıkla",
+                                                        );
                                                     if response.clicked() {
                                                         self.selected = Some(clip.id.clone());
                                                     }
-                                                    edit = response.double_clicked();
+                                                    open = response.double_clicked();
+                                                } else {
+                                                    let (_, rect) = ui.allocate_space(size);
+                                                    ui.painter().rect_filled(
+                                                        rect,
+                                                        8.0,
+                                                        chrome::BACKGROUND,
+                                                    );
+                                                    chrome::icon(
+                                                        ui.painter(),
+                                                        rect.center(),
+                                                        chrome::Icon::Video,
+                                                        MUTED,
+                                                    );
                                                 }
                                                 if ui
                                                     .selectable_label(
-                                                        self.selected.as_ref() == Some(&clip.id),
-                                                        clip_label(clip),
+                                                        selected,
+                                                        short(&clip.name, 24),
                                                     )
+                                                    .on_hover_text(&clip.name)
                                                     .clicked()
                                                 {
                                                     self.selected = Some(clip.id.clone());
                                                 }
+                                                ui.label(
+                                                    RichText::new(clip_meta(clip))
+                                                        .monospace()
+                                                        .color(MUTED),
+                                                );
                                             });
                                         });
-                                        if edit {
+                                        if open {
                                             self.edit(clip.clone());
                                         }
                                     });
@@ -1009,7 +924,7 @@ impl App {
                             if ui
                                 .selectable_label(
                                     self.selected.as_ref() == Some(&clip.id),
-                                    clip_label(clip),
+                                    format!("{}   {}", short(&clip.name, 48), clip_meta(clip)),
                                 )
                                 .clicked()
                             {
@@ -1124,9 +1039,10 @@ impl App {
             self.page = Page::Library;
             return;
         };
-        glass_panel(ui, |ui| {
+        page_panel(ui, |ui| {
             self.panel_header(ui, "Kes ve paylaş");
-            ui.label(&clip.name);
+            ui.label(RichText::new(&clip.name).color(chrome::TEXT));
+            ui.label(RichText::new(clip_meta(&clip)).monospace().color(MUTED));
             if editor.texture.is_none() {
                 editor.texture = image::open(store::thumbnail(&self.root, &clip.id))
                     .ok()
@@ -1248,124 +1164,123 @@ impl App {
     }
 
     fn settings(&mut self, ui: &mut egui::Ui) {
-        glass_panel(ui, |ui| {
+        page_panel(ui, |ui| {
             self.panel_header(ui, "Ayarlar");
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                ui.columns(2, |cols| {
-                    let left = &mut cols[0];
-                    heading(left, "Kayıt", 17.0);
-                    choice(
-                        left,
-                        "Kalite",
-                        &mut self.state.settings.quality,
-                        &["Yüksek · 1080p60", "Dengeli · 1080p30", "Hafif · 720p30"],
+            ui.columns(2, |cols| {
+                let left = &mut cols[0];
+                heading(left, "Kayıt", 17.0);
+                choice(
+                    left,
+                    "Kalite",
+                    &mut self.state.settings.quality,
+                    &["Yüksek · 1080p60", "Dengeli · 1080p30", "Hafif · 720p30"],
+                );
+                choice(
+                    left,
+                    "Yakalama",
+                    &mut self.state.settings.method,
+                    &[
+                        "Otomatik · WGC → GDI",
+                        "WGC · Pencere",
+                        "GDI · Pencere",
+                        "DXGI · Tüm ekran",
+                    ],
+                );
+                choice(
+                    left,
+                    "Kodlayıcı",
+                    &mut self.state.settings.encoder,
+                    &[
+                        "Media Foundation · Yazılım",
+                        "NVIDIA NVENC",
+                        "AMD AMF",
+                        "Intel QSV",
+                    ],
+                );
+                let mut key = self.state.settings.hotkey.clamp(6, 11) as usize - 6;
+                choice(
+                    left,
+                    "Kısayol",
+                    &mut key,
+                    &["F6", "F7", "F8", "F9", "F10", "F11"],
+                );
+                self.state.settings.hotkey = key as u32 + 6;
+                if self.state.settings.method == 3 {
+                    left.colored_label(
+                        MUTED,
+                        "DXGI seçiliyken Kayıt düğmesi ekran 0’ın tamamını kaydeder.",
                     );
-                    choice(
-                        left,
-                        "Yakalama",
-                        &mut self.state.settings.method,
-                        &[
-                            "Otomatik · WGC → GDI",
-                            "WGC · Pencere",
-                            "GDI · Pencere",
-                            "DXGI · Tüm ekran",
-                        ],
-                    );
-                    choice(
-                        left,
-                        "Kodlayıcı",
-                        &mut self.state.settings.encoder,
-                        &[
-                            "Media Foundation · Yazılım",
-                            "NVIDIA NVENC",
-                            "AMD AMF",
-                            "Intel QSV",
-                        ],
-                    );
-                    let mut key = self.state.settings.hotkey.clamp(6, 11) as usize - 6;
-                    choice(
-                        left,
-                        "Kısayol",
-                        &mut key,
-                        &["F6", "F7", "F8", "F9", "F10", "F11"],
-                    );
-                    self.state.settings.hotkey = key as u32 + 6;
-                    if self.state.settings.method == 3 {
-                        left.colored_label(
-                            MUTED,
-                            "DXGI seçiliyken Kayıt düğmesi ekran 0’ın tamamını kaydeder.",
-                        );
-                    }
-                    left.label("DirectShow ses aygıtı");
-                    left.add(
-                        egui::TextEdit::singleline(&mut self.state.settings.audio_device)
-                            .hint_text("Boş bırakılırsa sessiz kayıt"),
-                    );
+                }
+                left.label("DirectShow ses aygıtı");
+                left.add(
+                    egui::TextEdit::singleline(&mut self.state.settings.audio_device)
+                        .hint_text("Boş bırakılırsa sessiz kayıt"),
+                );
+                if left
+                    .add_enabled(
+                        !self.busy && self.recorder.is_none(),
+                        egui::Button::new("Ses aygıtlarını listele"),
+                    )
+                    .clicked()
+                {
+                    self.job("Ses aygıtları aranıyor…", |_| {
+                        Ok(Outcome::Devices(media::audio_devices()?))
+                    });
+                }
+                for device in &self.devices {
                     if left
-                        .add_enabled(
-                            !self.busy && self.recorder.is_none(),
-                            egui::Button::new("Ses aygıtlarını listele"),
-                        )
+                        .selectable_label(self.state.settings.audio_device == *device, device)
                         .clicked()
                     {
-                        self.job("Ses aygıtları aranıyor…", |_| {
-                            Ok(Outcome::Devices(media::audio_devices()?))
-                        });
+                        self.state.settings.audio_device.clone_from(device);
                     }
-                    for device in &self.devices {
-                        if left
-                            .selectable_label(self.state.settings.audio_device == *device, device)
-                            .clicked()
-                        {
-                            self.state.settings.audio_device.clone_from(device);
-                        }
+                }
+                let right = &mut cols[1];
+                heading(right, "Paylaşım ve arşiv", 17.0);
+                choice(
+                    right,
+                    "Servis",
+                    &mut self.state.settings.provider,
+                    &["Litterbox · 24 saat", "Gofile"],
+                );
+                right.checkbox(
+                    &mut self.state.settings.auto_upload,
+                    "Yeni kayıt kliplerini otomatik yükle",
+                );
+                right.checkbox(
+                    &mut self.state.settings.auto_copy,
+                    "Hazır bağlantıyı panoya kopyala",
+                );
+                if right.button("Yedek klasörü seç").clicked() {
+                    if let Some(path) = rfd::FileDialog::new().pick_folder() {
+                        self.state.settings.backup = Some(path);
                     }
-                    let right = &mut cols[1];
-                    heading(right, "Paylaşım ve arşiv", 17.0);
-                    choice(
-                        right,
-                        "Servis",
-                        &mut self.state.settings.provider,
-                        &["Litterbox · 24 saat", "Gofile"],
-                    );
-                    right.checkbox(
-                        &mut self.state.settings.auto_upload,
-                        "Yeni kayıt kliplerini otomatik yükle",
-                    );
-                    right.checkbox(
-                        &mut self.state.settings.auto_copy,
-                        "Hazır bağlantıyı panoya kopyala",
-                    );
-                    if right.button("Yedek klasörü seç").clicked() {
-                        if let Some(path) = rfd::FileDialog::new().pick_folder() {
-                            self.state.settings.backup = Some(path);
-                        }
+                }
+                if let Some(path) = &self.state.settings.backup {
+                    right.label(path.to_string_lossy());
+                    if right.button("Yedeklemeyi kapat").clicked() {
+                        self.state.settings.backup = None;
                     }
-                    if let Some(path) = &self.state.settings.backup {
-                        right.label(path.to_string_lossy());
-                        if right.button("Yedeklemeyi kapat").clicked() {
-                            self.state.settings.backup = None;
-                        }
-                    }
-                    let bytes: u64 = self.state.clips.iter().map(|c| c.bytes).sum();
-                    right.colored_label(
-                        MUTED,
-                        format!(
-                            "{} klip · {:.1} MB",
-                            self.state.clips.len(),
-                            bytes as f64 / 1_000_000.0
-                        ),
-                    );
-                    if right.button("Sürüm notları / indir").clicked() {
-                        self.open(std::ffi::OsStr::new(RELEASES));
-                    }
-                });
+                }
+                let bytes: u64 = self.state.clips.iter().map(|c| c.bytes).sum();
+                right.colored_label(
+                    MUTED,
+                    format!(
+                        "{} klip · {:.1} MB",
+                        self.state.clips.len(),
+                        bytes as f64 / 1_000_000.0
+                    ),
+                );
+                if right.button("Sürüm notları / indir").clicked() {
+                    self.open(std::ffi::OsStr::new(RELEASES));
+                }
             });
+            ui.separator();
             if ui
-                .add_enabled(!self.read_only, egui::Button::new("Ayarları kaydet"))
+                .add_enabled(!self.read_only, primary("Ayarları kaydet"))
                 .clicked()
             {
-                self.status = "Ayarlar kaydedildi.".into();
+                self.status = "Ayarlar kaydedildi".into();
                 if self.recorder.is_some() {
                     self.hotkey
                         .store(self.state.settings.hotkey, Ordering::Relaxed);
@@ -1392,63 +1307,153 @@ impl eframe::App for App {
                 self.import(Some(path));
             }
         }
-        egui::CentralPanel::default()
-            .frame(Frame::new().fill(Color32::from_rgb(2, 3, 3)))
+        egui::TopBottomPanel::top("window-title")
+            .exact_height(44.0)
+            .frame(Frame::new().fill(chrome::SURFACE))
             .show(ctx, |ui| {
                 let bounds = ui.max_rect();
-                ui.painter().image(
-                    self.backdrop.id(),
-                    bounds,
-                    egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
-                    Color32::WHITE,
-                );
                 self.window_controls(ui, bounds);
-                if self.page == Page::Home {
-                    self.home(ui);
-                } else {
-                    let available = bounds.shrink2(Vec2::new(26.0, 42.0));
-                    let width = available.width().min(940.0);
-                    let content = egui::Rect::from_min_max(
-                        egui::pos2(
-                            bounds.center().x - width / 2.0,
-                            available.top() + 52.0_f32.min(available.height() * 0.08),
-                        ),
-                        egui::pos2(bounds.center().x + width / 2.0, available.bottom()),
-                    );
-                    ui.scope_builder(egui::UiBuilder::new().max_rect(content), |ui| {
-                        ui.set_width(content.width());
-                        ui.set_clip_rect(content);
-                        egui::ScrollArea::vertical()
-                            .id_salt("main-content")
-                            .show(ui, |ui| {
-                                ui.set_width(content.width());
-                                match self.page {
-                                    Page::Library => self.library(ui),
-                                    Page::Editor => self.editor(ui),
-                                    Page::Settings => self.settings(ui),
-                                    Page::Home => {}
-                                }
-                            });
+                let mark = bounds.left_top() + Vec2::new(32.0, 22.0);
+                chrome::icon(ui.painter(), mark, chrome::Icon::Video, chrome::ACCENT);
+                ui.painter().text(
+                    mark + Vec2::new(18.0, 0.0),
+                    egui::Align2::LEFT_CENTER,
+                    "RollClip",
+                    FontId::new(16.0, FontFamily::Name("Manrope".into())),
+                    chrome::TEXT,
+                );
+            });
+        egui::TopBottomPanel::top("navigation")
+            .frame(
+                Frame::new()
+                    .fill(chrome::SURFACE)
+                    .inner_margin(egui::Margin::symmetric(24, 8))
+                    .stroke(chrome::BORDER),
+            )
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    for (page, label) in [
+                        (Page::Home, "Ana ekran"),
+                        (Page::Library, "Klip arşivi"),
+                        (Page::Settings, "Ayarlar"),
+                    ] {
+                        let active = self.page == page
+                            || (self.page == Page::Editor && page == Page::Library);
+                        if ui.selectable_label(active, label).clicked() {
+                            self.page = page;
+                        }
+                    }
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        if ui.button("Durumu kopyala").clicked() {
+                            self.copy_status(ctx);
+                        }
+                        if self.page != Page::Library
+                            && ui
+                                .add_enabled(
+                                    !self.busy && !self.read_only,
+                                    egui::Button::new("MP4 içe aktar"),
+                                )
+                                .clicked()
+                        {
+                            self.import(None);
+                        }
                     });
-                    let status = short(&self.status, 108);
-                    ui.painter().text(
-                        egui::pos2(content.left() + 7.0, content.bottom() + 16.0),
-                        egui::Align2::LEFT_TOP,
-                        status,
-                        FontId::proportional(12.0),
-                        MUTED,
-                    );
+                });
+            });
+        egui::TopBottomPanel::bottom("status")
+            .frame(
+                Frame::new()
+                    .fill(chrome::SURFACE)
+                    .inner_margin(egui::Margin::symmetric(24, 8))
+                    .stroke(chrome::BORDER),
+            )
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
                     if self.busy || self.uploading {
-                        ui.put(
-                            egui::Rect::from_min_size(
-                                egui::pos2(content.right() - 28.0, content.bottom() + 12.0),
-                                Vec2::splat(20.0),
-                            ),
-                            egui::Spinner::new(),
+                        ui.spinner();
+                    }
+                    ui.colored_label(MUTED, short(&self.status, 100))
+                        .on_hover_text(&self.status);
+                });
+                if !ctx.input(|i| i.viewport().maximized.unwrap_or(false)) {
+                    let max = ctx.screen_rect().max;
+                    let grip = egui::Rect::from_min_max(max - Vec2::splat(16.0), max);
+                    let response = ui
+                        .interact(grip, ui.id().with("resize"), egui::Sense::drag())
+                        .on_hover_cursor(egui::CursorIcon::ResizeNwSe);
+                    for offset in [5.0, 9.0, 13.0] {
+                        ui.painter().line_segment(
+                            [max - Vec2::new(2.0, offset), max - Vec2::new(offset, 2.0)],
+                            chrome::BORDER,
                         );
+                    }
+                    if response.drag_started() {
+                        ctx.send_viewport_cmd(egui::ViewportCommand::BeginResize(
+                            egui::ResizeDirection::SouthEast,
+                        ));
                     }
                 }
             });
+        let page = self.page;
+        let animate = self.smoke.is_none()
+            && self.recorder.is_none()
+            && !self.capture_starting
+            && ctx.input(|i| !i.viewport().minimized.unwrap_or(false));
+        if page != self.shown_page {
+            let offset = match (self.shown_page, page) {
+                (_, Page::Editor) => Vec2::new(12.0, 0.0),
+                (Page::Editor, Page::Library) => Vec2::new(-12.0, 0.0),
+                _ => Vec2::new(0.0, 8.0),
+            };
+            self.page_entered =
+                (animate && platform::client_animations()).then(|| (Instant::now(), offset));
+            self.shown_page = page;
+        }
+        let mut opacity = 1.0;
+        let mut offset = Vec2::ZERO;
+        if let Some((started, distance)) = self.page_entered {
+            let duration = if distance.x == 0.0 { 0.16 } else { 0.18 };
+            let elapsed = started.elapsed().as_secs_f32() / duration;
+            if animate && elapsed < 1.0 {
+                let remaining = (1.0 - elapsed).powi(3);
+                offset = distance * remaining;
+                opacity = 1.0 - 0.28 * remaining;
+                ctx.request_repaint();
+            } else {
+                self.page_entered = None;
+            }
+        }
+        egui::CentralPanel::default()
+            .frame(Frame::new().fill(chrome::BACKGROUND))
+            .show(ctx, |ui| {
+                let bounds = ui.max_rect().shrink2(Vec2::new(24.0, 20.0));
+                let content = egui::Rect::from_center_size(
+                    bounds.center(),
+                    Vec2::new(bounds.width().min(1120.0), bounds.height()),
+                );
+                ui.scope_builder(
+                    egui::UiBuilder::new().id_salt(page).max_rect(content),
+                    |ui| {
+                        ui.set_clip_rect(bounds.expand(12.0).intersect(ui.clip_rect()));
+                        ui.set_opacity(opacity);
+                        let content = content.translate(offset);
+                        ui.scope_builder(egui::UiBuilder::new().max_rect(content), |ui| {
+                            egui::ScrollArea::vertical().show(ui, |ui| {
+                                ui.set_width(content.width() - 12.0);
+                                match page {
+                                    Page::Home => self.home(ui),
+                                    Page::Library => self.library(ui),
+                                    Page::Editor => self.editor(ui),
+                                    Page::Settings => self.settings(ui),
+                                }
+                            });
+                        });
+                    },
+                );
+            });
+        if self.page != page {
+            ctx.request_repaint();
+        }
         if let Some(id) = self.delete.clone() {
             egui::Window::new("Klibi sil")
                 .collapsible(false)
@@ -1575,28 +1580,38 @@ impl Drop for App {
     }
 }
 
-fn glass_panel(ui: &mut egui::Ui, contents: impl FnOnce(&mut egui::Ui)) {
-    glass_surface(ui, 24.0, 31.0, |ui| {
+fn page_panel(ui: &mut egui::Ui, contents: impl FnOnce(&mut egui::Ui)) {
+    surface(ui, 20, |ui| {
         ui.set_min_width(ui.available_width());
         contents(ui);
     });
 }
 
-fn glass_surface(
-    ui: &mut egui::Ui,
-    padding: f32,
-    radius: f32,
-    contents: impl FnOnce(&mut egui::Ui),
-) {
-    let painter = ui.painter().clone();
-    let layer = painter.add(egui::Shape::Noop);
-    let response = Frame::new()
+fn surface(ui: &mut egui::Ui, padding: i8, contents: impl FnOnce(&mut egui::Ui)) {
+    card(ui, padding, false, contents);
+}
+
+fn card(ui: &mut egui::Ui, padding: i8, selected: bool, contents: impl FnOnce(&mut egui::Ui)) {
+    Frame::new()
+        .fill(if selected {
+            chrome::SELECTED
+        } else {
+            chrome::SURFACE
+        })
+        .stroke(if selected {
+            Stroke::new(1.0_f32, chrome::ACCENT)
+        } else {
+            chrome::BORDER
+        })
+        .corner_radius(if padding > 8 { 16 } else { 12 })
         .inner_margin(padding)
-        .show(ui, contents)
-        .response;
-    let mut shapes = Vec::new();
-    chrome::glass_shapes(response.rect, radius, false, &mut shapes);
-    painter.set(layer, egui::Shape::Vec(shapes));
+        .show(ui, contents);
+}
+
+fn primary(label: &str) -> egui::Button<'_> {
+    egui::Button::new(RichText::new(label).color(chrome::BACKGROUND))
+        .fill(chrome::TEXT)
+        .min_size(Vec2::new(0.0, 36.0))
 }
 
 fn heading(ui: &mut egui::Ui, label: &str, size: f32) {
@@ -1636,12 +1651,11 @@ fn short(text: &str, max: usize) -> String {
     }
 }
 
-fn clip_label(clip: &Clip) -> String {
+fn clip_meta(clip: &Clip) -> String {
     format!(
-        "{}{} · {:.1} sn · {:.1} MB",
-        if clip.favorite { "★ " } else { "" },
-        short(&clip.name, 36),
+        "{:.1} sn  ·  {:.1} MB{}",
         clip.seconds,
-        clip.bytes as f64 / 1_000_000.0
+        clip.bytes as f64 / 1_000_000.0,
+        if clip.favorite { "  ·  Favori" } else { "" }
     )
 }

@@ -234,3 +234,25 @@ pub fn open(path: &std::ffi::OsStr) -> anyhow::Result<()> {
 pub fn copy_file(_: &std::path::Path) -> anyhow::Result<()> {
     anyhow::bail!("Dosya panosu bu sürümde Windows gerektirir.")
 }
+
+pub fn client_animations() -> bool {
+    #[cfg(windows)]
+    {
+        use windows_sys::Win32::UI::WindowsAndMessaging::{
+            SystemParametersInfoW, SPI_GETCLIENTAREAANIMATION,
+        };
+        let mut enabled = 0i32;
+        // SPI_GETCLIENTAREAANIMATION writes a Win32 BOOL to the caller's buffer.
+        let success = unsafe {
+            SystemParametersInfoW(
+                SPI_GETCLIENTAREAANIMATION,
+                0,
+                (&mut enabled as *mut i32).cast(),
+                0,
+            )
+        };
+        success != 0 && enabled != 0
+    }
+    #[cfg(not(windows))]
+    true
+}
