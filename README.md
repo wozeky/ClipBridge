@@ -83,6 +83,7 @@ Pencere kontrolleri, galeri filtreleri, favoriler ve araç çubuğu Microsoft Fl
 ## v0.4.0 ile gelenler
 
 - **Galeri:** Grid/liste, isim araması, oyun/tarih/yükleme/favori filtreleri ve tarih/süre/boyut sıralaması. FFmpeg küçük resimleri yalnızca görünen kartlar için üretir ve dosya değişmediği sürece tekrar kullanır.
+  Klip kartının üzerinde kısa süre bekleyince sessiz video önizlemesi oynar. Fare ayrıldığında, galeri kaydırıldığında veya uygulama arka plana geçtiğinde oynatma kapanır. Aynı anda yalnızca bir klip oynatılır; yerel dosyası bulunmayan veya Windows tarafından açılamayan kliplerde küçük resim korunur.
 - **Editör:** Seçili aralığı oynatın, önizleme sesini değiştirin ve gerçek FFmpeg ilerlemesini izleyin. Hassas kesimler yeniden kodlanır. Tam aralıkta uygun ses seçenekleriyle stream copy kullanılır. Paylaşılmış veya yedeklenmiş klipler için yerel orijinali değiştirme devre dışıdır.
 - **Kayıt:** Mevcut tuşa ek olarak Ctrl/Shift ve klip süresi içeren en fazla sekiz kısayol ekleyin. Tampon, kayıttaki en uzun seçili süreyi hedefler. Arka arkaya gelen en fazla üç istek bekleyebilir. Sıradaki klip, işlenmeye başladığı anda elde olan tamponu kullanır.
 - **Ses:** Mikrofon aygıtı ve oyun/sistem ile mikrofon seviyeleri genel ayarda veya oyun profilinde saklanır. Oyun sesi modu başka uygulamaların sesine otomatik geçmez. Kayıt sırasında ses aygıtı hata verirse ilgili iz sessiz kalabilir.
