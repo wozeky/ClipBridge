@@ -42,6 +42,8 @@
   <WrapPanel Grid.Row="4" Margin="0,9,0,0">
    <ComboBox x:Name="ExportSizeChoice" Width="112" Margin="0,0,8,5" AutomationProperties.Name="Dosya boyutu hedefi"/>
    <Button x:Name="DiscordButton" Content="Paylaşım dosyasını kopyala" Click="Discord_Click" Padding="12,6" Margin="0,0,8,5"/>
+   <Button x:Name="SendDiscordButton" Content="Discord'a gönder" Click="SendDiscord_Click" Padding="12,6" Margin="0,0,8,5"/>
+   <Button x:Name="OpenDiscordMessage" Content="Mesajı aç" Click="OpenDiscordMessage_Click" Padding="10,6" Margin="0,0,8,5" Visibility="Collapsed"/>
    <Button x:Name="SaveButton" Content="Kırpılmış kopyayı kaydet" Click="Save_Click" Padding="12,6" Margin="0,0,8,5"/>
    <Button x:Name="OpenCopyButton" Content="Paylaşım kopyasını aç" Click="OpenCopy_Click" Padding="10,6" Margin="0,0,8,5" IsEnabled="False"/>
    <Button x:Name="CancelButton" Content="İptal" Click="Cancel_Click" Padding="10,6" IsEnabled="False"/>

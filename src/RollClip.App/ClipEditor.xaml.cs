@@ -3,6 +3,8 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Diagnostics;
 using System.IO;
+using System.Net.Http;
+using System.Text.Json;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -25,6 +27,12 @@ public partial class ClipEditor : Window
     private double? _previewEnd;
     private bool _mediaReady;
     private string? _discordPath;
+    private Uri? _discordMessage;
+    private static readonly Uri DiscordHome = new("https://discord.com/channels/@me");
+    private static readonly HttpClient DiscordClient = new(new HttpClientHandler { AllowAutoRedirect = false })
+    {
+        Timeout = TimeSpan.FromMinutes(3)
+    };
     private readonly Action<double[]> _storeBookmarks;
     private readonly bool _english;
     private double[] _bookmarks;
@@ -40,7 +48,11 @@ public partial class ClipEditor : Window
         _storeBookmarks = storeBookmarks;
         _bookmarks = clip.Bookmarks ?? [];
         if (english)
+        {
             EnglishUi.Apply(this);
+            SendDiscordButton.Content = "Send to Discord";
+            OpenDiscordMessage.Content = "Open message";
+        }
         foreach (var preset in ClipExport.SizePresets)
             ExportSizeChoice.Items.Add(new ComboBoxItem { Content = preset.Label, Tag = preset.Bytes });
         ExportSizeChoice.SelectedIndex = 0;
@@ -233,6 +245,30 @@ public partial class ClipEditor : Window
     private async void Discord_Click(object sender, RoutedEventArgs args) => await ExportAsync(discord: true);
     private async void Save_Click(object sender, RoutedEventArgs args) => await ExportAsync(discord: false);
 
+    private async void SendDiscord_Click(object sender, RoutedEventArgs args)
+    {
+        if (_export is not null || !TryReadRange(out _, out _))
+            return;
+        var dialog = new DiscordShareDialog(_english) { Owner = this };
+        if (dialog.ShowDialog() == true)
+            await ExportAsync(discord: true, webhook: dialog.Endpoint, openDiscord: dialog.Endpoint is null);
+    }
+
+    private void OpenDiscordMessage_Click(object sender, RoutedEventArgs args)
+    {
+        if (_discordMessage is not null)
+            OpenDiscord(_discordMessage);
+    }
+
+    private void OpenDiscord(Uri url)
+    {
+        try { Process.Start(new ProcessStartInfo(url.AbsoluteUri) { UseShellExecute = true }); }
+        catch (Win32Exception)
+        {
+            Feedback.Text = EnglishUi.Choose(_english, "Discord açılamadı.", "Discord could not be opened.");
+        }
+    }
+
     internal string? SavedPath { get; private set; }
     internal Guid SavedId { get; private set; }
     internal bool ReplaceRequested { get; private set; }
@@ -252,7 +288,7 @@ public partial class ClipEditor : Window
         return true;
     }
 
-    private async Task ExportAsync(bool discord)
+    private async Task ExportAsync(bool discord, Uri? webhook = null, bool openDiscord = false)
     {
         if (_export is not null)
             return;
@@ -266,7 +302,7 @@ public partial class ClipEditor : Window
 
         using var cancellation = new CancellationTokenSource();
         _export = cancellation;
-        DiscordButton.IsEnabled = SaveButton.IsEnabled = false;
+        SendDiscordButton.IsEnabled = DiscordButton.IsEnabled = SaveButton.IsEnabled = false;
         CancelButton.IsEnabled = true;
         if (_mediaReady)
             SetPlaying(false);
@@ -275,6 +311,8 @@ public partial class ClipEditor : Window
         {
             var source = new FileInfo(_clip.FilePath);
             var limit = (ExportSizeChoice.SelectedItem as ComboBoxItem)?.Tag as long? ?? ClipExport.DiscordBytes;
+            if (webhook is not null)
+                limit = Math.Min(limit, ClipExport.DiscordBytes);
             var copy = discord && start == 0 && Math.Abs(end - _duration) < 0.001 &&
                 !_clip.SeparateMicrophone && Mute.IsChecked != true && source.Length <= limit;
             var destination = copy ? source.FullName : Path.Combine(_folder, $"{(discord ? "Discord" : "Kırpılmış klip")}-{id:N}.mp4");
@@ -298,8 +336,24 @@ public partial class ClipEditor : Window
             {
                 _discordPath = destination;
                 OpenCopyButton.IsEnabled = true;
-                Clipboard.SetFileDropList(new StringCollection { destination });
-                Feedback.Text = EnglishUi.Choose(_english, "Dosya panoda. Discord'da Ctrl+V ile ekleyebilirsiniz.", "File copied. Press Ctrl+V in Discord to attach it.");
+                if (webhook is not null)
+                {
+                    _discordMessage = null;
+                    OpenDiscordMessage.Visibility = Visibility.Collapsed;
+                    ExportProgress.Visibility = Visibility.Collapsed;
+                    Feedback.Text = EnglishUi.Choose(_english, "Discord'a yükleniyor…", "Uploading to Discord…");
+                    await using var video = File.OpenRead(destination);
+                    _discordMessage = await DiscordWebhook.SendAsync(DiscordClient, webhook, video, cancellation.Token);
+                    OpenDiscordMessage.Visibility = Visibility.Visible;
+                    Feedback.Text = EnglishUi.Choose(_english, "Klip Discord kanalına gönderildi.", "Clip sent to the Discord channel.");
+                }
+                else
+                {
+                    Clipboard.SetFileDropList(new StringCollection { destination });
+                    Feedback.Text = EnglishUi.Choose(_english, "Dosya panoda. Discord'da Ctrl+V ile ekleyebilirsiniz.", "File copied. Press Ctrl+V in Discord to attach it.");
+                    if (openDiscord)
+                        OpenDiscord(DiscordHome);
+                }
             }
             else
             {
@@ -310,7 +364,15 @@ public partial class ClipEditor : Window
                 Feedback.Text = EnglishUi.Choose(_english, "Kırpılmış kopya kaydedildi.", "Trimmed copy saved.");
             }
         }
+        catch (OperationCanceledException) when (webhook is not null)
+        {
+            Feedback.Text = EnglishUi.Choose(_english, "Gönderim doğrulanamadı. Tekrar denemeden önce kanalı kontrol et.", "Delivery was not confirmed. Check the channel before retrying.");
+        }
         catch (OperationCanceledException) { Feedback.Text = EnglishUi.Choose(_english, "Dışa aktarma iptal edildi.", "Export cancelled."); }
+        catch (Exception error) when (error is HttpRequestException or JsonException)
+        {
+            Feedback.Text = EnglishUi.Choose(_english, "Discord gönderimi doğrulanamadı. Tekrar denemeden önce kanalı kontrol et.", "Discord delivery could not be confirmed. Check the channel before retrying.");
+        }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or ExternalException)
         {
             Feedback.Text = "Klip hazırlanamadı. " + error.Message;
@@ -318,7 +380,7 @@ public partial class ClipEditor : Window
         finally
         {
             _export = null;
-            DiscordButton.IsEnabled = SaveButton.IsEnabled = true;
+            SendDiscordButton.IsEnabled = DiscordButton.IsEnabled = SaveButton.IsEnabled = true;
             CancelButton.IsEnabled = false;
             ExportProgress.Visibility = Visibility.Collapsed;
         }

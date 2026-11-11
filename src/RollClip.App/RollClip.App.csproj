@@ -8,7 +8,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>RollClip</AssemblyName>
-    <Version>0.4.5</Version>
+    <Version>0.4.6</Version>
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Assets/ChromePoster*.png" />
@@ -18,6 +18,7 @@
     <Using Remove="System.Windows.Forms" />
     <Using Remove="System.Drawing" />
     <None Include="../../LICENSE" Link="LICENSE" CopyToPublishDirectory="PreserveNewest" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
     <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
     <None Include="../../docs/licenses/FluentSystemIcons.txt" Link="licenses/FluentSystemIcons.txt" CopyToPublishDirectory="PreserveNewest" />
     <None Include="../../docs/licenses/WKI-Clipper.txt" Link="licenses/WKI-Clipper.txt" CopyToPublishDirectory="PreserveNewest" />
