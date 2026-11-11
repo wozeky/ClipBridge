@@ -1,6 +1,7 @@
 RollClip’in Rust ile yazılan Windows 11 x64 ön sürümü. Mevcut C# sürümünün yanında ayrı bir paket ve veri klasörüyle kullanılabilir.
 
-- Sabit koyu arayüz, krom arka plan ve Manrope başlıklar.
+- C# sürümündeki kart yerleşimine göre yeniden çizilen ana ekran, katmanlı krom yüzeyler ve yeşil anahtarlar.
+- Yenilenen klip galerisi, düzenleme ve ayar panelleri.
 - Pencere veya ekran yakalama, F8 replay ve MP4 içe aktarma.
 - Küçük resimli galeri, filtreler, favoriler, kırpma, kare önizlemesi ve yer imleri.
 - Boyut hedefli Discord kopyası, Litterbox ve Gofile paylaşımı, yerel yedekleme.

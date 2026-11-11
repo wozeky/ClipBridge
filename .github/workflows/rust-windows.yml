@@ -55,6 +55,7 @@ jobs:
       - name: Verify the desktop window
         run: |
           $marker = Join-Path $env:RUNNER_TEMP "rollclip-rust-ui.txt"
+          Copy-Item (Join-Path $env:RUNNER_TEMP "rollclip-rust-media") (Join-Path $env:RUNNER_TEMP "profile") -Recurse
           $process = Start-Process (Resolve-Path artifacts/rust/RollClip-Rust.exe) -ArgumentList "--ui-smoke", "`"$marker`"" -PassThru
           try {
             $deadline = (Get-Date).AddSeconds(30)
@@ -63,7 +64,11 @@ jobs:
             if ($process.HasExited) { Write-Host "Rust window process exit code $($process.ExitCode)" }
             if (!(Test-Path $marker) -or (Get-Content $marker) -notmatch '^PASS:') { throw "Rust desktop window did not open." }
             $output = New-Item -ItemType Directory -Force artifacts/release
-            Copy-Item ([IO.Path]::ChangeExtension($marker, ".png")) (Join-Path $output.FullName "RollClip-Rust-Ana-Ekran.png")
+            foreach ($page in "Ana-Ekran", "Klip-Arsivi", "Ayarlar", "Editor") {
+              Copy-Item (Join-Path $env:RUNNER_TEMP "RollClip-Rust-$page.png") $output.FullName
+            }
+            $screenArchive = New-Item -ItemType Directory -Force artifacts/screenshots
+            Copy-Item artifacts/release/*.png $screenArchive.FullName
             $capture = Join-Path $env:RUNNER_TEMP "rollclip-rust-window"
             Start-Process (Resolve-Path artifacts/rust/RollClip-Rust.exe) -ArgumentList "--window-test", "`"$capture`"" -Wait
             $captureReport = Join-Path $capture "test-result.txt"
@@ -74,6 +79,11 @@ jobs:
           } finally {
             if (!$process.HasExited) { Stop-Process -Id $process.Id }
           }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RollClip-Rust-Screenshots
+          path: artifacts/screenshots/*.png
+          if-no-files-found: error
       - name: Build and verify installer
         run: |
           $compiler = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'
@@ -119,6 +129,6 @@ jobs:
         run: |
           $version = (Select-String -Path rust-edition/Cargo.toml -Pattern '^version = "([^"]+)"').Matches[0].Groups[1].Value
           $assets = @(Get-ChildItem artifacts/release -File | ForEach-Object FullName)
-          if ($assets.Count -ne 5) { throw "Expected Setup, ZIP, two checksums and a screenshot." }
+          if ($assets.Count -ne 8) { throw "Expected Setup, ZIP, two checksums and four screenshots." }
           gh release create "rust-v$version" @assets --target $env:GITHUB_SHA --title "RollClip Rust v$version · Windows ön sürümü" --notes-file rust-edition/RELEASE.md --prerelease --latest=false
           if ($LASTEXITCODE -ne 0) { throw "Rust release publication failed." }
