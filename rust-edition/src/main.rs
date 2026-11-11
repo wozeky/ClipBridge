@@ -59,19 +59,68 @@ fn main() -> eframe::Result<()> {
     let Some(_instance) = platform::instance() else {
         return Ok(());
     };
+    if let Some(marker) = ui_smoke.clone() {
+        std::panic::set_hook(Box::new(move |panic| {
+            let _ = fs::write(&marker, format!("Rust UI panic: {panic}"));
+        }));
+    }
     let options = eframe::NativeOptions {
         #[cfg(windows)]
         renderer: eframe::Renderer::Wgpu,
+        #[cfg(windows)]
+        wgpu_options: windows_renderer(),
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([1040.0, 720.0])
             .with_min_inner_size([820.0, 600.0]),
         ..Default::default()
     };
-    eframe::run_native(
+    let diagnostic = ui_smoke.clone();
+    let result = eframe::run_native(
         "RollClip Rust",
         options,
         Box::new(move |context| Ok(Box::new(App::new(context, ui_smoke)))),
-    )
+    );
+    if let Err(error) = &result {
+        if let Some(path) = diagnostic {
+            let _ = fs::write(path, format!("Rust UI startup failed: {error:?}"));
+        } else {
+            let folder = store::root();
+            let _ = fs::create_dir_all(&folder);
+            let _ = fs::write(folder.join("startup-error.txt"), format!("{error:?}"));
+        }
+    }
+    result
+}
+
+#[cfg(windows)]
+fn windows_renderer() -> eframe::egui_wgpu::WgpuConfiguration {
+    use eframe::{
+        egui_wgpu::{WgpuConfiguration, WgpuSetup, WgpuSetupCreateNew},
+        wgpu,
+    };
+    let mut setup = WgpuSetupCreateNew::default();
+    setup.instance_descriptor.backends = wgpu::Backends::DX12 | wgpu::Backends::VULKAN;
+    setup.native_adapter_selector = Some(Arc::new(|adapters, surface| {
+        adapters
+            .iter()
+            .filter(|adapter| surface.is_none_or(|surface| adapter.is_surface_supported(surface)))
+            .max_by_key(|adapter| match adapter.get_info().device_type {
+                wgpu::DeviceType::DiscreteGpu => 3,
+                wgpu::DeviceType::IntegratedGpu => 2,
+                _ => 1,
+            })
+            .cloned()
+            .ok_or_else(|| {
+                format!(
+                    "No suitable DX12/Vulkan adapter among {} candidates",
+                    adapters.len()
+                )
+            })
+    }));
+    WgpuConfiguration {
+        wgpu_setup: WgpuSetup::CreateNew(setup),
+        ..Default::default()
+    }
 }
 
 #[derive(Clone, Copy, PartialEq)]

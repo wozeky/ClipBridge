@@ -59,8 +59,9 @@ jobs:
           try {
             $deadline = (Get-Date).AddSeconds(30)
             while (!(Test-Path $marker) -and !$process.HasExited -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 250 }
+            if (Test-Path $marker) { Get-Content $marker }
+            if ($process.HasExited) { Write-Host "Rust window process exit code $($process.ExitCode)" }
             if (!(Test-Path $marker) -or (Get-Content $marker) -notmatch '^PASS:') { throw "Rust desktop window did not open." }
-            Get-Content $marker
             $output = New-Item -ItemType Directory -Force artifacts/release
             Copy-Item ([IO.Path]::ChangeExtension($marker, ".png")) (Join-Path $output.FullName "RollClip-Rust-Ana-Ekran.png")
           } finally {
