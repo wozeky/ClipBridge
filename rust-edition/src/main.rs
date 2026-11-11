@@ -197,6 +197,7 @@ struct App {
     smoke: Option<PathBuf>,
     screenshot_requested: bool,
     smoke_page: usize,
+    smoke_ready_at: Instant,
 }
 
 impl App {
@@ -284,6 +285,7 @@ impl App {
             smoke,
             screenshot_requested: false,
             smoke_page: 0,
+            smoke_ready_at: Instant::now() + Duration::from_secs(1),
         }
     }
 
@@ -1481,6 +1483,8 @@ impl eframe::App for App {
             } else if self.read_only {
                 let _ = fs::write(marker, &self.status);
                 self.smoke = None;
+            } else if Instant::now() < self.smoke_ready_at {
+                ctx.request_repaint_after(Duration::from_millis(80));
             } else if !self.screenshot_requested {
                 self.screenshot_requested = true;
                 ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::default()));
@@ -1493,6 +1497,14 @@ impl eframe::App for App {
                     }
                 })
             }) {
+                let viewport = ctx.screen_rect().size() * ctx.pixels_per_point();
+                if (viewport.x - image.width() as f32).abs() > 3.0
+                    || (viewport.y - image.height() as f32).abs() > 3.0
+                {
+                    self.screenshot_requested = false;
+                    ctx.request_repaint();
+                    return;
+                }
                 let pixels: Vec<u8> = image
                     .pixels
                     .iter()
