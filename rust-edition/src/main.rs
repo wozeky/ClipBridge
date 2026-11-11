@@ -227,7 +227,8 @@ impl App {
         visuals.widgets.inactive.bg_fill = Color32::from_rgb(24, 31, 28);
         visuals.widgets.hovered.bg_fill = Color32::from_rgb(39, 53, 43);
         visuals.selection.bg_fill = Color32::from_rgb(43, 71, 43);
-        ctx.set_visuals(visuals);
+        ctx.set_theme(egui::Theme::Dark);
+        ctx.set_visuals_of(egui::Theme::Dark, visuals);
         ctx.style_mut(|style| style.spacing.item_spacing = Vec2::new(9.0, 9.0));
         let image = image::load_from_memory(include_bytes!(
             "../../src/RollClip.App/Assets/ChromePoster.png"
@@ -513,7 +514,7 @@ impl App {
     }
 
     fn home(&mut self, ui: &mut egui::Ui) {
-        ui.add_space(24.0);
+        ui.add_space((ui.available_height() * 0.17).clamp(32.0, 105.0));
         card().show(ui, |ui| {
             heading(ui, "RollClip", 24.0);
             ui.colored_label(MUTED, "Klip al, kes, Discord’a gönder.");
@@ -1180,7 +1181,10 @@ impl eframe::App for App {
                 });
         }
         if let Some(marker) = &self.smoke {
-            if self.read_only {
+            if !ctx.style().visuals.dark_mode {
+                let _ = fs::write(marker, "RollClip dark theme was not applied.");
+                self.smoke = None;
+            } else if self.read_only {
                 let _ = fs::write(marker, &self.status);
                 self.smoke = None;
             } else if !self.screenshot_requested {
