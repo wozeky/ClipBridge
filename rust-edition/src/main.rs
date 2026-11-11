@@ -951,45 +951,49 @@ impl App {
                                 for clip in row {
                                     ui.push_id(&clip.id, |ui| {
                                         let mut edit = false;
-                                        glass_surface(ui, 13.0, 17.0, |ui| {
-                                            ui.set_width(row_width - 28.0);
-                                            let thumb = self
-                                                .textures
-                                                .entry(clip.id.clone())
-                                                .or_insert_with(|| {
-                                                    image::open(store::thumbnail(
-                                                        &self.root, &clip.id,
-                                                    ))
-                                                    .ok()
-                                                    .map(|image| texture(ui.ctx(), &clip.id, image))
-                                                });
-                                            let image_size = Vec2::new(
-                                                row_width - 28.0,
-                                                (row_width - 28.0) * 0.56,
-                                            );
-                                            if let Some(thumb) = thumb {
-                                                let image =
-                                                    egui::Image::new((thumb.id(), image_size))
-                                                        .corner_radius(10);
-                                                let response = ui
+                                        ui.vertical(|ui| {
+                                            glass_surface(ui, 13.0, 17.0, |ui| {
+                                                ui.set_width(row_width - 28.0);
+                                                let thumb = self
+                                                    .textures
+                                                    .entry(clip.id.clone())
+                                                    .or_insert_with(|| {
+                                                        image::open(store::thumbnail(
+                                                            &self.root, &clip.id,
+                                                        ))
+                                                        .ok()
+                                                        .map(|image| {
+                                                            texture(ui.ctx(), &clip.id, image)
+                                                        })
+                                                    });
+                                                let image_size = Vec2::new(
+                                                    row_width - 28.0,
+                                                    (row_width - 28.0) * 0.56,
+                                                );
+                                                if let Some(thumb) = thumb {
+                                                    let image =
+                                                        egui::Image::new((thumb.id(), image_size))
+                                                            .corner_radius(10);
+                                                    let response = ui
                                                     .add(egui::Button::image(image).frame(false))
                                                     .on_hover_text(
                                                         "Klibi seç · Düzenlemek için çift tıkla",
                                                     );
-                                                if response.clicked() {
+                                                    if response.clicked() {
+                                                        self.selected = Some(clip.id.clone());
+                                                    }
+                                                    edit = response.double_clicked();
+                                                }
+                                                if ui
+                                                    .selectable_label(
+                                                        self.selected.as_ref() == Some(&clip.id),
+                                                        clip_label(clip),
+                                                    )
+                                                    .clicked()
+                                                {
                                                     self.selected = Some(clip.id.clone());
                                                 }
-                                                edit = response.double_clicked();
-                                            }
-                                            if ui
-                                                .selectable_label(
-                                                    self.selected.as_ref() == Some(&clip.id),
-                                                    clip_label(clip),
-                                                )
-                                                .clicked()
-                                            {
-                                                self.selected = Some(clip.id.clone());
-                                            }
+                                            });
                                         });
                                         if edit {
                                             self.edit(clip.clone());
@@ -1127,7 +1131,13 @@ impl App {
                     .map(|im| texture(ui.ctx(), "preview", im));
             }
             if let Some(image) = &editor.texture {
-                ui.image((image.id(), Vec2::new(360.0, 202.0)));
+                ui.vertical_centered(|ui| {
+                    let size = image.size_vec2();
+                    let width = ui.available_width().min(550.0);
+                    let height = (ui.ctx().screen_rect().height() * 0.40).min(310.0);
+                    let scale = (width / size.x).min(height / size.y);
+                    ui.add(egui::Image::new((image.id(), size * scale)).corner_radius(13));
+                });
             }
             ui.add(egui::Slider::new(&mut editor.seek, 0.0..=clip.seconds).text("Konum"));
             ui.horizontal_wrapped(|ui| {
