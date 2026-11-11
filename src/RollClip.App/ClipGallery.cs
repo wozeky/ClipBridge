@@ -15,9 +15,14 @@ public partial class MainWindow
     private Guid? _gallerySelection;
     private int _galleryCount;
     private bool _galleryMutating;
+    private MediaElement? _galleryPreview;
+    private CancellationTokenSource? _galleryPreviewDelay;
 
     private void InitializeGallery()
     {
+        Deactivated += (_, _) => StopGalleryPreview();
+        Closed += (_, _) => StopGalleryPreview();
+        Library.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler((_, _) => StopGalleryPreview()));
         _refreshingLibrary = true;
         GalleryDate.ItemsSource = new[] { T("Tüm tarihler", "All dates"), T("Son 7 gün", "Last 7 days"), T("Son 30 gün", "Last 30 days") };
         GalleryUpload.ItemsSource = new[] { T("Tüm yüklemeler", "All uploads"), T("Yerel", "Local"), T("Sırada", "Queued"),
@@ -63,7 +68,10 @@ public partial class MainWindow
             }
             if (Library.ItemsSource is not ClipRow[][] lines || lines.FirstOrDefault()?.Length != Math.Min(columns, rows.Length)
                 || !_galleryRows.SequenceEqual(rows))
+            {
+                StopGalleryPreview();
                 Library.ItemsSource = rows.Chunk(columns).ToArray();
+            }
             _galleryRows = rows;
             var position = Array.FindIndex(rows, row => row.Clip.Id == selectedId);
             _gallerySelection = position >= 0 ? selectedId : null;
@@ -117,11 +125,106 @@ public partial class MainWindow
 
     private async void GalleryCard_Open(object sender, MouseButtonEventArgs args)
     {
+        StopGalleryPreview();
         if (!_galleryMutating && sender is FrameworkElement { DataContext: ClipRow row } && _store?.Find(row.Clip.Id) is { } clip)
         {
             args.Handled = true;
             await EditClipAsync(clip);
         }
+    }
+
+    private async void GalleryPreview_Enter(object sender, MouseEventArgs args)
+    {
+        StopGalleryPreview();
+        if (!IsActive || _editing || _galleryMutating || _shutdown.IsCancellationRequested ||
+            sender is not Button { DataContext: ClipRow row, Content: Grid card } button ||
+            card.Children.OfType<Border>().FirstOrDefault()?.Child is not Grid surface ||
+            surface.Children.OfType<MediaElement>().FirstOrDefault() is not { } preview ||
+            !File.Exists(row.Clip.FilePath))
+            return;
+
+        using var delay = CancellationTokenSource.CreateLinkedTokenSource(_shutdown.Token);
+        _galleryPreviewDelay = delay;
+        _galleryPreview = preview;
+        try
+        {
+            // Avoid opening a decoder while the pointer is just passing over cards.
+            await Task.Delay(350, delay.Token);
+            if (delay.IsCancellationRequested || !button.IsMouseOver || !preview.IsVisible ||
+                !IsActive || _editing || _galleryMutating || !ReferenceEquals(preview.DataContext, row))
+            {
+                if (_galleryPreview == preview)
+                    StopGalleryPreview();
+                return;
+            }
+            preview.Source = new Uri(row.Clip.FilePath, UriKind.Absolute);
+            preview.Play();
+        }
+        catch (OperationCanceledException) when (delay.IsCancellationRequested) { }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or NotSupportedException)
+        {
+            Trace.WriteLine(error.Message);
+            if (_galleryPreview == preview)
+                StopGalleryPreview();
+        }
+        finally
+        {
+            if (_galleryPreviewDelay == delay)
+                _galleryPreviewDelay = null;
+        }
+    }
+
+    private void StopGalleryPreview()
+    {
+        _galleryPreviewDelay?.Cancel();
+        _galleryPreviewDelay = null;
+        if (_galleryPreview is not { } preview)
+            return;
+        _galleryPreview = null;
+        preview.Opacity = 0;
+        preview.Close();
+        preview.Source = null;
+    }
+
+    private void GalleryPreview_Leave(object sender, MouseEventArgs args) => StopGalleryPreview();
+
+    private void GalleryPreview_Opened(object sender, RoutedEventArgs args)
+    {
+        if (sender is MediaElement preview && _galleryPreview == preview)
+            preview.Opacity = 1;
+    }
+
+    private void GalleryPreview_Ended(object sender, RoutedEventArgs args)
+    {
+        if (sender is MediaElement preview && _galleryPreview == preview)
+        {
+            preview.Position = TimeSpan.Zero;
+            preview.Play();
+        }
+    }
+
+    private void GalleryPreview_Failed(object sender, ExceptionRoutedEventArgs args)
+    {
+        if (ReferenceEquals(sender, _galleryPreview))
+            StopGalleryPreview(); // Keep the thumbnail when Windows cannot decode the video.
+    }
+
+    private void GalleryPreview_Unloaded(object sender, RoutedEventArgs args)
+    {
+        if (ReferenceEquals(sender, _galleryPreview))
+            StopGalleryPreview();
+    }
+
+    private void GalleryPreview_ContextChanged(object sender, DependencyPropertyChangedEventArgs args)
+    {
+        if (ReferenceEquals(sender, _galleryPreview))
+            StopGalleryPreview();
+    }
+
+    private void GalleryPreview_VisibilityChanged(object sender, DependencyPropertyChangedEventArgs args)
+    {
+        if (sender is MediaElement { IsVisible: false } && ReferenceEquals(sender, _galleryPreview))
+            StopGalleryPreview();
     }
 
     private void GalleryImage_Loaded(object sender, RoutedEventArgs args) => UpdateGalleryImage((Image)sender);
@@ -192,6 +295,7 @@ public partial class MainWindow
 
     private async void DeleteClip_Click(object sender, RoutedEventArgs args)
     {
+        StopGalleryPreview();
         if (_editing || _galleryMutating || SelectedClip is not { } clip || _store is not { } store || _queue?.IsActive(clip.Id) == true)
             return;
         var message = T($"“{clip.Name}” yerel arşivden silinsin mi? {clip.Bytes / 1_000_000d:F1} MB",
