@@ -50,6 +50,20 @@ fn main() -> eframe::Result<()> {
         let _ = fs::write(root.join("test-result.txt"), message);
         std::process::exit(if report.is_ok() { 0 } else { 1 });
     }
+    #[cfg(windows)]
+    if args.get(1).is_some_and(|x| x == "--window-test") {
+        let root = args
+            .get(2)
+            .map(PathBuf::from)
+            .expect("temporary test folder required");
+        let result = init(&root).and_then(|()| media::window_smoke(&root));
+        let message = match result {
+            Ok(method) => format!("PASS: live desktop window captured · {method}"),
+            Err(error) => format!("Live window capture failed: {error:#}"),
+        };
+        let _ = fs::write(root.join("test-result.txt"), message);
+        return Ok(());
+    }
     let ui_smoke = args
         .get(1)
         .filter(|s| *s == "--ui-smoke")

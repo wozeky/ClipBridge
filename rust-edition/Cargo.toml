@@ -15,4 +15,5 @@ serde_json = "1"
 
 [target.'cfg(windows)'.dependencies]
 eframe = { version = "0.31.1", default-features = false, features = ["wgpu"] }
+wgpu = { version = "24", default-features = false, features = ["dx12", "vulkan-portability"] }
 windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_DataExchange", "Win32_System_Memory", "Win32_System_Ole", "Win32_Security", "Win32_System_Threading", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }

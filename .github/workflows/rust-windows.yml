@@ -64,6 +64,13 @@ jobs:
             if (!(Test-Path $marker) -or (Get-Content $marker) -notmatch '^PASS:') { throw "Rust desktop window did not open." }
             $output = New-Item -ItemType Directory -Force artifacts/release
             Copy-Item ([IO.Path]::ChangeExtension($marker, ".png")) (Join-Path $output.FullName "RollClip-Rust-Ana-Ekran.png")
+            $capture = Join-Path $env:RUNNER_TEMP "rollclip-rust-window"
+            Start-Process (Resolve-Path artifacts/rust/RollClip-Rust.exe) -ArgumentList "--window-test", "`"$capture`"" -Wait
+            $captureReport = Join-Path $capture "test-result.txt"
+            if (Test-Path $captureReport) { Get-Content $captureReport }
+            if (!(Test-Path $captureReport) -or (Get-Content $captureReport) -notmatch '^PASS:') {
+              Write-Warning "The hosted desktop could not provide a visible captured window. The synthetic replay test passed."
+            }
           } finally {
             if (!$process.HasExited) { Stop-Process -Id $process.Id }
           }

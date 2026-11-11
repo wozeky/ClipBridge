@@ -563,3 +563,23 @@ pub fn audio_devices() -> Result<Vec<String>> {
         })
         .collect())
 }
+
+#[cfg(windows)]
+pub fn window_smoke(root: &Path) -> Result<String> {
+    let target = crate::platform::find_preview_window()?;
+    let settings = Settings {
+        quality: 2,
+        ..Default::default()
+    };
+    let recorder = Recorder::start(root, &target, &settings)?;
+    thread::sleep(Duration::from_secs(2));
+    let snapshot = recorder.snapshot(root, 2)?;
+    let clip = join(root, &snapshot)?;
+    let frame = image::open(store::thumbnail(root, &clip.id))?.to_rgb8();
+    let visible = frame
+        .pixels()
+        .filter(|pixel| pixel.0.iter().any(|&channel| channel > 105))
+        .count();
+    ensure!(visible > 100, "Pencere görüntüsü boş veya siyah.");
+    Ok(recorder.label.clone())
+}

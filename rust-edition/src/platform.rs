@@ -97,6 +97,19 @@ mod native {
         result
     }
 
+    pub fn find_preview_window() -> Result<Target> {
+        let title = "RollClip Rust";
+        let name: Vec<u16> = title.encode_utf16().chain([0]).collect();
+        let handle = unsafe {
+            windows_sys::Win32::UI::WindowsAndMessaging::FindWindowW(null(), name.as_ptr())
+        };
+        ensure!(!handle.is_null(), "Test penceresi bulunamadı.");
+        Ok(Target {
+            handle: handle as usize,
+            title: title.into(),
+        })
+    }
+
     pub fn hotkey(selected: Arc<AtomicU32>, events: Sender<Result<()>>) {
         std::thread::spawn(move || unsafe {
             let mut message: MSG = std::mem::zeroed();
