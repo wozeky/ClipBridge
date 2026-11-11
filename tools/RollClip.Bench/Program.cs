@@ -4,6 +4,9 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using RollClip.Core;
 
+if (args is ["perf", var perfFfmpeg, var perfDirectory])
+    return await PerformanceProbe.RunAsync(perfFfmpeg, perfDirectory);
+
 if (args is ["replay-smoke", var executable, var outputDirectory])
 {
     Directory.CreateDirectory(outputDirectory);

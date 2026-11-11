@@ -1,0 +1,39 @@
+name: Windows performance probe
+on:
+  push:
+    branches: [measure/windows-performance]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  measure:
+    runs-on: windows-2025
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Build benchmark
+        run: dotnet build tools/RollClip.Bench -c Release
+      - name: Install verified FFmpeg
+        shell: pwsh
+        run: ./tools/Install-CaptureEngine.ps1 -Destination engine
+      - name: Measure archive, capture and export
+        shell: pwsh
+        run: |
+          $ffmpeg = (Resolve-Path engine/bin/ffmpeg.exe).Path
+          dotnet run --project tools/RollClip.Bench -c Release --no-build -- perf $ffmpeg measurements
+          if ($LASTEXITCODE -ne 0) { throw 'Performance probe failed.' }
+          '## Windows performance measurements' >> $env:GITHUB_STEP_SUMMARY
+          '```json' >> $env:GITHUB_STEP_SUMMARY
+          Get-Content measurements/performance.json >> $env:GITHUB_STEP_SUMMARY
+          '```' >> $env:GITHUB_STEP_SUMMARY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Windows-performance-report
+          path: measurements/performance.json
+          if-no-files-found: warn
