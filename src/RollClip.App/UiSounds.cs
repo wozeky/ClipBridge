@@ -19,6 +19,8 @@ public static class UiSounds
 
     private const int CacheLimit = 128;
     private static readonly Dictionary<string, SoundPlayer> Players = new(StringComparer.Ordinal);
+    private static SoundPlayer? _clipSavedPlayer;
+    private static long _lastClipSavedTick;
     private static bool _available;
     internal static bool Enabled { get; set; } = true;
 
@@ -120,6 +122,76 @@ public static class UiSounds
         }
     }
 
+    /// <summary>Plays a short, gentle two-note chime once per saved clip with anti-spam debouncing.</summary>
+    internal static void PlayClipSaved()
+    {
+        var now = Stopwatch.GetTimestamp();
+        var elapsedMs = Stopwatch.GetElapsedTime(_lastClipSavedTick, now).TotalMilliseconds;
+        if (_lastClipSavedTick != 0 && elapsedMs < 450)
+            return;
+        _lastClipSavedTick = now;
+
+        try
+        {
+            if (_clipSavedPlayer is null)
+            {
+                var wave = CreateClipSavedWave();
+                var player = new SoundPlayer(wave);
+                try { player.Load(); }
+                catch
+                {
+                    player.Dispose();
+                    wave.Dispose();
+                    throw;
+                }
+                _clipSavedPlayer = player;
+            }
+            _clipSavedPlayer.Play();
+        }
+        catch (Exception error) when (error is InvalidOperationException or TimeoutException or IOException
+                                      or System.ComponentModel.Win32Exception)
+        {
+            Debug.WriteLine($"RollClip clip saved sound: {error.Message}");
+        }
+    }
+
+    private static MemoryStream CreateClipSavedWave()
+    {
+        const int rate = 44100;
+        const int totalSamples = rate * 180 / 1000; // 180 ms soft chime
+        var wave = new MemoryStream(44 + totalSamples * 2);
+        using var writer = new BinaryWriter(wave, System.Text.Encoding.ASCII, leaveOpen: true);
+        writer.Write("RIFF"u8);
+        writer.Write(36 + totalSamples * 2);
+        writer.Write("WAVEfmt "u8);
+        writer.Write(16);
+        writer.Write((short)1);
+        writer.Write((short)1);
+        writer.Write(rate);
+        writer.Write(rate * 2);
+        writer.Write((short)2);
+        writer.Write((short)16);
+        writer.Write("data"u8);
+        writer.Write(totalSamples * 2);
+
+        const double f1 = 659.25; // E5
+        const double f2 = 987.77; // B5
+        for (var i = 0; i < totalSamples; i++)
+        {
+            var t = (double)i / rate;
+            var attack1 = Math.Min(1.0, t / 0.008);
+            var env1 = attack1 * Math.Exp(-t * 22.0);
+            var t2 = Math.Max(0.0, t - 0.045);
+            var attack2 = t >= 0.045 ? Math.Min(1.0, t2 / 0.008) : 0.0;
+            var env2 = attack2 * Math.Exp(-t2 * 18.0);
+            var sample = (0.55 * Math.Sin(Math.Tau * f1 * t) * env1
+                        + 0.45 * Math.Sin(Math.Tau * f2 * t2) * env2) * 4200.0;
+            writer.Write((short)Math.Clamp(sample, short.MinValue, short.MaxValue));
+        }
+        wave.Position = 0;
+        return wave;
+    }
+
     private static MemoryStream CreateWave(string cue)
     {
         uint hash = 2166136261;
@@ -159,6 +231,7 @@ public static class UiSounds
     {
         using var on = CreateWave("button/InterfaceSounds/on");
         using var off = CreateWave("button/InterfaceSounds/off");
+        using var saved = CreateClipSavedWave();
         using var player = new SoundPlayer(on);
         player.Load();
         if (on.ToArray().AsSpan().SequenceEqual(off.ToArray()))
@@ -174,6 +247,13 @@ public static class UiSounds
             player.Dispose();
         }
         Players.Clear();
+        if (_clipSavedPlayer is not null)
+        {
+            _clipSavedPlayer.Stop();
+            _clipSavedPlayer.Stream?.Dispose();
+            _clipSavedPlayer.Dispose();
+            _clipSavedPlayer = null;
+        }
         _available = false;
     }
 }

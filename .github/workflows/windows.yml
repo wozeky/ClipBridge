@@ -134,6 +134,23 @@ jobs:
               throw "Missing distribution file: $file"
             }
           }
+      - name: Sign RollClip executable when a certificate is configured
+        shell: pwsh
+        env:
+          SIGN_PFX_BASE64: ${{ secrets.SIGN_PFX_BASE64 }}
+          SIGN_PFX_PASSWORD: ${{ secrets.SIGN_PFX_PASSWORD }}
+        run: |
+          if (-not $env:SIGN_PFX_BASE64) { return }
+          $pfx = Join-Path $env:RUNNER_TEMP "codesign.pfx"
+          try {
+            [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGN_PFX_BASE64))
+            $signtool = Get-ChildItem "${env:ProgramFiles(x86)}/Windows Kits/10/bin/*/x64/signtool.exe" | Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+            if (-not $signtool) { throw "signtool.exe not found." }
+            & $signtool sign /f $pfx /p $env:SIGN_PFX_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "./artifacts/win-x64/RollClip.exe"
+            if ($LASTEXITCODE -ne 0) { throw "RollClip signing failed." }
+          } finally {
+            Remove-Item -LiteralPath $pfx -Force -ErrorAction SilentlyContinue
+          }
       - name: Build and test the per-user installer
         shell: pwsh
         run: |
@@ -159,6 +176,23 @@ jobs:
           if ($uninstall.ExitCode -ne 0 -or (Test-Path -LiteralPath (Join-Path $install 'RollClip.exe'))) {
             throw "Silent uninstaller smoke failed."
           }
+      - name: Sign installer when a certificate is configured
+        shell: pwsh
+        env:
+          SIGN_PFX_BASE64: ${{ secrets.SIGN_PFX_BASE64 }}
+          SIGN_PFX_PASSWORD: ${{ secrets.SIGN_PFX_PASSWORD }}
+        run: |
+          if (-not $env:SIGN_PFX_BASE64) { return }
+          $pfx = Join-Path $env:RUNNER_TEMP "codesign.pfx"
+          try {
+            [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGN_PFX_BASE64))
+            $signtool = Get-ChildItem "${env:ProgramFiles(x86)}/Windows Kits/10/bin/*/x64/signtool.exe" | Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+            if (-not $signtool) { throw "signtool.exe not found." }
+            & $signtool sign /f $pfx /p $env:SIGN_PFX_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "./artifacts/installer/RollClip-Setup-win-x64.exe"
+            if ($LASTEXITCODE -ne 0) { throw "Installer signing failed." }
+          } finally {
+            Remove-Item -LiteralPath $pfx -Force -ErrorAction SilentlyContinue
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: RollClip-Setup-win-x64
@@ -175,7 +209,7 @@ jobs:
   release:
     name: Publish verified Windows preview
     needs: windows
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release v0.4.6]')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release v0.4.7]')
     runs-on: windows-2025
     permissions:
       contents: write
@@ -198,7 +232,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          $tag = 'v0.4.6'
+          $tag = 'v0.4.7'
           $asset = 'RollClip-win-x64.zip'
           Compress-Archive -Path './release/win-x64/*' -DestinationPath $asset
           $installer = 'RollClip-Setup-win-x64.exe'
@@ -217,11 +251,13 @@ jobs:
             Copy-Item -LiteralPath "./release/screenshots/$($entry.Key)" -Destination $entry.Value -ErrorAction Stop
           }
           @'
-          - Klip editörüne Discord hedef seçicisi eklendi. Kaydedilen sunucu kanallarına webhook ile MP4 gönderilebilir.
-          - Arkadaş ve grup sohbetleri için dosya panoya hazırlanır ve Discord açılır.
+          - Ana ekran, ayarlar ve klip galerisi yenilendi. Arayüze animasyon, simge ve etkileşim sesleri eklendi.
+          - Pencere sistem tepsisine gizlenebilir. Kısayolu yeniden açmak veya tepsi simgesine çift tıklamak pencereyi öne getirir.
+          - Kısayollar tuşa basarak ayarlanabilir ve kayıt açıkken güncellenir.
+          - Klip galerisinde hızlı önizleme ve paylaşım için Catbox seçeneği eklendi.
 
-          Windows 11 x64 için imzasız Setup ve taşınabilir ZIP, SHA-256 dosyalarıyla birlikte sunulur.
+          Windows 11 x64 için Setup ve taşınabilir ZIP, SHA-256 dosyalarıyla birlikte sunulur.
           '@ | Set-Content -LiteralPath release-notes.md -Encoding utf8
           $releaseAssets = @($asset, "$asset.sha256", $installer, "$installer.sha256") + @($screens.Values)
-          gh release create $tag @releaseAssets --target $env:GITHUB_SHA --title "RollClip $tag · Discord paylaşımı" --notes-file release-notes.md --prerelease
+          gh release create $tag @releaseAssets --target $env:GITHUB_SHA --title "RollClip $tag · Arayüz ve kısayollar" --notes-file release-notes.md --prerelease
           if ($LASTEXITCODE -ne 0) { throw "GitHub prerelease could not be published." }

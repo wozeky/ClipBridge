@@ -38,7 +38,6 @@ public partial class MainWindow : Window
     private HwndSource? _windowSource;
     private bool _hotkeyRegistered;
     private int _activeReplayKey = 8;
-    private Forms.ToolStripItem? _traySave;
     private string ReplayKeyLabel => $"F{_activeReplayKey}";
     private bool _armed;
     private readonly System.Windows.Threading.DispatcherTimer _bufferTimer = new()
@@ -84,6 +83,7 @@ public partial class MainWindow : Window
             ContentRendered += smokeCapture ? OnSmokeCaptureRendered : _materialSmoke ? OnMaterialSmokeRendered : OnSmokeRendered;
         }
         _bufferTimer.Tick += (_, _) => RefreshCaptureStatus();
+        SourceInitialized += (_, _) => ApplyWindowCorners();
         Loaded += OnLoaded;
     }
 
@@ -161,9 +161,14 @@ public partial class MainWindow : Window
 
     private void Chrome_Ended(object sender, RoutedEventArgs args)
     {
+        if (_movieFailed || !CanAnimateInterface || _armed || (!_materialSmoke && !_settings.Motion))
+        {
+            _moviePlaying = false;
+            return;
+        }
         ChromeMovie.Position = TimeSpan.Zero;
-        _moviePlaying = false;
-        UpdateInterfaceMotion();
+        ChromeMovie.Play();
+        _moviePlaying = true;
     }
 
     private void Chrome_Failed(object sender, ExceptionRoutedEventArgs args)
@@ -194,6 +199,7 @@ public partial class MainWindow : Window
         if (target.Visibility == Visibility.Visible)
             return;
 
+        if (target != LibraryPanel) StopQuickPreview();
         SetMaterialView(target == HomePanel ? "home" : "overlay");
         ClearPanelAnimations();
         HomePanel.Visibility = target == HomePanel ? Visibility.Visible : Visibility.Collapsed;
@@ -202,11 +208,12 @@ public partial class MainWindow : Window
         if (!CanAnimateInterface)
             return;
 
-        var duration = TimeSpan.FromMilliseconds(190);
-        var fade = new DoubleAnimation(.55, 1, duration)
-            { DecelerationRatio = .8, FillBehavior = FillBehavior.Stop };
-        var slide = new DoubleAnimation(7, 0, duration)
-            { DecelerationRatio = .8, FillBehavior = FillBehavior.Stop };
+        var duration = TimeSpan.FromMilliseconds(200);
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        var fade = new DoubleAnimation(0.0, 1.0, duration)
+            { EasingFunction = ease, FillBehavior = FillBehavior.Stop };
+        var slide = new DoubleAnimation(12, 0, duration)
+            { EasingFunction = ease, FillBehavior = FillBehavior.Stop };
         Timeline.SetDesiredFrameRate(fade, 30);
         Timeline.SetDesiredFrameRate(slide, 30);
         target.BeginAnimation(OpacityProperty, fade);
@@ -362,7 +369,7 @@ public partial class MainWindow : Window
                 throw new InvalidOperationException("UI sound preference was not persisted.");
             if (!SaveSettings() || SaveReplayButton.Content as string != "F9"
                 || AtomicJson.Read<ClipSettings>(Path.Combine(_root, "settings.json")) is not
-                    { ReplayKey: 9, Quality: RecordingQuality.Light, Motion: false } saved
+                    { ReplayKey: 9, Quality: RecordingQuality.Light, Motion: true } saved
                 || saved.ArchiveFolder != backupFolder || !ArchiveExistingButton.IsEnabled)
                 throw new InvalidOperationException("Recording controls did not persist or update the hotkey label.");
             InterfaceSounds.IsChecked = true;
@@ -521,7 +528,7 @@ public partial class MainWindow : Window
             _loadedAudio = _settings.Audio ?? new CaptureAudio();
             SystemGain.Value = Math.Clamp(_loadedAudio.SystemPercent, 0, 200);
             MicrophoneGain.Value = Math.Clamp(_loadedAudio.MicrophonePercent, 0, 200);
-            ProviderChoice.SelectedIndex = _settings.Provider == Provider.Gofile ? 1 : 0;
+            ProviderChoice.SelectedIndex = _settings.Provider switch { Provider.Gofile => 1, Provider.Catbox => 2, _ => 0 };
             SpeedLimit.Text = _settings.SpeedLimit.ToString(CultureInfo.InvariantCulture);
             AutoUpload.IsChecked = _settings.AutoUpload;
             AutoCopy.IsChecked = _settings.AutoCopy;
@@ -550,7 +557,6 @@ public partial class MainWindow : Window
             CaptureMethodChoice.SelectedIndex = (int)_settings.Method;
             SaveSound.IsChecked = _settings.SaveSound;
             InterfaceSounds.IsChecked = UiSounds.Enabled = _settings.InterfaceSounds;
-            SaveNotice.IsChecked = _settings.SaveNotice;
             LanguageChoice.SelectedIndex = _settings.English ? 1 : 0;
             LoadGameProfiles();
             if (_settings.English)
@@ -567,7 +573,7 @@ public partial class MainWindow : Window
             _store = new ClipStore(Path.Combine(_root, "library.json"));
             InitializeGallery();
             _queue = new UploadQueue(_store,
-                [new FreeUploadProvider(_http, Provider.Litterbox), new FreeUploadProvider(_http, Provider.Gofile)],
+                [new FreeUploadProvider(_http, Provider.Litterbox), new FreeUploadProvider(_http, Provider.Gofile), new FreeUploadProvider(_http, Provider.Catbox)],
                 () => Volatile.Read(ref _settings).SpeedLimit);
             _queue.Changed += clip =>
             {
@@ -842,8 +848,7 @@ public partial class MainWindow : Window
         _activeReplayKey = _settings.ReplayKey is >= 6 and <= 11 ? _settings.ReplayKey : 8;
         SaveReplayButton.Content = ReplayKeyLabel;
         System.Windows.Automation.AutomationProperties.SetName(SaveReplayButton, $"Klip al · {ReplayKeyLabel}");
-        if (_traySave is not null)
-            _traySave.Text = $"Klip al ({ReplayKeyLabel})";
+
     }
 
     private void RefreshCaptureStatus()
@@ -1115,7 +1120,7 @@ public partial class MainWindow : Window
         {
             var seconds = ReplayLength.SelectedItem as int? ?? ReplayDurations.Default;
             var game = GameName.Text.Trim();
-            var settings = new ClipSettings(ProviderChoice.SelectedIndex == 1 ? Provider.Gofile : Provider.Litterbox,
+            var settings = new ClipSettings(ProviderChoice.SelectedIndex switch { 1 => Provider.Gofile, 2 => Provider.Catbox, _ => Provider.Litterbox },
                 AutoUpload.IsChecked == true, AutoCopy.IsChecked == true, limit, seconds,
                 game.Length == 0 ? null : game, AutoFallback.IsChecked == true, DesktopAudio.IsChecked == true,
                 Microphone.IsChecked == true, MotionEnabled.IsChecked == true,
@@ -1126,7 +1131,7 @@ public partial class MainWindow : Window
                 _pendingImportFolder, _pendingImportSince, GameOnlyAudio.IsChecked == true, AutoGame.IsChecked == true,
                 WindowsCapture.ProcessName((CaptureTarget.SelectedItem as WindowsCapture.CaptureWindow)?.Handle ?? 0)
                     ?? _settings.AutoGameProcess, SelectedCaptureMethod, SaveSound.IsChecked == true,
-                SaveNotice.IsChecked == true, LanguageChoice.SelectedIndex == 1, _shortcutDraft.ToArray(), ReadAudioControls(), (long)(storageGb * 1_000_000_000),
+                false, LanguageChoice.SelectedIndex == 1, _shortcutDraft.ToArray(), ReadAudioControls(), (long)(storageGb * 1_000_000_000),
                 AutoCleanup.IsChecked == true, KeepUnshared.IsChecked == true,
                 AutoUpdates.IsChecked == true, IncludePreviews.IsChecked == true, InterfaceSounds.IsChecked == true);
             AtomicJson.Write(Path.Combine(_root, "settings.json"), settings);
@@ -1137,12 +1142,14 @@ public partial class MainWindow : Window
             UiSounds.Enabled = settings.InterfaceSounds;
             RefreshArchiveControls();
             UpdateImportFolderLabel();
-            if (!_armed)
+            if (_armed)
+                RebindArmedHotkeys();
+            else
                 UpdateReplayKeyLabel();
             UpdateInterfaceMotion();
             if (_smokeMarker is null)
                 SaveStartupPreference(StartWithWindows.IsChecked == true);
-            StatusMessage.Text = _armed ? "Ayarlar kaydedildi. Kayıt ve kısayol ayarları sonraki kayıtta uygulanır."
+            StatusMessage.Text = _armed ? "Ayarlar kaydedildi ve kısayollar anlık güncellendi."
                 : "Ayarlar kaydedildi.";
             if (languageChanged)
                 StatusMessage.Text = EnglishUi.Choose(settings.English, "Dil kaydedildi. Uygulamadan çıkıp yeniden açın.",
@@ -1187,9 +1194,25 @@ public partial class MainWindow : Window
         startup.SetValue(ProductName, $"\"{exe}\" --tray");
     }
 
+    private void RebindArmedHotkeys()
+    {
+        if (_windowSource is not null && _hotkeyRegistered)
+        {
+            UnregisterHotKey(_windowSource.Handle, ReplayHotkey);
+            _hotkeyRegistered = false;
+        }
+        UpdateReplayKeyLabel();
+        if (_windowSource is not null)
+            _hotkeyRegistered = RegisterHotKey(_windowSource.Handle, ReplayHotkey, 0x4000, (uint)(0x70 + _activeReplayKey - 1));
+        RegisterExtraShortcuts(true);
+        RefreshCaptureStatus();
+    }
+
+    internal void BringToFront() => ShowWindow();
+
     private void RefreshButtons()
     {
-        OpenButton.IsEnabled = SelectedClip is { LocalRemovedAt: null } && !_galleryMutating;
+        PreviewButton.IsEnabled = OpenButton.IsEnabled = SelectedClip is { LocalRemovedAt: null } && !_galleryMutating;
         FavoriteButton.IsEnabled = SelectedClip is not null && !_galleryMutating;
         ShowLocationButton.IsEnabled = OpenButton.IsEnabled;
         DeleteClipButton.IsEnabled = SelectedClip is not null && !_galleryMutating && SelectedClip?.State is not (UploadState.Queued or UploadState.Uploading);
@@ -1311,23 +1334,63 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ApplyWindowCorners()
+    {
+        try
+        {
+            var handle = new WindowInteropHelper(this).Handle;
+            if (handle == 0) return;
+            var preference = 2; // DWMWCP_ROUND
+            _ = DwmSetWindowAttribute(handle, 33, ref preference, sizeof(int));
+        }
+        catch (Exception error) when (error is DllNotFoundException or EntryPointNotFoundException) { }
+    }
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(nint hwnd, int attribute, ref int value, int size);
+
     private void CreateTrayIcon()
     {
+        if (_tray is not null)
+            return;
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add(T("RollClip'i aç", "Open RollClip"), null, (_, _) => { UiSounds.Play("tray/open"); ShowWindow(); });
-        _traySave = menu.Items.Add(T($"Klip al ({ReplayKeyLabel})", $"Save clip ({ReplayKeyLabel})"), null, async (_, _) => { UiSounds.Play("tray/save"); await SaveReplayAsync(); });
-        menu.Items.Add(T("Son klibi kes ve paylaş", "Trim and share latest clip"), null, async (_, _) => { UiSounds.Play("tray/share"); await EditLatestClipAsync(); });
-        menu.Items.Add(T("Çıkış", "Exit"), null, (_, _) => { UiSounds.Play("tray/exit"); _exit = true; Close(); });
-        _tray = new Forms.NotifyIcon { Icon = System.Drawing.SystemIcons.Application, Text = "RollClip",
-            ContextMenuStrip = menu, Visible = true };
-        _tray.DoubleClick += (_, _) => { UiSounds.Play("tray/double-click"); ShowWindow(); };
+        menu.Items.Add(T("Çıkış", "Exit"), null, (_, _) =>
+        {
+            UiSounds.Play("tray/exit");
+            _exit = true;
+            Close();
+        });
+        System.Drawing.Icon? appIcon = null;
+        try
+        {
+            if (Application.GetResourceStream(new Uri("pack://application:,,,/Assets/RollClip.ico"))?.Stream is { } iconStream)
+                appIcon = new System.Drawing.Icon(iconStream);
+            else if (Environment.ProcessPath is { } exe && File.Exists(exe))
+                appIcon = System.Drawing.Icon.ExtractAssociatedIcon(exe);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException) { }
+
+        _tray = new Forms.NotifyIcon
+        {
+            Icon = appIcon ?? System.Drawing.SystemIcons.Application,
+            Text = "RollClip",
+            ContextMenuStrip = menu,
+            Visible = true
+        };
+        _tray.DoubleClick += (_, _) =>
+        {
+            UiSounds.Play("tray/double-click");
+            ShowWindow();
+        };
         RefreshCaptureStatus();
     }
 
     private void ShowWindow()
     {
+        ShowInTaskbar = true;
         Show();
-        WindowState = WindowState.Normal;
+        if (WindowState == WindowState.Minimized)
+            WindowState = WindowState.Normal;
         Activate();
     }
 
@@ -1336,6 +1399,7 @@ public partial class MainWindow : Window
         if (!_exit && _tray is not null)
         {
             args.Cancel = true;
+            ShowInTaskbar = false;
             Hide();
         }
         if (!args.Cancel && _captureBusy)
@@ -1343,6 +1407,7 @@ public partial class MainWindow : Window
             args.Cancel = true;
             _exit = true;
             _shutdown.Cancel();
+            ShowInTaskbar = false;
             Hide();
         }
         base.OnClosing(args);
@@ -1367,24 +1432,31 @@ public partial class MainWindow : Window
             try { Task.Run(async () => await capture.DisposeAsync()).GetAwaiter().GetResult(); }
             catch (Exception error) when (IsReplayError(error)) { }
         }
-        _tray?.ContextMenuStrip?.Dispose();
-        _tray?.Dispose();
+        if (_tray is not null)
+        {
+            _tray.Visible = false;
+            _tray.ContextMenuStrip?.Dispose();
+            _tray.Dispose();
+            _tray = null;
+        }
         _http.Dispose();
         base.OnClosed(args);
+        if (_exit)
+            Application.Current.Shutdown();
     }
 
     private sealed record ClipSettings(Provider Provider = Provider.Litterbox, bool AutoUpload = false,
         bool AutoCopy = true, int SpeedLimit = 0, int ReplaySeconds = ReplayDurations.Default,
-        string? Game = null, bool AutoFallback = false, bool DesktopAudio = true, bool Microphone = false, bool Motion = false,
+        string? Game = null, bool AutoFallback = false, bool DesktopAudio = true, bool Microphone = false, bool Motion = true,
         RecordingQuality Quality = RecordingQuality.High, int ReplayKey = 8, string? ArchiveFolder = null,
         string? ImportFolder = null, DateTimeOffset? ImportSince = null, bool GameOnlyAudio = false,
         bool AutoGame = false, string? AutoGameProcess = null, CaptureMethod Method = CaptureMethod.Auto,
-        bool SaveSound = false, bool SaveNotice = true, bool English = false, ReplayShortcut[]? Shortcuts = null, CaptureAudio? Audio = null,
+        bool SaveSound = true, bool SaveNotice = false, bool English = false, ReplayShortcut[]? Shortcuts = null, CaptureAudio? Audio = null,
         long QuotaBytes = 0, bool AutoCleanup = false, bool KeepUnshared = true, bool AutoUpdates = false, bool IncludePreviews = false, bool InterfaceSounds = true)
     {
         [System.Text.Json.Serialization.JsonIgnore]
         public Provider? FallbackProvider => AutoFallback
-            ? (Provider == Provider.Litterbox ? Provider.Gofile : Provider.Litterbox) : null;
+            ? (Provider switch { Provider.Catbox => Provider.Litterbox, Provider.Litterbox => Provider.Gofile, _ => Provider.Litterbox }) : null;
     }
 
     private sealed record ClipRow(Clip Clip, bool English)
@@ -1404,7 +1476,7 @@ public partial class MainWindow : Window
         public string? ShareLabel => Clip.ShareUrl is not { } url ? null
             : Clip.LinkExpired(DateTimeOffset.UtcNow) ? "Bağlantının süresi doldu. Yeni bağlantı oluşturabilirsiniz."
             : Clip.LinkExpiresAt is { } expiry ? $"Bağlantı sonu: {expiry.ToLocalTime():dd.MM HH:mm} · {url}"
-            : Clip.Provider == Provider.Litterbox ? $"Litterbox · 24 saatlik bağlantı · {url}" : url;
+            : Clip.Provider == Provider.Litterbox ? $"Litterbox · 24 saatlik bağlantı · {url}" : Clip.Provider == Provider.Catbox ? $"Catbox · kalıcı bağlantı · {url}" : url;
         public string Status => Clip.State switch
         {
             UploadState.Local => EnglishUi.Choose(English, "Yerel", "Local"),

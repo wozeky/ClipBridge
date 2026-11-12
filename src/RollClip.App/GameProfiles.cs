@@ -1,5 +1,4 @@
 using System.IO;
-using System.Media;
 using System.Text.Json;
 using System.Windows;
 using RollClip.Core;
@@ -118,19 +117,19 @@ public partial class MainWindow
         }
     }
 
+    // Windows sağ alt köşe bildirimleri (balloon/toast) kaldırıldı; durum yalnızca uygulama içinde gösterilir.
     private void NotifyStatus(string message, Forms.ToolTipIcon icon = Forms.ToolTipIcon.Info)
     {
-        if (_settings.SaveNotice)
-            _tray?.ShowBalloonTip(2500, "RollClip", message, icon);
+        _ = icon;
+        if (!string.IsNullOrWhiteSpace(message))
+            StatusMessage.Text = message;
     }
 
     private void NotifyClipSaved(bool test)
     {
         var text = EnglishUi.Choose(_settings.English, "MP4 hazır. Klip diske kaydedildi.", "MP4 ready. Clip saved to disk.");
         StatusMessage.Text = text;
-        if (!test)
-            NotifyStatus(text);
         if (!test && _settings.SaveSound)
-            SystemSounds.Asterisk.Play();
+            UiSounds.PlayClipSaved();
     }
 }

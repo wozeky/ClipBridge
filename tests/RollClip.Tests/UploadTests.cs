@@ -11,6 +11,7 @@ public sealed class UploadTests : IDisposable
     [Theory]
     [InlineData(Provider.Litterbox, "https://litter.catbox.moe/demo.mp4")]
     [InlineData(Provider.Gofile, "https://gofile.io/d/demo")]
+    [InlineData(Provider.Catbox, "https://files.catbox.moe/demo.mp4")]
     public async Task UploadSendsOriginalBytesAndReturnsValidatedLink(Provider provider, string link)
     {
         var data = Encoding.UTF8.GetBytes("CLIP_PAYLOAD");
@@ -28,6 +29,13 @@ public sealed class UploadTests : IDisposable
                 Assert.Equal("litterbox.catbox.moe", request.RequestUri!.Host);
                 Assert.Contains("fileToUpload", body);
                 Assert.Contains("24h", body);
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(link + "\n") };
+            }
+            if (provider == Provider.Catbox)
+            {
+                Assert.Equal("catbox.moe", request.RequestUri!.Host);
+                Assert.Contains("fileToUpload", body);
+                Assert.DoesNotContain("24h", body);
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(link + "\n") };
             }
             Assert.Equal("https://upload.gofile.io/uploadfile", request.RequestUri!.AbsoluteUri);

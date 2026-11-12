@@ -220,4 +220,60 @@ public partial class MainWindow
             RefreshButtons();
         }
     }
+
+    private bool _quickPreviewPlaying;
+
+    private void Preview_Click(object sender, RoutedEventArgs args)
+    {
+        if (SelectedClip is not { LocalRemovedAt: null } clip || !File.Exists(clip.FilePath))
+            return;
+        QuickPreviewTitle.Text = clip.Name;
+        QuickPreviewPlayer.Source = new Uri(clip.FilePath);
+        QuickPreviewPlayer.IsMuted = false;
+        QuickPreviewMuteButton.Content = T("Sesi kapat", "Mute");
+        QuickPreviewPlayButton.Content = T("Duraklat", "Pause");
+        QuickPreviewBar.Visibility = Visibility.Visible;
+        QuickPreviewPlayer.Play();
+        _quickPreviewPlaying = true;
+    }
+
+    private void QuickPreviewPlay_Click(object sender, RoutedEventArgs args)
+    {
+        if (_quickPreviewPlaying)
+        {
+            QuickPreviewPlayer.Pause();
+            QuickPreviewPlayButton.Content = T("Oynat", "Play");
+        }
+        else
+        {
+            QuickPreviewPlayer.Play();
+            QuickPreviewPlayButton.Content = T("Duraklat", "Pause");
+        }
+        _quickPreviewPlaying = !_quickPreviewPlaying;
+    }
+
+    private void QuickPreviewMute_Click(object sender, RoutedEventArgs args)
+    {
+        QuickPreviewPlayer.IsMuted = !QuickPreviewPlayer.IsMuted;
+        QuickPreviewMuteButton.Content = QuickPreviewPlayer.IsMuted ? T("Sesi aç", "Unmute") : T("Sesi kapat", "Mute");
+    }
+
+    private void QuickPreview_Ended(object sender, RoutedEventArgs args)
+    {
+        QuickPreviewPlayer.Position = TimeSpan.Zero;
+        QuickPreviewPlayer.Play();
+    }
+
+    private void QuickPreviewClose_Click(object sender, RoutedEventArgs args) => StopQuickPreview();
+
+    private void StopQuickPreview()
+    {
+        if (QuickPreviewBar.Visibility != Visibility.Visible)
+            return;
+        QuickPreviewPlayer.Stop();
+        QuickPreviewPlayer.Close();
+        QuickPreviewPlayer.Source = null;
+        QuickPreviewBar.Visibility = Visibility.Collapsed;
+        _quickPreviewPlaying = false;
+    }
 }

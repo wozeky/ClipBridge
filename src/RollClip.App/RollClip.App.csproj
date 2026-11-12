@@ -8,9 +8,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>RollClip</AssemblyName>
-    <Version>0.4.6</Version>
+    <ApplicationIcon>Assets\RollClip.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Version>0.4.7</Version>
   </PropertyGroup>
   <ItemGroup>
+    <Resource Include="Assets/RollClip.ico" />
     <Resource Include="Assets/ChromePoster*.png" />
     <Resource Include="Assets/Fonts/Manrope-SemiBold.ttf" />
     <None Include="../../docs/licenses/Manrope.txt" Link="licenses/Manrope.txt" CopyToPublishDirectory="PreserveNewest" />

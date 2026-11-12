@@ -13,7 +13,8 @@ public enum UploadState
 public enum Provider
 {
     Litterbox,
-    Gofile
+    Gofile,
+    Catbox
 }
 
 public sealed record Clip(

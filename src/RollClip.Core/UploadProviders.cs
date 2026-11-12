@@ -25,32 +25,38 @@ public sealed class FreeUploadProvider(HttpClient http, Provider provider) : IUp
 {
     public Provider Id => provider;
     public const long LitterboxMaximumBytes = 1_000_000_000;
+    public const long CatboxMaximumBytes = 200_000_000;
 
     public async Task<UploadResult> UploadAsync(string path, int limitKibPerSecond,
         IProgress<double>? progress, CancellationToken cancellationToken)
     {
         var isLitterbox = Id == Provider.Litterbox;
-        var endpoint = isLitterbox
-            ? "https://litterbox.catbox.moe/resources/internals/api.php"
-            : "https://upload.gofile.io/uploadfile";
+        var isCatbox = Id == Provider.Catbox;
+        var endpoint = Id switch
+        {
+            Provider.Litterbox => "https://litterbox.catbox.moe/resources/internals/api.php",
+            Provider.Catbox => "https://catbox.moe/user/api.php",
+            _ => "https://upload.gofile.io/uploadfile"
+        };
         await using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
             65536, FileOptions.Asynchronous | FileOptions.SequentialScan);
         if (file.Length == 0)
             throw new UploadException("Dosya boş.");
         if (isLitterbox && file.Length > LitterboxMaximumBytes)
             throw new UploadException("Litterbox'ın 1 GB dosya sınırı aşıldı.", rejectedForCapacity: true);
+        if (isCatbox && file.Length > CatboxMaximumBytes)
+            throw new UploadException("Catbox'ın 200 MB dosya sınırı aşıldı.", rejectedForCapacity: true);
 
         // Use a neutral name for the upload. Imported filenames stay on the local device.
         using var multipart = new MultipartFormDataContent();
-        if (isLitterbox)
-        {
+        if (isLitterbox || isCatbox)
             multipart.Add(new StringContent("fileupload"), "reqtype");
+        if (isLitterbox)
             multipart.Add(new StringContent("24h"), "time");
-        }
         var watch = Stopwatch.StartNew();
         var video = new VideoContent(file, Math.Max(0, limitKibPerSecond), progress, watch);
         video.Headers.ContentType = new MediaTypeHeaderValue("video/mp4");
-        multipart.Add(video, isLitterbox ? "fileToUpload" : "file", "rollclip.mp4");
+        multipart.Add(video, (isLitterbox || isCatbox) ? "fileToUpload" : "file", "rollclip.mp4");
 
         using var response = await http.PostAsync(endpoint, multipart, cancellationToken);
         if (!response.IsSuccessStatusCode)
@@ -63,11 +69,17 @@ public sealed class FreeUploadProvider(HttpClient http, Provider provider) : IUp
         }
 
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
-        var link = isLitterbox ? ParseLitterbox(body) : ParseGofile(body);
+        var link = Id switch
+        {
+            Provider.Litterbox => ParseLitterbox(body),
+            Provider.Catbox => ParseCatbox(body),
+            _ => ParseGofile(body)
+        };
         return new UploadResult(link, new UploadTiming(video.BodyWrittenAt ?? watch.Elapsed, watch.Elapsed));
     }
 
     private static Uri ParseLitterbox(string body) => ValidateLink(body.Trim(), "litter.catbox.moe", "/");
+    private static Uri ParseCatbox(string body) => ValidateLink(body.Trim(), "files.catbox.moe", "/");
 
     private static Uri ParseGofile(string body)
     {

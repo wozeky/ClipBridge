@@ -56,7 +56,52 @@ public partial class MainWindow
         ShortcutShift.IsChecked = item.Shift;
     }
 
+    private bool _capturingShortcut;
+
     private void NewShortcut_Click(object sender, RoutedEventArgs args) => RefreshShortcutList(-1);
+
+    private void ShortcutCapture_Click(object sender, RoutedEventArgs args)
+    {
+        _capturingShortcut = !_capturingShortcut;
+        ShortcutCaptureButton.Content = _capturingShortcut
+            ? T("Tuşa basın… (Esc iptal)", "Press key… (Esc cancels)")
+            : T("Tuşa bas…", "Press key…");
+        if (_capturingShortcut)
+            ShortcutCaptureButton.Focus();
+    }
+
+    private void ShortcutCapture_KeyDown(object sender, System.Windows.Input.KeyEventArgs args)
+    {
+        if (!_capturingShortcut)
+            return;
+        args.Handled = true;
+        var key = args.Key == System.Windows.Input.Key.System ? args.SystemKey : args.Key;
+        if (key == System.Windows.Input.Key.Escape)
+        {
+            _capturingShortcut = false;
+            ShortcutCaptureButton.Content = T("Tuşa bas…", "Press key…");
+            return;
+        }
+        if (key is System.Windows.Input.Key.LeftCtrl or System.Windows.Input.Key.RightCtrl
+            or System.Windows.Input.Key.LeftShift or System.Windows.Input.Key.RightShift
+            or System.Windows.Input.Key.LeftAlt or System.Windows.Input.Key.RightAlt)
+            return;
+        var vk = System.Windows.Input.KeyInterop.VirtualKeyFromKey(key);
+        if (vk is >= 0x75 and <= 0x7B or >= 'A' and <= 'Z')
+        {
+            var mods = System.Windows.Input.Keyboard.Modifiers;
+            ShortcutCtrl.IsChecked = mods.HasFlag(System.Windows.Input.ModifierKeys.Control);
+            ShortcutShift.IsChecked = mods.HasFlag(System.Windows.Input.ModifierKeys.Shift);
+            ShortcutKey.SelectedItem = ShortcutKey.Items.OfType<KeyOption>().FirstOrDefault(item => item.Code == vk);
+            _capturingShortcut = false;
+            ShortcutCaptureButton.Content = T("Tuşa bas…", "Press key…");
+            ShortcutStatus.Text = T("Tuş yakalandı. Kaydetmek için Ekle / uygula’ya basın.", "Key captured. Click Add / apply to keep it.");
+        }
+        else
+        {
+            ShortcutStatus.Text = T("F6–F12 veya Ctrl/Shift + A–Z kullanın.", "Use F6–F12 or Ctrl/Shift + A–Z.");
+        }
+    }
 
     private void ApplyShortcut_Click(object sender, RoutedEventArgs args)
     {
