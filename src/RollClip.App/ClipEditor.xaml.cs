@@ -67,8 +67,7 @@ public partial class ClipEditor : Window
         RefreshBookmarks();
         StartBox.Text = "0";
         EndBox.Text = Seconds(_duration);
-        Preview.Source = new Uri(clip.FilePath);
-        Preview.Play();
+        Loaded += OpenPreview;
         _artwork = LoadArtworkAsync(thumbnailCache, _artworkCancellation.Token);
         _timer.Tick += (_, _) =>
         {
@@ -85,6 +84,13 @@ public partial class ClipEditor : Window
             _updating = false;
         };
         _timer.Start();
+    }
+
+    private void OpenPreview(object sender, RoutedEventArgs args)
+    {
+        Loaded -= OpenPreview;
+        Preview.Source = new Uri(_clip.FilePath);
+        Preview.Play();
     }
 
     private async Task LoadArtworkAsync(string cache, CancellationToken token)
@@ -121,8 +127,10 @@ public partial class ClipEditor : Window
         await _artwork.WaitAsync(TimeSpan.FromSeconds(12));
         for (var attempt = 0; !_mediaReady && attempt < 30; attempt++)
             await Task.Delay(100);
-        if (!_mediaReady || Filmstrip.Source is null)
-            throw new InvalidOperationException("Clip editor could not open the video and render its timeline.");
+        if (!_mediaReady)
+            throw new InvalidOperationException($"Clip editor did not open the video. {Feedback.Text}");
+        if (Filmstrip.Source is null)
+            throw new InvalidOperationException("Clip editor could not decode its filmstrip.");
         await Dispatcher.InvokeAsync(() => UpdateLayout(), DispatcherPriority.ContextIdle);
         var bitmap = new RenderTargetBitmap((int)EditorSurface.ActualWidth, (int)EditorSurface.ActualHeight, 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(EditorSurface);

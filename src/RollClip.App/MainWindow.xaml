@@ -479,8 +479,8 @@
       <WrapPanel Grid.Row="1" Margin="0,0,0,10">
        <TextBox x:Name="GallerySearch" Tag="Klip ara…" Width="145" Margin="0,0,8,6" ToolTip="Klip adına göre ara" AutomationProperties.Name="Klip adına göre ara" TextChanged="GalleryFilter_Changed"/>
        <ComboBox x:Name="GalleryGame" Width="119" Margin="0,0,8,6" AutomationProperties.Name="Oyun filtresi" SelectionChanged="GalleryFilter_Changed"/>
-       <ComboBox x:Name="GalleryDate" Width="106" Margin="0,0,8,6" AutomationProperties.Name="Tarih filtresi" SelectionChanged="GalleryFilter_Changed"/>
-       <ComboBox x:Name="GalleryUpload" Width="126" Margin="0,0,8,6" AutomationProperties.Name="Yükleme filtresi" SelectionChanged="GalleryFilter_Changed"/>
+       <ComboBox x:Name="GalleryDate" Width="120" Margin="0,0,8,6" AutomationProperties.Name="Tarih filtresi" SelectionChanged="GalleryFilter_Changed"/>
+       <ComboBox x:Name="GalleryUpload" Width="141" Margin="0,0,8,6" AutomationProperties.Name="Yükleme filtresi" SelectionChanged="GalleryFilter_Changed"/>
        <ComboBox x:Name="GallerySort" Width="91" Margin="0,0,10,6" AutomationProperties.Name="Sıralama" SelectionChanged="GalleryFilter_Changed"/>
        <CheckBox x:Name="GalleryFavorites" ToolTip="Yalnız favoriler" AutomationProperties.Name="Yalnız favoriler" Click="GalleryFilter_Changed" Margin="0,0,8,6">
         <ContentControl x:Name="FavoriteFilterIcon" Style="{StaticResource FluentFavoriteFilter}" Content="&#x2605;"/>

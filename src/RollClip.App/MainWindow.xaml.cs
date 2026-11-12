@@ -404,7 +404,11 @@ public partial class MainWindow : Window
                 var second = new Clip(Guid.NewGuid(), secondReplay, "Maç özeti", first.CreatedAt.AddMinutes(-2),
                     new FileInfo(secondReplay).Length, Mp4.ReadDuration(secondReplay), Game: "Test oyunu");
                 var discord = Path.Combine(fixtureFolder, "discord.mp4");
-                editorFixture = first with { Id = Guid.NewGuid(), FilePath = discord, Duration = Mp4.ReadDuration(discord) };
+                var third = first with { Id = Guid.NewGuid(), FilePath = discord, Duration = Mp4.ReadDuration(discord),
+                    Name = "Son tur", Favorite = false, CreatedAt = first.CreatedAt.AddMinutes(-3) };
+                var editorSample = Path.Combine(AppContext.BaseDirectory, "Assets", "ChromeLoop.mp4");
+                editorFixture = new Clip(Guid.NewGuid(), editorSample, "Krom arka plan · test klibi", first.CreatedAt,
+                    new FileInfo(editorSample).Length, Mp4.ReadDuration(editorSample));
                 foreach (var clip in new[] { first, second })
                 {
                     _store.Add(clip);
@@ -420,7 +424,6 @@ public partial class MainWindow : Window
                 RefreshLibrary(first.Id);
                 if (Library.Items.Count != 1 || _galleryRows.Length != 2 || SelectedClip?.Id != first.Id)
                     throw new InvalidOperationException("Gallery grid or clip selection failed.");
-                var third = editorFixture with { Name = "Son tur", CreatedAt = first.CreatedAt.AddMinutes(-3) };
                 _store.Add(third);
                 if (await VideoThumbnail.LoadAsync(third, Path.Combine(_root, "thumbnails"), _shutdown.Token) is null)
                     throw new InvalidOperationException("Could not render the third gallery card.");
