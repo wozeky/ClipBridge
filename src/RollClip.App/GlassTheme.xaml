@@ -391,13 +391,15 @@
          <ControlTemplate TargetType="ToggleButton">
           <DockPanel Background="Transparent">
            <ContentControl x:Name="Chevron" DockPanel.Dock="Right" Style="{StaticResource FluentMeasuredIcon}" Tag="{StaticResource FluentChevronDown}" Content="&#x2304;" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" RenderTransformOrigin=".5,.5">
-            <ContentControl.RenderTransform><RotateTransform x:Name="ChevronRotate" Angle="0"/></ContentControl.RenderTransform>
+            <ContentControl.RenderTransform><RotateTransform Angle="0"/></ContentControl.RenderTransform>
            </ContentControl>
            <ContentPresenter VerticalAlignment="Center"/>
           </DockPanel>
           <ControlTemplate.Triggers>
            <Trigger Property="IsChecked" Value="True">
-            <Setter TargetName="ChevronRotate" Property="Angle" Value="180"/>
+            <Setter TargetName="Chevron" Property="RenderTransform">
+             <Setter.Value><RotateTransform Angle="180"/></Setter.Value>
+            </Setter>
            </Trigger>
           </ControlTemplate.Triggers>
          </ControlTemplate>
