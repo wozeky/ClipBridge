@@ -418,7 +418,7 @@ public partial class MainWindow : Window
                 GalleryGrid.IsChecked = true;
                 VerifyIcon(GalleryViewIcon, "FluentGrid");
                 RefreshLibrary(first.Id);
-                if (Library.Items.Count != 1 || _galleryRows.Count != 2 || SelectedClip?.Id != first.Id)
+                if (Library.Items.Count != 1 || _galleryRows.Length != 2 || SelectedClip?.Id != first.Id)
                     throw new InvalidOperationException("Gallery grid or clip selection failed.");
                 var third = editorFixture with { Name = "Son tur", CreatedAt = first.CreatedAt.AddMinutes(-3) };
                 _store.Add(third);
