@@ -274,9 +274,15 @@
    <Setter.Value>
     <ControlTemplate TargetType="TextBox">
      <Border x:Name="BoxBorder" CornerRadius="10" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1">
-      <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+      <Grid>
+       <TextBlock x:Name="Hint" Text="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" Foreground="{StaticResource MutedBrush}" Margin="{TemplateBinding Padding}" VerticalAlignment="Center" IsHitTestVisible="False" Visibility="Collapsed"/>
+       <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" VerticalAlignment="Center"/>
+      </Grid>
      </Border>
      <ControlTemplate.Triggers>
+      <Trigger Property="Text" Value="">
+       <Setter TargetName="Hint" Property="Visibility" Value="Visible"/>
+      </Trigger>
       <Trigger Property="IsKeyboardFocused" Value="True">
        <Setter TargetName="BoxBorder" Property="BorderBrush" Value="{StaticResource NeonBrush}"/>
       </Trigger>
@@ -386,14 +392,14 @@
     <ControlTemplate TargetType="Expander">
      <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="12" Padding="12,8">
       <StackPanel>
-       <ToggleButton IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" Cursor="Hand" Background="Transparent" BorderThickness="0">
+       <ToggleButton IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Cursor="Hand" Background="Transparent" BorderThickness="0">
         <ToggleButton.Template>
          <ControlTemplate TargetType="ToggleButton">
-          <DockPanel Background="Transparent">
-           <ContentControl x:Name="Chevron" DockPanel.Dock="Right" Style="{StaticResource FluentMeasuredIcon}" Tag="{StaticResource FluentChevronDown}" Content="&#x2304;" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" RenderTransformOrigin=".5,.5">
+          <DockPanel Background="Transparent" LastChildFill="True">
+           <ContentControl x:Name="Chevron" DockPanel.Dock="Right" Style="{StaticResource FluentMeasuredIcon}" Tag="{StaticResource FluentChevronDown}" Content="&#x2304;" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="8,0,0,0" RenderTransformOrigin=".5,.5">
             <ContentControl.RenderTransform><RotateTransform Angle="0"/></ContentControl.RenderTransform>
            </ContentControl>
-           <ContentPresenter VerticalAlignment="Center"/>
+           <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Left"/>
           </DockPanel>
           <ControlTemplate.Triggers>
            <Trigger Property="IsChecked" Value="True">
@@ -421,17 +427,19 @@
 
  <Style TargetType="ScrollBar">
   <Setter Property="Width" Value="6"/>
+  <Setter Property="MinWidth" Value="6"/>
+  <Setter Property="MaxWidth" Value="6"/>
   <Setter Property="Background" Value="Transparent"/>
   <Setter Property="Template">
    <Setter.Value>
     <ControlTemplate TargetType="ScrollBar">
-     <Grid Background="Transparent">
+     <Grid Background="Transparent" Width="6">
       <Track x:Name="PART_Track" IsDirectionReversed="True">
        <Track.Thumb>
         <Thumb>
          <Thumb.Template>
           <ControlTemplate TargetType="Thumb">
-           <Border CornerRadius="3" Background="#48A0ACA4"/>
+           <Border CornerRadius="3" Background="#58A0ACA4" Width="5" HorizontalAlignment="Center"/>
           </ControlTemplate>
          </Thumb.Template>
         </Thumb>
@@ -441,5 +449,55 @@
     </ControlTemplate>
    </Setter.Value>
   </Setter>
+ </Style>
+
+ <Style TargetType="Slider">
+  <Setter Property="Foreground" Value="{StaticResource NeonBrush}"/>
+  <Setter Property="VerticalAlignment" Value="Center"/>
+  <Setter Property="Template">
+   <Setter.Value>
+    <ControlTemplate TargetType="Slider">
+     <Grid VerticalAlignment="Center" Height="20">
+      <Border Height="4" CornerRadius="2" Background="#28FFFFFF" VerticalAlignment="Center"/>
+      <Track x:Name="PART_Track">
+       <Track.DecreaseRepeatButton>
+        <RepeatButton Command="Slider.IncreaseLarge" IsHitTestVisible="False">
+         <RepeatButton.Template>
+          <ControlTemplate TargetType="RepeatButton">
+           <Border Height="4" CornerRadius="2" Background="{StaticResource NeonBrush}"/>
+          </ControlTemplate>
+         </RepeatButton.Template>
+        </RepeatButton>
+       </Track.DecreaseRepeatButton>
+       <Track.Thumb>
+        <Thumb>
+         <Thumb.Template>
+          <ControlTemplate TargetType="Thumb">
+           <Ellipse Width="14" Height="14" Fill="#F0F3F0" Stroke="{StaticResource NeonBrush}" StrokeThickness="2"/>
+          </ControlTemplate>
+         </Thumb.Template>
+        </Thumb>
+       </Track.Thumb>
+       <Track.IncreaseRepeatButton>
+        <RepeatButton Command="Slider.IncreaseLarge" Opacity="0"/>
+       </Track.IncreaseRepeatButton>
+      </Track>
+     </Grid>
+    </ControlTemplate>
+   </Setter.Value>
+  </Setter>
+ </Style>
+
+ <Style TargetType="ContextMenu">
+  <Setter Property="Background" Value="#F50D110E"/>
+  <Setter Property="BorderBrush" Value="{StaticResource MetalRim}"/>
+  <Setter Property="BorderThickness" Value="1"/>
+  <Setter Property="Padding" Value="4"/>
+ </Style>
+
+ <Style TargetType="MenuItem">
+  <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+  <Setter Property="FontSize" Value="13"/>
+  <Setter Property="Padding" Value="10,6"/>
  </Style>
 </ResourceDictionary>

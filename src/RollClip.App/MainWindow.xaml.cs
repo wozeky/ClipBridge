@@ -352,17 +352,15 @@ public partial class MainWindow : Window
             UiSounds.VerifyWaves();
             SettingsNav.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
             ExportPng("settings");
-            ArchiveSettings.IsExpanded = true;
+            ArchiveExpander.IsExpanded = true;
+            DiagnosticsExpander.IsExpanded = true;
             UpdateLayout();
-            ArchiveSettings.BringIntoView();
+            ArchiveFolderBox.BringIntoView();
             UpdateLayout();
-            if (!ArchiveFolderBox.IsVisible)
-                throw new InvalidOperationException("Archive settings did not expand.");
             ExportPng("archive");
-            ArchiveSettings.IsExpanded = false;
             SettingsScroll.ScrollToTop();
             if (!ProviderChoice.IsVisible || !MotionEnabled.IsVisible || !RecordingQualityChoice.IsVisible
-                || !ReplayKeyChoice.IsVisible || SettingsPanel.HasAnimatedProperties || SettingsPanel.RenderTransform.HasAnimatedProperties)
+                || !ReplayKeyChoice.IsVisible || !ArchiveFolderBox.IsVisible || SettingsPanel.HasAnimatedProperties || SettingsPanel.RenderTransform.HasAnimatedProperties)
                 throw new InvalidOperationException("Settings navigation failed.");
             ReplayKeyChoice.SelectedIndex = 3; // F9
             RecordingQualityChoice.SelectedIndex = (int)RecordingQuality.Light;
@@ -372,7 +370,7 @@ public partial class MainWindow : Window
             InterfaceSounds_Click(InterfaceSounds, new RoutedEventArgs());
             if (UiSounds.Enabled || AtomicJson.Read<ClipSettings>(Path.Combine(_root, "settings.json")) is not { InterfaceSounds: false })
                 throw new InvalidOperationException("UI sound preference was not persisted.");
-            if (!SaveSettings() || SaveReplayButton.Content as string != "F9"
+            if (!SaveSettings() || SaveReplayButton.Content as string != "Klip al · F9"
                 || AtomicJson.Read<ClipSettings>(Path.Combine(_root, "settings.json")) is not
                     { ReplayKey: 9, Quality: RecordingQuality.Light, Motion: true } saved
                 || saved.ArchiveFolder != backupFolder || !ArchiveExistingButton.IsEnabled)
@@ -851,14 +849,14 @@ public partial class MainWindow : Window
     private void UpdateReplayKeyLabel()
     {
         _activeReplayKey = _settings.ReplayKey is >= 6 and <= 11 ? _settings.ReplayKey : 8;
-        SaveReplayButton.Content = ReplayKeyLabel;
+        SaveReplayButton.Content = T($"Klip al · {ReplayKeyLabel}", $"Save clip · {ReplayKeyLabel}");
         System.Windows.Automation.AutomationProperties.SetName(SaveReplayButton, $"Klip al · {ReplayKeyLabel}");
 
     }
 
     private void RefreshCaptureStatus()
     {
-        var status = !_armed ? T("Kayıt kapalı", "Capture off") : _capture?.BufferedDuration is { } duration
+        var status = !_armed ? T("Önce kaydı aç", "Turn on capture first") : _capture?.BufferedDuration is { } duration
             ? T($"Hazır · Tampon: {Math.Floor(duration.TotalSeconds):0} sn", $"Ready · Buffer: {Math.Floor(duration.TotalSeconds):0} s")
             : T("Yeni görüntü gelmiyor", "No new frames");
         if (_armed && !_hotkeyRegistered)
@@ -1221,7 +1219,8 @@ public partial class MainWindow : Window
         FavoriteButton.IsEnabled = SelectedClip is not null && !_galleryMutating;
         ShowLocationButton.IsEnabled = OpenButton.IsEnabled;
         DeleteClipButton.IsEnabled = SelectedClip is not null && !_galleryMutating && SelectedClip?.State is not (UploadState.Queued or UploadState.Uploading);
-        FavoriteButton.Content = SelectedClip?.Favorite == true ? T("Favoriden çıkar", "Unfavorite") : T("Favori", "Favorite");
+        FavoriteButton.Header = SelectedClip?.Favorite == true ? T("Favoriden çıkar", "Unfavorite") : T("Favori", "Favorite");
+        MoreActionsButton.IsEnabled = SelectedClip is not null && !_galleryMutating;
         var clip = SelectedClip;
         CopyButton.IsEnabled = clip?.ShareUrl is not null && !clip.LinkExpired(DateTimeOffset.UtcNow);
         UploadButton.IsEnabled = !_galleryMutating && _queue is not null && clip is { LocalRemovedAt: null } &&
@@ -1247,6 +1246,15 @@ public partial class MainWindow : Window
             await EditClipAsync(clip);
         else
             StatusMessage.Text = "Henüz paylaşılacak bir klip yok.";
+    }
+
+    private void MoreActions_Click(object sender, RoutedEventArgs args)
+    {
+        if (MoreActionsButton.ContextMenu is { } menu)
+        {
+            menu.PlacementTarget = MoreActionsButton;
+            menu.IsOpen = true;
+        }
     }
 
     private void Folder_Click(object sender, RoutedEventArgs args) => OpenPath(_clipsPath);

@@ -188,11 +188,11 @@
          <Button ToolTipService.ShowOnDisabled="True" DockPanel.Dock="Right" ToolTip="{Binding Content, RelativeSource={RelativeSource Self}}" x:Name="ArmButton" Style="{StaticResource ArmSwitch}" Content="Kaydı başlat" Click="Arm_Click" VerticalAlignment="Top"/>
          <StackPanel>
           <TextBlock Text="Kayıt" FontFamily="{StaticResource HeadingFont}" FontSize="17" FontWeight="SemiBold"/>
-          <TextBlock x:Name="CaptureStatus" Text="Kayıt kapalı" Style="{StaticResource Caption}" Margin="0,6,8,0" TextWrapping="Wrap"/>
+          <TextBlock x:Name="CaptureStatus" Text="Önce kaydı aç" Style="{StaticResource Caption}" Margin="0,6,8,0" TextWrapping="Wrap"/>
          </StackPanel>
         </DockPanel>
 
-        <Button Grid.Row="2" ToolTipService.ShowOnDisabled="True" x:Name="SaveReplayButton" Style="{StaticResource GlassButton}" Content="F8" FontSize="26" FontWeight="SemiBold" IsEnabled="False" Click="SaveReplay_Click" ToolTip="Son klibi MP4 olarak kaydet" AutomationProperties.Name="Klip al · F8"
+        <Button Grid.Row="2" ToolTipService.ShowOnDisabled="True" x:Name="SaveReplayButton" Style="{StaticResource GlassButton}" Content="Klip al · F8" FontSize="18" FontWeight="SemiBold" IsEnabled="False" Click="SaveReplay_Click" ToolTip="Son klibi MP4 olarak kaydet" AutomationProperties.Name="Klip al · F8"
          Height="68" HorizontalAlignment="Stretch">
          <Button.Background>
           <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
@@ -255,9 +255,9 @@
    </Grid>
 
    <!-- SETTINGS PANEL -->
-   <Grid x:Name="SettingsPanel" Visibility="Collapsed" MaxWidth="940" MaxHeight="620" VerticalAlignment="Center" HorizontalAlignment="Stretch">
+   <Grid x:Name="SettingsPanel" Visibility="Collapsed" MaxWidth="960" MaxHeight="640" VerticalAlignment="Center" HorizontalAlignment="Stretch">
     <Grid.RenderTransform><TranslateTransform/></Grid.RenderTransform>
-    <local:ChromeGlass Radius="24">
+    <local:ChromeGlass Radius="24" Background="#C8080B09">
      <Grid Margin="28,24">
       <Grid.RowDefinitions>
        <RowDefinition Height="Auto"/>
@@ -272,8 +272,8 @@
        <TextBlock Text="Ayarlar" FontFamily="{StaticResource HeadingFont}" FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center"/>
       </DockPanel>
 
-      <ScrollViewer x:Name="SettingsScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto">
-       <Grid Margin="0,0,12,0">
+      <ScrollViewer x:Name="SettingsScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" ClipToBounds="True" Padding="0,4">
+       <Grid Margin="0,0,18,0">
         <Grid.ColumnDefinitions>
          <ColumnDefinition Width="*"/>
          <ColumnDefinition Width="28"/>
@@ -402,7 +402,7 @@
          <TextBlock Text="Kayıt sırasında ve arka planda otomatik durur." Style="{StaticResource Caption}" Margin="0,0,0,4"/>
 
          <!-- Archive & Storage Expander -->
-         <Expander x:Name="ArchiveSettings" Header="Arşiv yedekleme ve depolama">
+         <Expander x:Name="ArchiveExpander" Header="Arşiv yedekleme ve depolama">
           <StackPanel>
            <TextBlock x:Name="ArchiveState" Text="Otomatik kopya kapalı" FontWeight="SemiBold" Margin="0,0,0,4"/>
            <TextBlock Text="Drive ile eşitlenen bir klasör seçin; yeni klipler buraya da kopyalanır." Style="{StaticResource Caption}" TextWrapping="Wrap"/>
@@ -422,7 +422,7 @@
             <Button local:UiSounds.Cue="ClearThumbnails1" Style="{StaticResource GlassButton}" Content="Küçük resimleri temizle" Click="ClearThumbnails_Click" Margin="0,0,0,6"/>
            </WrapPanel>
            <DockPanel Margin="0,4,0,4">
-            <TextBlock DockPanel.Dock="Left" Text="Klip sınırı (GB)" Margin="0,0,8,0" VerticalAlignment="Center"/>
+            <TextBlock DockPanel.Dock="Left" Text="Klip sınırı (GB · 0 = sınırsız)" Margin="0,0,8,0" VerticalAlignment="Center"/>
             <TextBox x:Name="StorageLimit" Text="0" AutomationProperties.Name="Klip depolama sınırı, GB"/>
            </DockPanel>
            <CheckBox x:Name="AutoCleanup" Content="Yedeği doğrulanan eski klipleri otomatik temizle"/>
@@ -431,7 +431,7 @@
          </Expander>
 
          <!-- Updates & Diagnostics Expander -->
-         <Expander Header="Güncellemeler ve tanılama">
+         <Expander x:Name="DiagnosticsExpander" Header="Güncellemeler ve tanılama">
           <StackPanel>
            <TextBlock x:Name="CurrentVersionLabel" FontWeight="SemiBold" Margin="0,0,0,4"/>
            <CheckBox x:Name="AutoUpdates" Content="Güncellemeleri otomatik kontrol et"/>
@@ -455,9 +455,9 @@
    </Grid>
 
    <!-- LIBRARY PANEL -->
-   <Grid x:Name="LibraryPanel" Visibility="Collapsed" MaxWidth="960" MaxHeight="620" VerticalAlignment="Center" HorizontalAlignment="Stretch">
+   <Grid x:Name="LibraryPanel" Visibility="Collapsed" MaxWidth="980" MaxHeight="660" VerticalAlignment="Center" HorizontalAlignment="Stretch">
     <Grid.RenderTransform><TranslateTransform/></Grid.RenderTransform>
-    <local:ChromeGlass Radius="24">
+    <local:ChromeGlass Radius="24" Background="#C8080B09">
      <Grid Margin="28,24">
       <Grid.RowDefinitions>
        <RowDefinition Height="Auto"/>
@@ -479,11 +479,11 @@
       </DockPanel>
 
       <WrapPanel Grid.Row="1" Margin="0,0,0,10">
-       <TextBox x:Name="GallerySearch" Width="180" Margin="0,0,8,6" ToolTip="Klip adına göre ara" AutomationProperties.Name="Klip adına göre ara" TextChanged="GalleryFilter_Changed"/>
-       <ComboBox x:Name="GalleryGame" Width="140" Margin="0,0,8,6" AutomationProperties.Name="Oyun filtresi" SelectionChanged="GalleryFilter_Changed"/>
-       <ComboBox x:Name="GalleryDate" Width="105" Margin="0,0,8,6" AutomationProperties.Name="Tarih filtresi" SelectionChanged="GalleryFilter_Changed"/>
-       <ComboBox x:Name="GalleryUpload" Width="115" Margin="0,0,8,6" AutomationProperties.Name="Yükleme filtresi" SelectionChanged="GalleryFilter_Changed"/>
-       <ComboBox x:Name="GallerySort" Width="105" Margin="0,0,10,6" AutomationProperties.Name="Sıralama" SelectionChanged="GalleryFilter_Changed"/>
+       <TextBox x:Name="GallerySearch" Tag="Klip ara…" Width="185" Margin="0,0,8,6" ToolTip="Klip adına göre ara" AutomationProperties.Name="Klip adına göre ara" TextChanged="GalleryFilter_Changed"/>
+       <ComboBox x:Name="GalleryGame" Width="145" Margin="0,0,8,6" AutomationProperties.Name="Oyun filtresi" SelectionChanged="GalleryFilter_Changed"/>
+       <ComboBox x:Name="GalleryDate" Width="125" Margin="0,0,8,6" AutomationProperties.Name="Tarih filtresi" SelectionChanged="GalleryFilter_Changed"/>
+       <ComboBox x:Name="GalleryUpload" Width="135" Margin="0,0,8,6" AutomationProperties.Name="Yükleme filtresi" SelectionChanged="GalleryFilter_Changed"/>
+       <ComboBox x:Name="GallerySort" Width="110" Margin="0,0,10,6" AutomationProperties.Name="Sıralama" SelectionChanged="GalleryFilter_Changed"/>
        <CheckBox x:Name="GalleryFavorites" ToolTip="Yalnız favoriler" AutomationProperties.Name="Yalnız favoriler" Click="GalleryFilter_Changed" Margin="0,0,8,6">
         <ContentControl x:Name="FavoriteFilterIcon" Style="{StaticResource FluentFavoriteFilter}" Content="&#x2605;"/>
        </CheckBox>
@@ -561,9 +561,15 @@
         <Button x:Name="UploadButton" Style="{StaticResource GlassButton}" Content="Bağlantı oluştur" Click="Upload_Click" Margin="0,0,6,6"/>
         <Button x:Name="CopyButton" Style="{StaticResource GlassButton}" Content="Bağlantıyı kopyala" Click="Copy_Click" Margin="0,0,6,6"/>
         <Button x:Name="CancelUploadButton" Style="{StaticResource GlassButton}" Content="Yüklemeyi iptal et" Click="CancelUpload_Click" Margin="0,0,6,6" Visibility="Collapsed"/>
-        <Button x:Name="FavoriteButton" Style="{StaticResource GlassButton}" Content="Favori" Click="Favorite_Click" Margin="0,0,6,6"/>
-        <Button x:Name="ShowLocationButton" Style="{StaticResource GlassButton}" Content="Konumu aç" Click="ShowLocation_Click" Margin="0,0,6,6"/>
-        <Button x:Name="DeleteClipButton" Style="{StaticResource GlassButton}" Content="Sil" Click="DeleteClip_Click" Margin="0,0,0,6"/>
+        <Button x:Name="MoreActionsButton" Style="{StaticResource GlassButton}" Content="⋯" FontSize="16" Padding="12,4" Click="MoreActions_Click" Margin="0,0,0,6" ToolTip="Diğer işlemler" AutomationProperties.Name="Diğer işlemler">
+         <Button.ContextMenu>
+          <ContextMenu x:Name="ClipActionsMenu">
+           <MenuItem x:Name="FavoriteButton" Header="Favori" Click="Favorite_Click"/>
+           <MenuItem x:Name="ShowLocationButton" Header="Konumu aç" Click="ShowLocation_Click"/>
+           <MenuItem x:Name="DeleteClipButton" Header="Sil" Click="DeleteClip_Click"/>
+          </ContextMenu>
+         </Button.ContextMenu>
+        </Button>
        </WrapPanel>
        <DockPanel Margin="0,2,0,0">
         <ContentControl DockPanel.Dock="Left" Style="{StaticResource FluentFavoriteMarker}" Foreground="{StaticResource MutedBrush}" FontSize="11" DataContext="{Binding DataContext, ElementName=GallerySelection}"/>
