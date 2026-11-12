@@ -402,7 +402,7 @@
          <TextBlock Text="Kayıt sırasında ve arka planda otomatik durur." Style="{StaticResource Caption}" Margin="0,0,0,4"/>
 
          <!-- Archive & Storage Expander -->
-         <Expander Header="Arşiv yedekleme ve depolama">
+         <Expander x:Name="ArchiveSettings" Header="Arşiv yedekleme ve depolama">
           <StackPanel>
            <TextBlock x:Name="ArchiveState" Text="Otomatik kopya kapalı" FontWeight="SemiBold" Margin="0,0,0,4"/>
            <TextBlock Text="Drive ile eşitlenen bir klasör seçin; yeni klipler buraya da kopyalanır." Style="{StaticResource Caption}" TextWrapping="Wrap"/>

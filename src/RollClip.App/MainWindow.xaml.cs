@@ -352,12 +352,17 @@ public partial class MainWindow : Window
             UiSounds.VerifyWaves();
             SettingsNav.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
             ExportPng("settings");
-            ArchiveFolderBox.BringIntoView();
+            ArchiveSettings.IsExpanded = true;
             UpdateLayout();
+            ArchiveSettings.BringIntoView();
+            UpdateLayout();
+            if (!ArchiveFolderBox.IsVisible)
+                throw new InvalidOperationException("Archive settings did not expand.");
             ExportPng("archive");
+            ArchiveSettings.IsExpanded = false;
             SettingsScroll.ScrollToTop();
             if (!ProviderChoice.IsVisible || !MotionEnabled.IsVisible || !RecordingQualityChoice.IsVisible
-                || !ReplayKeyChoice.IsVisible || !ArchiveFolderBox.IsVisible || SettingsPanel.HasAnimatedProperties || SettingsPanel.RenderTransform.HasAnimatedProperties)
+                || !ReplayKeyChoice.IsVisible || SettingsPanel.HasAnimatedProperties || SettingsPanel.RenderTransform.HasAnimatedProperties)
                 throw new InvalidOperationException("Settings navigation failed.");
             ReplayKeyChoice.SelectedIndex = 3; // F9
             RecordingQualityChoice.SelectedIndex = (int)RecordingQuality.Light;
