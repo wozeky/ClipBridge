@@ -8,6 +8,8 @@ internal static class EnglishUi
 {
     private static readonly Dictionary<string, string> Labels = new(StringComparer.Ordinal)
     {
+        ["Klip editörü"] = "Clip editor", ["Kırpma"] = "Trim", ["Ses"] = "Audio", ["Dışa aktarma"] = "Export",
+        ["Yer imleri"] = "Bookmarks",
         ["Ana ekran"] = "Home", ["Ana ekrana dön"] = "Back to home",
         ["Ayarlar"] = "Settings", ["Ayarları kapat"] = "Close settings", ["Ayarları kaydet"] = "Save settings",
         ["Klip arşivi"] = "Clip library", ["Arşivi kapat"] = "Close library", ["Klip klasörü"] = "Clip folder",
@@ -44,6 +46,11 @@ internal static class EnglishUi
         ["Önizle"] = "Preview",
         ["Duraklat"] = "Pause",
         ["Önizlemeyi kapat"] = "Close preview",
+        ["Önce kaydı aç"] = "Turn on capture first",
+        ["Klip al · F8"] = "Save clip · F8",
+        ["Klip ara…"] = "Search clips…",
+        ["Diğer işlemler"] = "More actions",
+        ["Klip sınırı (GB · 0 = sınırsız)"] = "Clip limit (GB · 0 = unlimited)",
         ["Test klibi al ve kontrol et"] = "Save and review a test clip", ["KLİP KAYNAĞI"] = "CLIP SOURCE",
         ["Klasör izleme kapalı"] = "Folder watching off", ["Klip klasörü izle"] = "Watch clip folder", ["İzlemeyi kapat"] = "Stop watching",
         ["Yeni MP4’ler yerel arşive alınır. Mevcut klipleri sürükleyip bırakabilirsiniz."] = "New MP4s are imported locally. Drop existing clips here.",

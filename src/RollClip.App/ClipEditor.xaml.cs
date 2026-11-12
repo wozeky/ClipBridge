@@ -10,6 +10,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using RollClip.Core;
 
@@ -18,6 +19,8 @@ namespace RollClip.App;
 public partial class ClipEditor : Window
 {
     private readonly Clip _clip;
+    private readonly CancellationTokenSource _artworkCancellation = new();
+    private readonly Task _artwork;
     private readonly string _folder;
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(125) };
     private CancellationTokenSource? _export;
@@ -38,10 +41,11 @@ public partial class ClipEditor : Window
     private double[] _bookmarks;
     private bool _refreshingBookmarks;
 
-    internal ClipEditor(Clip clip, string folder, bool english, Action<double[]> storeBookmarks)
+    internal ClipEditor(Clip clip, string folder, bool english, Action<double[]> storeBookmarks, string thumbnailCache)
     {
         InitializeComponent();
         _clip = clip;
+        ClipName.Text = clip.Name;
         ReplaceOriginal.IsEnabled = clip.CanReplaceLocal;
         _folder = folder;
         _english = english;
@@ -59,11 +63,13 @@ public partial class ClipEditor : Window
         _duration = clip.Duration?.TotalSeconds ?? 0;
         IncludeMic.Visibility = clip.SeparateMicrophone ? Visibility.Visible : Visibility.Collapsed;
         Timeline.Maximum = _duration;
+        UpdateTimelineTicks();
         RefreshBookmarks();
         StartBox.Text = "0";
         EndBox.Text = Seconds(_duration);
         Preview.Source = new Uri(clip.FilePath);
         Preview.Play();
+        _artwork = LoadArtworkAsync(thumbnailCache, _artworkCancellation.Token);
         _timer.Tick += (_, _) =>
         {
             if (!_mediaReady || Timeline.IsMouseCaptureWithin)
@@ -75,10 +81,55 @@ public partial class ClipEditor : Window
                 Preview.Position = TimeSpan.FromSeconds(end);
             }
             Timeline.Value = Preview.Position.TotalSeconds;
-            PositionText.Text = $"{Seconds(Timeline.Value)} sn";
+            PositionText.Text = $"{Seconds(Timeline.Value)} / {Seconds(_duration)} s";
             _updating = false;
         };
         _timer.Start();
+    }
+
+    private async Task LoadArtworkAsync(string cache, CancellationToken token)
+    {
+        try
+        {
+            PreviewPoster.Source = await VideoThumbnail.LoadAsync(_clip, cache, token);
+            Filmstrip.Source = await VideoThumbnail.LoadFilmstripAsync(_clip, cache, token);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or Win32Exception or InvalidOperationException)
+        {
+            Trace.WriteLine(error.Message);
+        }
+    }
+
+    private void UpdateTimelineTicks()
+    {
+        TimelineTicks.ItemsSource = Enumerable.Range(0, 5).Select(i => $"{Seconds(_duration * i / 4)} s").ToArray();
+        PositionText.Text = $"0 / {Seconds(_duration)} s";
+    }
+
+    private void TrimRange_Changed(object sender, TextChangedEventArgs args)
+    {
+        if (_duration <= 0 || !TryReadRange(out var start, out var end, showError: false))
+            return;
+        BeforeTrim.Width = new GridLength(Math.Max(0, start), GridUnitType.Star);
+        TrimSelection.Width = new GridLength(end - start, GridUnitType.Star);
+        AfterTrim.Width = new GridLength(Math.Max(0, _duration - end), GridUnitType.Star);
+    }
+
+    internal async Task ExportSmokeScreenshotAsync(string path)
+    {
+        await _artwork.WaitAsync(TimeSpan.FromSeconds(12));
+        for (var attempt = 0; !_mediaReady && attempt < 30; attempt++)
+            await Task.Delay(100);
+        if (!_mediaReady || Filmstrip.Source is null)
+            throw new InvalidOperationException("Clip editor could not open the video and render its timeline.");
+        await Dispatcher.InvokeAsync(() => UpdateLayout(), DispatcherPriority.ContextIdle);
+        var bitmap = new RenderTargetBitmap((int)EditorSurface.ActualWidth, (int)EditorSurface.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(EditorSurface);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        using var output = File.Create(path);
+        encoder.Save(output);
     }
 
     protected override void OnSourceInitialized(EventArgs args)
@@ -116,6 +167,7 @@ public partial class ClipEditor : Window
             _duration = Preview.NaturalDuration.TimeSpan.TotalSeconds;
             Timeline.Maximum = _duration;
             EndBox.Text = Seconds(_duration);
+            UpdateTimelineTicks();
             DrawBookmarkRail();
         }
         PlayButton.IsEnabled = PreviewRangeButton.IsEnabled = true;
@@ -155,6 +207,12 @@ public partial class ClipEditor : Window
             Preview.Pause();
         }
         PlayButton.Content = playing ? EnglishUi.Choose(_english, "Duraklat", "Pause") : EnglishUi.Choose(_english, "Oynat", "Play");
+    }
+
+    private void Filmstrip_Seek(object sender, System.Windows.Input.MouseButtonEventArgs args)
+    {
+        if (sender is FrameworkElement { ActualWidth: > 0 } strip)
+            Timeline.Value = Math.Clamp(args.GetPosition(strip).X / strip.ActualWidth, 0, 1) * Timeline.Maximum;
     }
 
     private void Timeline_Changed(object sender, RoutedPropertyChangedEventArgs<double> args)
@@ -274,14 +332,15 @@ public partial class ClipEditor : Window
     internal bool ReplaceRequested { get; private set; }
     internal double[] SavedBookmarks { get; private set; } = [];
 
-    private bool TryReadRange(out double start, out double end)
+    private bool TryReadRange(out double start, out double end, bool showError = true)
     {
         end = 0;
         if (!double.TryParse(StartBox.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out start) ||
             !double.TryParse(EndBox.Text, NumberStyles.Float, CultureInfo.CurrentCulture, out end) ||
             !double.IsFinite(start) || !double.IsFinite(end) || start < 0 || end > _duration + 0.001 || end - start < 0.25)
         {
-            Feedback.Text = EnglishUi.Choose(_english, "Klip içinde en az 0,25 saniyelik geçerli bir aralık seçin.", "Select at least 0.25 seconds within the clip.");
+            if (showError)
+                Feedback.Text = EnglishUi.Choose(_english, "Klip içinde en az 0,25 saniyelik geçerli bir aralık seçin.", "Select at least 0.25 seconds within the clip.");
             return false;
         }
 
@@ -401,6 +460,8 @@ public partial class ClipEditor : Window
     protected override void OnClosed(EventArgs args)
     {
         _timer.Stop();
+        _artworkCancellation.Cancel();
+        _artworkCancellation.Dispose();
         Preview.Close();
         base.OnClosed(args);
     }

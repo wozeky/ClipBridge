@@ -101,7 +101,7 @@ public partial class MainWindow : Window
 
     private void UpdateInterfaceMotion()
     {
-        if (_armed || (!_materialSmoke && !_settings.Motion))
+        if (_armed || (!_materialSmoke && (!_settings.Motion || _materialView != "home")))
         {
             StopInterfaceMotion();
             if (ChromeMovie.Source is not null)
@@ -205,6 +205,9 @@ public partial class MainWindow : Window
         HomePanel.Visibility = target == HomePanel ? Visibility.Visible : Visibility.Collapsed;
         SettingsPanel.Visibility = target == SettingsPanel ? Visibility.Visible : Visibility.Collapsed;
         LibraryPanel.Visibility = target == LibraryPanel ? Visibility.Visible : Visibility.Collapsed;
+        HomeNav.Tag = target == HomePanel ? "Active" : null;
+        LibraryNav.Tag = target == LibraryPanel ? "Active" : null;
+        SettingsNav.Tag = target == SettingsPanel ? "Active" : null;
         if (!CanAnimateInterface)
             return;
 
@@ -352,17 +355,15 @@ public partial class MainWindow : Window
             UiSounds.VerifyWaves();
             SettingsNav.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
             ExportPng("settings");
-            ArchiveSettings.IsExpanded = true;
+            ArchiveExpander.IsExpanded = true;
+            DiagnosticsExpander.IsExpanded = true;
             UpdateLayout();
-            ArchiveSettings.BringIntoView();
+            ArchiveFolderBox.BringIntoView();
             UpdateLayout();
-            if (!ArchiveFolderBox.IsVisible)
-                throw new InvalidOperationException("Archive settings did not expand.");
             ExportPng("archive");
-            ArchiveSettings.IsExpanded = false;
             SettingsScroll.ScrollToTop();
             if (!ProviderChoice.IsVisible || !MotionEnabled.IsVisible || !RecordingQualityChoice.IsVisible
-                || !ReplayKeyChoice.IsVisible || SettingsPanel.HasAnimatedProperties || SettingsPanel.RenderTransform.HasAnimatedProperties)
+                || !ReplayKeyChoice.IsVisible || !ArchiveFolderBox.IsVisible || SettingsPanel.HasAnimatedProperties || SettingsPanel.RenderTransform.HasAnimatedProperties)
                 throw new InvalidOperationException("Settings navigation failed.");
             ReplayKeyChoice.SelectedIndex = 3; // F9
             RecordingQualityChoice.SelectedIndex = (int)RecordingQuality.Light;
@@ -372,7 +373,7 @@ public partial class MainWindow : Window
             InterfaceSounds_Click(InterfaceSounds, new RoutedEventArgs());
             if (UiSounds.Enabled || AtomicJson.Read<ClipSettings>(Path.Combine(_root, "settings.json")) is not { InterfaceSounds: false })
                 throw new InvalidOperationException("UI sound preference was not persisted.");
-            if (!SaveSettings() || SaveReplayButton.Content as string != "F9"
+            if (!SaveSettings() || SaveReplayButton.Content as string != "Klip al · F9"
                 || AtomicJson.Read<ClipSettings>(Path.Combine(_root, "settings.json")) is not
                     { ReplayKey: 9, Quality: RecordingQuality.Light, Motion: true } saved
                 || saved.ArchiveFolder != backupFolder || !ArchiveExistingButton.IsEnabled)
@@ -390,16 +391,20 @@ public partial class MainWindow : Window
             GalleryFavorites.IsChecked = true;
             VerifyIcon(FavoriteFilterIcon, "FluentStarFilled");
             GalleryFavorites.IsChecked = false;
+            GalleryGrid.IsChecked = false;
             VerifyIcon(GalleryViewIcon, "FluentList");
             var fixtureFolder = Path.Combine(Path.GetDirectoryName(_smokeMarker!)!, "rollclip-replay");
             var firstReplay = Path.Combine(fixtureFolder, "replay-0.mp4");
             var secondReplay = Path.Combine(fixtureFolder, "replay-1.mp4");
+            Clip? editorFixture = null;
             if (File.Exists(firstReplay) && File.Exists(secondReplay))
             {
                 var first = new Clip(Guid.NewGuid(), firstReplay, "Antrenman klibi", DateTimeOffset.UtcNow,
                     new FileInfo(firstReplay).Length, Mp4.ReadDuration(firstReplay), Game: "Test oyunu", Favorite: true);
                 var second = new Clip(Guid.NewGuid(), secondReplay, "Maç özeti", first.CreatedAt.AddMinutes(-2),
                     new FileInfo(secondReplay).Length, Mp4.ReadDuration(secondReplay), Game: "Test oyunu");
+                var discord = Path.Combine(fixtureFolder, "discord.mp4");
+                editorFixture = first with { Id = Guid.NewGuid(), FilePath = discord, Duration = Mp4.ReadDuration(discord) };
                 foreach (var clip in new[] { first, second })
                 {
                     _store.Add(clip);
@@ -415,10 +420,25 @@ public partial class MainWindow : Window
                 RefreshLibrary(first.Id);
                 if (Library.Items.Count != 1 || _galleryRows.Count != 2 || SelectedClip?.Id != first.Id)
                     throw new InvalidOperationException("Gallery grid or clip selection failed.");
+                var third = editorFixture with { Name = "Son tur", CreatedAt = first.CreatedAt.AddMinutes(-3) };
+                _store.Add(third);
+                if (await VideoThumbnail.LoadAsync(third, Path.Combine(_root, "thumbnails"), _shutdown.Token) is null)
+                    throw new InvalidOperationException("Could not render the third gallery card.");
+                RefreshLibrary(first.Id);
                 UpdateLayout();
                 await Task.Delay(450, _shutdown.Token);
             }
             ExportPng("library");
+            if (editorFixture is not null)
+            {
+                var editor = new ClipEditor(editorFixture, _clipsPath, false, _ => { }, Path.Combine(_root, "thumbnails"))
+                {
+                    Owner = this, Width = 970, Height = 730
+                };
+                editor.Show();
+                try { await editor.ExportSmokeScreenshotAsync(Path.ChangeExtension(_smokeMarker!, "editor.png")); }
+                finally { editor.Close(); }
+            }
             if (!Library.IsVisible || Library.ActualHeight <= 0 || !RecoverClipsButton.IsVisible)
                 throw new InvalidOperationException("Library navigation failed.");
             ShowPanel("home");
@@ -851,14 +871,14 @@ public partial class MainWindow : Window
     private void UpdateReplayKeyLabel()
     {
         _activeReplayKey = _settings.ReplayKey is >= 6 and <= 11 ? _settings.ReplayKey : 8;
-        SaveReplayButton.Content = ReplayKeyLabel;
+        SaveReplayButton.Content = T($"Klip al · {ReplayKeyLabel}", $"Save clip · {ReplayKeyLabel}");
         System.Windows.Automation.AutomationProperties.SetName(SaveReplayButton, $"Klip al · {ReplayKeyLabel}");
 
     }
 
     private void RefreshCaptureStatus()
     {
-        var status = !_armed ? T("Kayıt kapalı", "Capture off") : _capture?.BufferedDuration is { } duration
+        var status = !_armed ? T("Önce kaydı aç", "Turn on capture first") : _capture?.BufferedDuration is { } duration
             ? T($"Hazır · Tampon: {Math.Floor(duration.TotalSeconds):0} sn", $"Ready · Buffer: {Math.Floor(duration.TotalSeconds):0} s")
             : T("Yeni görüntü gelmiyor", "No new frames");
         if (_armed && !_hotkeyRegistered)
@@ -1221,7 +1241,8 @@ public partial class MainWindow : Window
         FavoriteButton.IsEnabled = SelectedClip is not null && !_galleryMutating;
         ShowLocationButton.IsEnabled = OpenButton.IsEnabled;
         DeleteClipButton.IsEnabled = SelectedClip is not null && !_galleryMutating && SelectedClip?.State is not (UploadState.Queued or UploadState.Uploading);
-        FavoriteButton.Content = SelectedClip?.Favorite == true ? T("Favoriden çıkar", "Unfavorite") : T("Favori", "Favorite");
+        FavoriteButton.Header = SelectedClip?.Favorite == true ? T("Favoriden çıkar", "Unfavorite") : T("Favori", "Favorite");
+        MoreActionsButton.IsEnabled = SelectedClip is not null && !_galleryMutating;
         var clip = SelectedClip;
         CopyButton.IsEnabled = clip?.ShareUrl is not null && !clip.LinkExpired(DateTimeOffset.UtcNow);
         UploadButton.IsEnabled = !_galleryMutating && _queue is not null && clip is { LocalRemovedAt: null } &&
@@ -1247,6 +1268,15 @@ public partial class MainWindow : Window
             await EditClipAsync(clip);
         else
             StatusMessage.Text = "Henüz paylaşılacak bir klip yok.";
+    }
+
+    private void MoreActions_Click(object sender, RoutedEventArgs args)
+    {
+        if (MoreActionsButton.ContextMenu is { } menu)
+        {
+            menu.PlacementTarget = MoreActionsButton;
+            menu.IsOpen = true;
+        }
     }
 
     private void Folder_Click(object sender, RoutedEventArgs args) => OpenPath(_clipsPath);
@@ -1464,8 +1494,28 @@ public partial class MainWindow : Window
             ? (Provider switch { Provider.Catbox => Provider.Litterbox, Provider.Litterbox => Provider.Gofile, _ => Provider.Litterbox }) : null;
     }
 
-    private sealed record ClipRow(Clip Clip, bool English)
+    private sealed record ClipRow(Clip Clip, bool English) : INotifyPropertyChanged
     {
+        private bool _isSelected;
+        public event PropertyChangedEventHandler? PropertyChanged;
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (_isSelected == value)
+                    return;
+                _isSelected = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
+            }
+        }
+
+        public bool HasLink => Clip.ShareUrl is not null && !Clip.LinkExpired(DateTimeOffset.UtcNow);
+        public bool CanShare => HasLink || (Clip.LocalRemovedAt is null && Clip.State is not (UploadState.Queued or UploadState.Uploading));
+        public string LinkActionLabel => HasLink
+            ? EnglishUi.Choose(English, "Bağlantıyı kopyala", "Copy link")
+            : EnglishUi.Choose(English, "Bağlantı oluştur", "Create link");
+        public string FileDetails => $"{Size} · {Date}";
         public string Title => Clip.Name;
         public string Details => $"{Duration} · {Size} · {Date}";
         public string GalleryStatus => string.Join(" · ", new[]

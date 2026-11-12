@@ -5,7 +5,7 @@
  AllowDrop="True" DragOver="Import_DragOver" Drop="Import_Drop" Title="RollClip" Icon="pack://application:,,,/Assets/RollClip.ico"
  Width="1120" Height="760" MinWidth="900" MinHeight="660"
  WindowStartupLocation="CenterScreen" WindowStyle="None" ResizeMode="CanResize"
- Background="#060807" Foreground="#F0F3F0" FontFamily="Segoe UI Variable, Segoe UI" FontSize="13"
+ Background="#111214" Foreground="#F3F4F5" FontFamily="Segoe UI Variable, Segoe UI" FontSize="13"
  UseLayoutRounding="True" SnapsToDevicePixels="True"
  TextOptions.TextFormattingMode="Ideal" TextOptions.TextRenderingMode="ClearType">
  <WindowChrome.WindowChrome>
@@ -15,7 +15,7 @@
   <ResourceDictionary Source="GlassTheme.xaml"/>
  </Window.Resources>
 
- <Grid x:Name="RootSurface" Background="#060807">
+ <Grid x:Name="RootSurface" Background="#111214">
   <!-- Full-bleed crisp animated chrome background -->
   <Grid x:Name="ChromeScene" IsHitTestVisible="False">
    <Image x:Name="ChromePoster" Source="Assets/ChromePoster.png" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality"/>
@@ -35,9 +35,9 @@
   </Ellipse>
 
   <!-- Custom Windows 11 Title Bar -->
-  <Grid Height="38" VerticalAlignment="Top" Panel.ZIndex="10">
+  <Grid Height="38" VerticalAlignment="Top" Panel.ZIndex="10" Background="#191A1D">
    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="16,0,0,0" IsHitTestVisible="False">
-    <TextBlock Text="RollClip" FontFamily="{StaticResource HeadingFont}" FontSize="12" FontWeight="SemiBold" Foreground="#9EA69F"/>
+    <TextBlock Text="RollClip" FontFamily="{StaticResource HeadingFont}" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
    </StackPanel>
    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" WindowChrome.IsHitTestVisibleInChrome="True" Margin="0,4,6,0">
     <Button x:Name="MinimizeWindowButton" Style="{StaticResource TitleBarButton}" Click="Minimize_Click" ToolTip="Küçült" AutomationProperties.Name="Küçült">
@@ -53,21 +53,46 @@
   </Grid>
 
   <!-- Main Responsive Content Area -->
-  <Grid Margin="36,48,36,28">
+  <Grid Margin="0,38,0,0">
+   <Grid.ColumnDefinitions>
+    <ColumnDefinition Width="140"/>
+    <ColumnDefinition Width="*"/>
+   </Grid.ColumnDefinitions>
+   <Border Background="#191A1D" BorderBrush="#2A2C30" BorderThickness="0,1,1,0">
+    <StackPanel Margin="10,18">
+     <Button x:Name="HomeNav" Tag="Active" Style="{StaticResource NavigationButton}" Click="Home_Click" Margin="0,0,0,6">
+      <StackPanel Orientation="Horizontal">
+       <ContentControl Style="{StaticResource FluentIcon}" Tag="{StaticResource FluentHome}" FontSize="17" Margin="0,0,9,0"/>
+       <TextBlock Text="Ana ekran" VerticalAlignment="Center"/>
+      </StackPanel>
+     </Button>
+     <Button x:Name="LibraryNav" Style="{StaticResource NavigationButton}" Click="Library_Click" Margin="0,0,0,6">
+      <StackPanel Orientation="Horizontal">
+       <ContentControl Style="{StaticResource FluentIcon}" Tag="{StaticResource FluentVideoClip}" FontSize="17" Margin="0,0,9,0"/>
+       <TextBlock Text="Klip arşivi" VerticalAlignment="Center"/>
+      </StackPanel>
+     </Button>
+     <Button x:Name="SettingsNav" Style="{StaticResource NavigationButton}" Click="Settings_Click">
+      <StackPanel Orientation="Horizontal">
+       <ContentControl Style="{StaticResource FluentIcon}" Tag="{StaticResource FluentSettings}" FontSize="17" Margin="0,0,9,0"/>
+       <TextBlock Text="Ayarlar" VerticalAlignment="Center"/>
+      </StackPanel>
+     </Button>
+    </StackPanel>
+   </Border>
+   <Grid Grid.Column="1">
    <Grid.RowDefinitions>
     <RowDefinition Height="*"/>
     <RowDefinition Height="Auto"/>
    </Grid.RowDefinitions>
 
    <!-- HOME PANEL -->
-   <Grid x:Name="HomePanel" MaxWidth="920" MaxHeight="560" VerticalAlignment="Center" HorizontalAlignment="Stretch">
+   <Grid x:Name="HomePanel" Margin="24,20" MaxWidth="1150" MaxHeight="540" VerticalAlignment="Center" HorizontalAlignment="Stretch">
     <Grid.RenderTransform><TranslateTransform/></Grid.RenderTransform>
     <Grid.RowDefinitions>
      <RowDefinition Height="Auto"/>
      <RowDefinition Height="20"/>
      <RowDefinition Height="*"/>
-     <RowDefinition Height="20"/>
-     <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
     <!-- Brand Header (redundant top utility buttons removed) -->
@@ -76,7 +101,7 @@
       <ContentControl Style="{StaticResource FluentIcon}" FontSize="19" Foreground="{StaticResource NeonBrush}" Tag="{StaticResource FluentVideo}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
      </Border>
      <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
-      <TextBlock x:Name="RollClipHeading" Text="RollClip" FontFamily="{StaticResource HeadingFont}" FontSize="21" FontWeight="SemiBold"/>
+      <TextBlock x:Name="RollClipHeading" Text="RollClip" FontFamily="{StaticResource HeadingFont}" FontSize="28" FontWeight="SemiBold"/>
       <TextBlock Text="Klip al, kes, Discord’a gönder." Style="{StaticResource Caption}" Margin="0,1,0,0"/>
      </StackPanel>
     </StackPanel>
@@ -84,7 +109,7 @@
     <!-- Primary 2-Column Workspace -->
     <Grid Grid.Row="2">
      <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="1.1*"/>
+      <ColumnDefinition Width="1.15*"/>
       <ColumnDefinition Width="20"/>
       <ColumnDefinition Width="1*"/>
      </Grid.ColumnDefinitions>
@@ -111,7 +136,7 @@
        </Grid>
       </local:ChromeGlass>
 
-      <local:ChromeGlass Grid.Row="2" Radius="24" MinHeight="200">
+      <local:ChromeGlass Grid.Row="2" Radius="16" MinHeight="200">
        <Grid Margin="24,20">
         <Grid.RowDefinitions>
          <RowDefinition Height="Auto"/>
@@ -177,8 +202,8 @@
       </Grid.ColumnDefinitions>
 
       <!-- Capture Card -->
-      <local:ChromeGlass Radius="24" MinHeight="276">
-       <Grid Margin="20">
+      <local:ChromeGlass Radius="16" MinHeight="254">
+       <Grid Margin="14">
         <Grid.RowDefinitions>
          <RowDefinition Height="Auto"/>
          <RowDefinition Height="*"/>
@@ -188,11 +213,11 @@
          <Button ToolTipService.ShowOnDisabled="True" DockPanel.Dock="Right" ToolTip="{Binding Content, RelativeSource={RelativeSource Self}}" x:Name="ArmButton" Style="{StaticResource ArmSwitch}" Content="Kaydı başlat" Click="Arm_Click" VerticalAlignment="Top"/>
          <StackPanel>
           <TextBlock Text="Kayıt" FontFamily="{StaticResource HeadingFont}" FontSize="17" FontWeight="SemiBold"/>
-          <TextBlock x:Name="CaptureStatus" Text="Kayıt kapalı" Style="{StaticResource Caption}" Margin="0,6,8,0" TextWrapping="Wrap"/>
+          <TextBlock x:Name="CaptureStatus" Text="Önce kaydı aç" Style="{StaticResource Caption}" Margin="0,6,8,0" TextWrapping="Wrap"/>
          </StackPanel>
         </DockPanel>
 
-        <Button Grid.Row="2" ToolTipService.ShowOnDisabled="True" x:Name="SaveReplayButton" Style="{StaticResource GlassButton}" Content="F8" FontSize="26" FontWeight="SemiBold" IsEnabled="False" Click="SaveReplay_Click" ToolTip="Son klibi MP4 olarak kaydet" AutomationProperties.Name="Klip al · F8"
+        <Button Grid.Row="2" ToolTipService.ShowOnDisabled="True" x:Name="SaveReplayButton" Style="{StaticResource GlassButton}" Content="Klip al · F8" FontSize="18" FontWeight="SemiBold" IsEnabled="False" Click="SaveReplay_Click" ToolTip="Son klibi MP4 olarak kaydet" AutomationProperties.Name="Klip al · F8"
          Height="68" HorizontalAlignment="Stretch">
          <Button.Background>
           <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
@@ -206,8 +231,8 @@
       </local:ChromeGlass>
 
       <!-- Sharing Card -->
-      <local:ChromeGlass Grid.Column="2" Radius="24" MinHeight="276">
-       <Grid Margin="20">
+      <local:ChromeGlass Grid.Column="2" Radius="16" MinHeight="254">
+       <Grid Margin="14">
         <Grid.RowDefinitions>
          <RowDefinition Height="Auto"/>
          <RowDefinition Height="*"/>
@@ -229,36 +254,13 @@
      </Grid>
     </Grid>
 
-    <!-- Clean 3-Item Bottom Navigation Capsule -->
-    <local:ChromeGlass Grid.Row="4" Radius="24" HorizontalAlignment="Center" Padding="8,6">
-     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-      <Button local:UiSounds.Cue="Home2" ToolTip="Ana ekran" Style="{StaticResource NeonButton}" Click="Home_Click" Height="42" Padding="18,0" Margin="0,0,6,0">
-       <StackPanel Orientation="Horizontal">
-        <ContentControl Style="{StaticResource FluentMeasuredIcon}" Tag="{StaticResource FluentHome}" Content="&#xE80F;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{StaticResource NeonBrush}" Margin="0,0,8,0"/>
-        <TextBlock Text="Ana ekran" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
-       </StackPanel>
-      </Button>
-      <Button local:UiSounds.Cue="Library2" Style="{StaticResource GlassButton}" Click="Library_Click" Height="42" Padding="16,0" Margin="0,0,6,0" ToolTip="Klip arşivi" AutomationProperties.Name="Klip arşivi">
-       <StackPanel Orientation="Horizontal">
-        <ContentControl Style="{StaticResource FluentIcon}" FontSize="16" Tag="{StaticResource FluentVideoClip}" Margin="0,0,8,0"/>
-        <TextBlock Text="Klip arşivi" FontSize="13" VerticalAlignment="Center"/>
-       </StackPanel>
-      </Button>
-      <Button x:Name="SettingsNav" Style="{StaticResource GlassButton}" Click="Settings_Click" Height="42" Padding="16,0" ToolTip="Ayarlar" AutomationProperties.Name="Ayarlar">
-       <StackPanel Orientation="Horizontal">
-        <ContentControl Style="{StaticResource FluentIcon}" FontSize="16" Tag="{StaticResource FluentSettings}" Margin="0,0,8,0"/>
-        <TextBlock Text="Ayarlar" FontSize="13" VerticalAlignment="Center"/>
-       </StackPanel>
-      </Button>
-     </StackPanel>
-    </local:ChromeGlass>
    </Grid>
 
    <!-- SETTINGS PANEL -->
-   <Grid x:Name="SettingsPanel" Visibility="Collapsed" MaxWidth="940" MaxHeight="620" VerticalAlignment="Center" HorizontalAlignment="Stretch">
+   <Grid x:Name="SettingsPanel" Visibility="Collapsed" Background="#111214">
     <Grid.RenderTransform><TranslateTransform/></Grid.RenderTransform>
-    <local:ChromeGlass Radius="24">
-     <Grid Margin="28,24">
+    <Border Background="#191A1D" BorderBrush="#2A2C30" BorderThickness="1" CornerRadius="12" Margin="20">
+     <Grid Margin="20,16">
       <Grid.RowDefinitions>
        <RowDefinition Height="Auto"/>
        <RowDefinition Height="*"/>
@@ -266,14 +268,12 @@
       </Grid.RowDefinitions>
 
       <DockPanel Margin="0,0,0,16">
-       <Button local:UiSounds.Cue="Home3" DockPanel.Dock="Right" Style="{StaticResource RoundButton}" Width="36" Height="36" MinHeight="36" Click="Home_Click" ToolTip="Ana ekrana dön" AutomationProperties.Name="Ayarları kapat">
-        <ContentControl Style="{StaticResource FluentIcon}" FontSize="15" Tag="{StaticResource FluentDismiss}"/>
-       </Button>
+
        <TextBlock Text="Ayarlar" FontFamily="{StaticResource HeadingFont}" FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center"/>
       </DockPanel>
 
-      <ScrollViewer x:Name="SettingsScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto">
-       <Grid Margin="0,0,12,0">
+      <ScrollViewer x:Name="SettingsScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" ClipToBounds="True" Padding="0,4">
+       <Grid Margin="0,0,18,0">
         <Grid.ColumnDefinitions>
          <ColumnDefinition Width="*"/>
          <ColumnDefinition Width="28"/>
@@ -402,7 +402,7 @@
          <TextBlock Text="Kayıt sırasında ve arka planda otomatik durur." Style="{StaticResource Caption}" Margin="0,0,0,4"/>
 
          <!-- Archive & Storage Expander -->
-         <Expander x:Name="ArchiveSettings" Header="Arşiv yedekleme ve depolama">
+         <Expander x:Name="ArchiveExpander" Header="Arşiv yedekleme ve depolama">
           <StackPanel>
            <TextBlock x:Name="ArchiveState" Text="Otomatik kopya kapalı" FontWeight="SemiBold" Margin="0,0,0,4"/>
            <TextBlock Text="Drive ile eşitlenen bir klasör seçin; yeni klipler buraya da kopyalanır." Style="{StaticResource Caption}" TextWrapping="Wrap"/>
@@ -422,7 +422,7 @@
             <Button local:UiSounds.Cue="ClearThumbnails1" Style="{StaticResource GlassButton}" Content="Küçük resimleri temizle" Click="ClearThumbnails_Click" Margin="0,0,0,6"/>
            </WrapPanel>
            <DockPanel Margin="0,4,0,4">
-            <TextBlock DockPanel.Dock="Left" Text="Klip sınırı (GB)" Margin="0,0,8,0" VerticalAlignment="Center"/>
+            <TextBlock DockPanel.Dock="Left" Text="Klip sınırı (GB · 0 = sınırsız)" Margin="0,0,8,0" VerticalAlignment="Center"/>
             <TextBox x:Name="StorageLimit" Text="0" AutomationProperties.Name="Klip depolama sınırı, GB"/>
            </DockPanel>
            <CheckBox x:Name="AutoCleanup" Content="Yedeği doğrulanan eski klipleri otomatik temizle"/>
@@ -431,7 +431,7 @@
          </Expander>
 
          <!-- Updates & Diagnostics Expander -->
-         <Expander Header="Güncellemeler ve tanılama">
+         <Expander x:Name="DiagnosticsExpander" Header="Güncellemeler ve tanılama">
           <StackPanel>
            <TextBlock x:Name="CurrentVersionLabel" FontWeight="SemiBold" Margin="0,0,0,4"/>
            <CheckBox x:Name="AutoUpdates" Content="Güncellemeleri otomatik kontrol et"/>
@@ -451,14 +451,14 @@
 
       <Button Grid.Row="2" local:UiSounds.Cue="SaveSettings1" ToolTip="{Binding Content, RelativeSource={RelativeSource Self}}" Style="{StaticResource NeonButton}" Content="Ayarları kaydet" Click="SaveSettings_Click" HorizontalAlignment="Right" Margin="0,16,0,0" Padding="22,8"/>
      </Grid>
-    </local:ChromeGlass>
+    </Border>
    </Grid>
 
    <!-- LIBRARY PANEL -->
-   <Grid x:Name="LibraryPanel" Visibility="Collapsed" MaxWidth="960" MaxHeight="620" VerticalAlignment="Center" HorizontalAlignment="Stretch">
+   <Grid x:Name="LibraryPanel" Visibility="Collapsed" Background="#111214">
     <Grid.RenderTransform><TranslateTransform/></Grid.RenderTransform>
-    <local:ChromeGlass Radius="24">
-     <Grid Margin="28,24">
+    <Border>
+     <Grid Margin="20,16">
       <Grid.RowDefinitions>
        <RowDefinition Height="Auto"/>
        <RowDefinition Height="Auto"/>
@@ -471,19 +471,17 @@
         <Button local:UiSounds.Cue="Import2" Style="{StaticResource GlassButton}" Content="MP4 içe aktar" Click="Import_Click" Margin="0,0,8,0"/>
         <Button local:UiSounds.Cue="Folder1" Style="{StaticResource GlassButton}" Content="Klip klasörü" Click="Folder_Click" Margin="0,0,8,0"/>
         <Button x:Name="RecoverClipsButton" Style="{StaticResource GlassButton}" Content="Klasörü tara" Click="RecoverClips_Click" Margin="0,0,10,0"/>
-        <Button local:UiSounds.Cue="Home4" Style="{StaticResource RoundButton}" Width="36" Height="36" MinHeight="36" Click="Home_Click" ToolTip="Ana ekrana dön" AutomationProperties.Name="Arşivi kapat">
-         <ContentControl Style="{StaticResource FluentIcon}" FontSize="15" Tag="{StaticResource FluentDismiss}"/>
-        </Button>
+
        </StackPanel>
        <TextBlock Text="Klip arşivi" FontFamily="{StaticResource HeadingFont}" FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center"/>
       </DockPanel>
 
       <WrapPanel Grid.Row="1" Margin="0,0,0,10">
-       <TextBox x:Name="GallerySearch" Width="180" Margin="0,0,8,6" ToolTip="Klip adına göre ara" AutomationProperties.Name="Klip adına göre ara" TextChanged="GalleryFilter_Changed"/>
-       <ComboBox x:Name="GalleryGame" Width="140" Margin="0,0,8,6" AutomationProperties.Name="Oyun filtresi" SelectionChanged="GalleryFilter_Changed"/>
-       <ComboBox x:Name="GalleryDate" Width="105" Margin="0,0,8,6" AutomationProperties.Name="Tarih filtresi" SelectionChanged="GalleryFilter_Changed"/>
-       <ComboBox x:Name="GalleryUpload" Width="115" Margin="0,0,8,6" AutomationProperties.Name="Yükleme filtresi" SelectionChanged="GalleryFilter_Changed"/>
-       <ComboBox x:Name="GallerySort" Width="105" Margin="0,0,10,6" AutomationProperties.Name="Sıralama" SelectionChanged="GalleryFilter_Changed"/>
+       <TextBox x:Name="GallerySearch" Tag="Klip ara…" Width="145" Margin="0,0,8,6" ToolTip="Klip adına göre ara" AutomationProperties.Name="Klip adına göre ara" TextChanged="GalleryFilter_Changed"/>
+       <ComboBox x:Name="GalleryGame" Width="119" Margin="0,0,8,6" AutomationProperties.Name="Oyun filtresi" SelectionChanged="GalleryFilter_Changed"/>
+       <ComboBox x:Name="GalleryDate" Width="106" Margin="0,0,8,6" AutomationProperties.Name="Tarih filtresi" SelectionChanged="GalleryFilter_Changed"/>
+       <ComboBox x:Name="GalleryUpload" Width="126" Margin="0,0,8,6" AutomationProperties.Name="Yükleme filtresi" SelectionChanged="GalleryFilter_Changed"/>
+       <ComboBox x:Name="GallerySort" Width="91" Margin="0,0,10,6" AutomationProperties.Name="Sıralama" SelectionChanged="GalleryFilter_Changed"/>
        <CheckBox x:Name="GalleryFavorites" ToolTip="Yalnız favoriler" AutomationProperties.Name="Yalnız favoriler" Click="GalleryFilter_Changed" Margin="0,0,8,6">
         <ContentControl x:Name="FavoriteFilterIcon" Style="{StaticResource FluentFavoriteFilter}" Content="&#x2605;"/>
        </CheckBox>
@@ -495,34 +493,66 @@
       <ListBox x:Name="Library" Grid.Row="2" Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Stretch"
        ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True"
        VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" SelectionChanged="Library_SelectionChanged" AutomationProperties.Name="Klip arşivi">
+       <ListBox.ItemContainerStyle>
+        <Style TargetType="ListBoxItem">
+         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+         <Setter Property="Template">
+          <Setter.Value>
+           <ControlTemplate TargetType="ListBoxItem"><ContentPresenter/></ControlTemplate>
+          </Setter.Value>
+         </Setter>
+        </Style>
+       </ListBox.ItemContainerStyle>
        <ListBox.ItemTemplate>
         <DataTemplate>
          <ItemsControl ItemsSource="{Binding}">
-          <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemsPanel>
+           <ItemsPanelTemplate>
+            <UniformGrid Rows="1" Columns="{Binding Tag, RelativeSource={RelativeSource AncestorType=ListBox}, FallbackValue=1}"/>
+           </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
            <DataTemplate>
-            <Button local:UiSounds.Cue="{Binding Clip.Id, StringFormat=GalleryCard/{0}}" Style="{StaticResource GlassButton}" Margin="3" Padding="8" HorizontalContentAlignment="Stretch" Click="GalleryCard_Click" MouseDoubleClick="GalleryCard_Open">
-             <Grid>
-              <Grid.ColumnDefinitions>
-               <ColumnDefinition Width="88"/>
-               <ColumnDefinition Width="*"/>
-              </Grid.ColumnDefinitions>
-              <Border Background="#101510" CornerRadius="6" Height="50">
-               <Grid>
-                <TextBlock Text="MP4" Foreground="{StaticResource MutedBrush}" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                <Image Stretch="UniformToFill" ClipToBounds="True" Loaded="GalleryImage_Loaded" Unloaded="GalleryImage_Unloaded" DataContextChanged="GalleryImage_ContextChanged" IsVisibleChanged="GalleryImage_VisibilityChanged"/>
+            <Border Margin="0,0,10,10" BorderThickness="1" CornerRadius="10" Background="#202124">
+             <Border.Style>
+              <Style TargetType="Border">
+               <Setter Property="BorderBrush" Value="#32343A"/>
+               <Style.Triggers><DataTrigger Binding="{Binding IsSelected}" Value="True"><Setter Property="BorderBrush" Value="{StaticResource NeonBrush}"/></DataTrigger></Style.Triggers>
+              </Style>
+             </Border.Style>
+             <StackPanel>
+              <Button Style="{StaticResource ClipCardButton}" Click="GalleryCard_Click" MouseDoubleClick="GalleryCard_Open"
+               ToolTip="{Binding Title}" AutomationProperties.Name="{Binding Title}">
+               <Grid >
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <Border x:Name="Thumbnail" Height="132" CornerRadius="9,9,0,0" Background="#151619">
+                 <Grid ClipToBounds="True">
+                  <ContentControl Style="{StaticResource FluentIcon}" Tag="{StaticResource FluentVideoClip}" Foreground="{StaticResource MutedBrush}" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  <Image Stretch="UniformToFill" Loaded="GalleryImage_Loaded" Unloaded="GalleryImage_Unloaded" DataContextChanged="GalleryImage_ContextChanged" IsVisibleChanged="GalleryImage_VisibilityChanged"/>
+                  <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="6" Padding="6,3" CornerRadius="4" Background="#E6101112">
+                   <TextBlock Text="{Binding Duration}" Foreground="White" FontSize="11"/>
+                  </Border>
+                 </Grid>
+                </Border>
+                <StackPanel Grid.Row="1" Margin="12,9">
+                 <DockPanel>
+                  <ContentControl DockPanel.Dock="Left" Style="{StaticResource FluentFavoriteMarker}" Foreground="{StaticResource NeonBrush}" Margin="0,0,4,0"/>
+                  <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" FontWeight="SemiBold" FontSize="14"/>
+                 </DockPanel>
+                 <TextBlock Text="{Binding GalleryStatus}" TextTrimming="CharacterEllipsis" ToolTip="{Binding GalleryStatus}" Style="{StaticResource Caption}" Margin="0,4,0,0"/>
+                 <TextBlock Text="{Binding FileDetails}" TextTrimming="CharacterEllipsis" Style="{StaticResource Caption}" Margin="0,3,0,0"/>
+                </StackPanel>
                </Grid>
-              </Border>
-              <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-               <DockPanel>
-                <ContentControl DockPanel.Dock="Left" Style="{StaticResource FluentFavoriteMarker}" Foreground="{StaticResource TextBrush}" FontWeight="SemiBold"/>
-                <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" FontWeight="SemiBold" FontSize="13"/>
-               </DockPanel>
-               <TextBlock Text="{Binding Details}" TextTrimming="CharacterEllipsis" Style="{StaticResource Caption}" Margin="0,2,0,0"/>
-               <TextBlock Text="{Binding GalleryStatus}" TextTrimming="CharacterEllipsis" ToolTip="{Binding GalleryStatus}" Style="{StaticResource Caption}"/>
-              </StackPanel>
-             </Grid>
-            </Button>
+              </Button>
+              <Button Style="{StaticResource ClipLinkButton}" Content="{Binding LinkActionLabel}" IsEnabled="{Binding CanShare}"
+               Click="GalleryLink_Click" ToolTip="{Binding LinkActionLabel}"/>
+             </StackPanel>
+            </Border>
+            <DataTemplate.Triggers>
+             <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource AncestorType=ListBox}}" Value="1">
+              <Setter TargetName="Thumbnail" Property="Height" Value="76"/>
+             </DataTrigger>
+            </DataTemplate.Triggers>
            </DataTemplate>
           </ItemsControl.ItemTemplate>
          </ItemsControl>
@@ -561,9 +591,15 @@
         <Button x:Name="UploadButton" Style="{StaticResource GlassButton}" Content="Bağlantı oluştur" Click="Upload_Click" Margin="0,0,6,6"/>
         <Button x:Name="CopyButton" Style="{StaticResource GlassButton}" Content="Bağlantıyı kopyala" Click="Copy_Click" Margin="0,0,6,6"/>
         <Button x:Name="CancelUploadButton" Style="{StaticResource GlassButton}" Content="Yüklemeyi iptal et" Click="CancelUpload_Click" Margin="0,0,6,6" Visibility="Collapsed"/>
-        <Button x:Name="FavoriteButton" Style="{StaticResource GlassButton}" Content="Favori" Click="Favorite_Click" Margin="0,0,6,6"/>
-        <Button x:Name="ShowLocationButton" Style="{StaticResource GlassButton}" Content="Konumu aç" Click="ShowLocation_Click" Margin="0,0,6,6"/>
-        <Button x:Name="DeleteClipButton" Style="{StaticResource GlassButton}" Content="Sil" Click="DeleteClip_Click" Margin="0,0,0,6"/>
+        <Button x:Name="MoreActionsButton" Style="{StaticResource GlassButton}" Content="⋯" FontSize="16" Padding="12,4" Click="MoreActions_Click" Margin="0,0,0,6" ToolTip="Diğer işlemler" AutomationProperties.Name="Diğer işlemler">
+         <Button.ContextMenu>
+          <ContextMenu x:Name="ClipActionsMenu">
+           <MenuItem x:Name="FavoriteButton" Header="Favori" Click="Favorite_Click"/>
+           <MenuItem x:Name="ShowLocationButton" Header="Konumu aç" Click="ShowLocation_Click"/>
+           <MenuItem x:Name="DeleteClipButton" Header="Sil" Click="DeleteClip_Click"/>
+          </ContextMenu>
+         </Button.ContextMenu>
+        </Button>
        </WrapPanel>
        <DockPanel Margin="0,2,0,0">
         <ContentControl DockPanel.Dock="Left" Style="{StaticResource FluentFavoriteMarker}" Foreground="{StaticResource MutedBrush}" FontSize="11" DataContext="{Binding DataContext, ElementName=GallerySelection}"/>
@@ -571,7 +607,7 @@
        </DockPanel>
       </StackPanel>
      </Grid>
-    </local:ChromeGlass>
+    </Border>
    </Grid>
 
    <!-- Global Status & Progress Bar -->
@@ -579,6 +615,7 @@
     <ProgressBar x:Name="UploadProgress" Height="3" Minimum="0" Maximum="100" Visibility="Collapsed" Foreground="{StaticResource NeonBrush}" Background="#182019" BorderThickness="0"/>
     <TextBlock x:Name="StatusMessage" Foreground="#A5ADA6" FontSize="12" TextAlignment="Center" TextWrapping="Wrap" Margin="0,6,0,0" AutomationProperties.LiveSetting="Polite"/>
    </StackPanel>
+   </Grid>
   </Grid>
  </Grid>
 </Window>

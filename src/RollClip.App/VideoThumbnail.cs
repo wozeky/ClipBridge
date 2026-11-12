@@ -13,9 +13,12 @@ internal static class VideoThumbnail
     private static readonly string Ffmpeg = Path.Combine(AppContext.BaseDirectory, "ffmpeg", "bin", "ffmpeg.exe");
 
     public static Task<BitmapSource?> LoadAsync(Clip clip, string cache, CancellationToken token) =>
-        Task.Run(() => LoadCoreAsync(clip, cache, token), token);
+        Task.Run(() => LoadCoreAsync(clip, cache, filmstrip: false, token), token);
 
-    private static async Task<BitmapSource?> LoadCoreAsync(Clip clip, string cache, CancellationToken token)
+    public static Task<BitmapSource?> LoadFilmstripAsync(Clip clip, string cache, CancellationToken token) =>
+        Task.Run(() => LoadCoreAsync(clip, cache, filmstrip: true, token), token);
+
+    private static async Task<BitmapSource?> LoadCoreAsync(Clip clip, string cache, bool filmstrip, CancellationToken token)
     {
         var source = new FileInfo(clip.FilePath);
         if (!source.Exists)
@@ -23,8 +26,9 @@ internal static class VideoThumbnail
         var size = source.Length;
         var modified = source.LastWriteTimeUtc;
         var fingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
-            FormattableString.Invariant($"{source.FullName}|{size}|{modified.Ticks}|3"))));
-        var prefix = clip.Id.ToString("N") + "-";
+            FormattableString.Invariant($"{source.FullName}|{size}|{modified.Ticks}|4"))));
+        var clipPrefix = clip.Id.ToString("N") + "-";
+        var prefix = filmstrip ? clipPrefix + "strip-" : clipPrefix;
         var output = Path.Combine(cache, prefix + fingerprint + ".jpg");
         var invalid = output + ".invalid";
         if (ReadBitmap(output) is { } existing)
@@ -43,14 +47,18 @@ internal static class VideoThumbnail
             var temporary = output + ".partial";
             try
             {
-                var seek = Math.Min(3, (clip.Duration?.TotalSeconds ?? 0) * 0.15);
+                var seconds = clip.Duration?.TotalSeconds ?? 0;
+                var seek = filmstrip ? 0 : Math.Min(3, seconds * 0.15);
+                var filter = filmstrip
+                    ? FormattableString.Invariant($"fps={8 / Math.Max(0.25, seconds):F6}:start_time=0,scale=112:64:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=112:64:(ow-iw)/2:(oh-ih)/2,tile=8x1")
+                    : "scale=480:270:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=480:270:(ow-iw)/2:(oh-ih)/2";
                 var start = new ProcessStartInfo(Ffmpeg)
                 {
                     UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true
                 };
                 string[] arguments = ["-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-threads", "1",
                     "-ss", FormattableString.Invariant($"{seek:F3}"), "-i", source.FullName, "-map", "0:v:0",
-                    "-vf", "scale=240:136:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=240:136:(ow-iw)/2:(oh-ih)/2",
+                    "-vf", filter,
                     "-filter_threads", "1", "-frames:v", "1", "-threads", "1", "-f", "mjpeg", temporary];
                 foreach (var argument in arguments)
                     start.ArgumentList.Add(argument);
@@ -90,7 +98,7 @@ internal static class VideoThumbnail
                     File.WriteAllText(invalid, "");
                 }
                 foreach (var old in Directory.EnumerateFiles(cache, prefix + "*"))
-                    if (old != output && old != invalid)
+                    if (old != output && old != invalid && (filmstrip || !Path.GetFileName(old).StartsWith(clipPrefix + "strip-", StringComparison.Ordinal)))
                         File.Delete(old);
                 return image;
             }

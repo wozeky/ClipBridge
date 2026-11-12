@@ -11,7 +11,7 @@ namespace RollClip.App;
 public partial class MainWindow
 {
     private readonly Dictionary<Image, CancellationTokenSource> _thumbnailRequests = [];
-    private IReadOnlyList<ClipRow> _galleryRows = [];
+    private ClipRow[] _galleryRows = [];
     private Guid? _gallerySelection;
     private int _galleryCount;
     private bool _galleryMutating;
@@ -24,6 +24,7 @@ public partial class MainWindow
             T("Yükleniyor", "Uploading"), T("Yüklendi", "Uploaded"), T("Başarısız", "Failed"), T("İptal", "Cancelled") };
         GallerySort.ItemsSource = new[] { T("En yeni", "Newest"), T("En eski", "Oldest"), T("En uzun", "Longest"), T("En büyük", "Largest") };
         GalleryDate.SelectedIndex = GalleryUpload.SelectedIndex = GallerySort.SelectedIndex = 0;
+        GalleryGrid.IsChecked = true;
         _refreshingLibrary = false;
     }
 
@@ -50,9 +51,10 @@ public partial class MainWindow
             3 => filtered.OrderByDescending(clip => clip.Bytes),
             _ => filtered
         };
-        var rows = sorted.Select(clip => new ClipRow(clip, _settings.English)).ToArray();
+        var sortedClips = sorted.ToArray();
         var selectedId = select ?? _gallerySelection;
         var columns = GalleryGrid.IsChecked == true ? 3 : 1;
+        Library.Tag = columns;
         _refreshingLibrary = true;
         try
         {
@@ -61,18 +63,20 @@ public partial class MainWindow
                 GalleryGame.ItemsSource = games;
                 GalleryGame.SelectedIndex = oldGame is null ? 0 : Math.Max(0, Array.IndexOf(games, oldGame));
             }
-            if (Library.ItemsSource is not ClipRow[][] lines || lines.FirstOrDefault()?.Length != Math.Min(columns, rows.Length)
-                || !_galleryRows.SequenceEqual(rows))
-                Library.ItemsSource = rows.Chunk(columns).ToArray();
-            _galleryRows = rows;
-            var position = Array.FindIndex(rows, row => row.Clip.Id == selectedId);
+            if (Library.ItemsSource is not ClipRow[][] lines || lines.FirstOrDefault()?.Length != Math.Min(columns, sortedClips.Length)
+                || !_galleryRows.Select(row => row.Clip).SequenceEqual(sortedClips))
+            {
+                _galleryRows = sortedClips.Select(clip => new ClipRow(clip, _settings.English)).ToArray();
+                Library.ItemsSource = _galleryRows.Chunk(columns).ToArray();
+            }
+            var position = Array.FindIndex(_galleryRows, row => row.Clip.Id == selectedId);
             _gallerySelection = position >= 0 ? selectedId : null;
             Library.SelectedIndex = position < 0 ? -1 : position / columns;
             if (select is not null && Library.SelectedItem is { } item && Library.IsVisible)
                 Library.ScrollIntoView(item);
         }
         finally { _refreshingLibrary = false; }
-        GalleryEmpty.Visibility = rows.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        GalleryEmpty.Visibility = _galleryRows.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         GalleryEmpty.Text = _galleryCount == 0 ? T("Henüz klip yok. Klip al veya bir MP4’ü buraya bırak.", "No clips yet. Capture one or drop an MP4 here.")
             : T("Bu filtrelerle eşleşen klip yok.", "No clips match these filters.");
         UpdateGallerySelection();
@@ -100,6 +104,8 @@ public partial class MainWindow
     {
         RefreshButtons();
         var row = _galleryRows.FirstOrDefault(item => item.Clip.Id == _gallerySelection);
+        foreach (var item in _galleryRows)
+            item.IsSelected = ReferenceEquals(item, row);
         GallerySelection.DataContext = row;
         GallerySelection.Text = row is null ? "" : string.Join(" · ", new[] { row.Title, row.ShareLabel }.OfType<string>());
     }
@@ -113,6 +119,15 @@ public partial class MainWindow
             Library.SelectedItem = line;
             UpdateGallerySelection();
         }
+    }
+
+    private void GalleryLink_Click(object sender, RoutedEventArgs args)
+    {
+        GalleryCard_Click(sender, args);
+        if (CopyButton.IsEnabled)
+            Copy_Click(sender, args);
+        else if (UploadButton.IsEnabled)
+            Upload_Click(sender, args);
     }
 
     private async void GalleryCard_Open(object sender, MouseButtonEventArgs args)

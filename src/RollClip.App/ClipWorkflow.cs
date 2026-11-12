@@ -236,7 +236,8 @@ public partial class MainWindow
         {
             ShowWindow();
             var editor = new ClipEditor(clip, Path.Combine(_clipsPath, "Paylaşım"), _settings.English,
-                bookmarks => _store?.Change(clip.Id, current => current with { Bookmarks = bookmarks })) { Owner = this };
+                bookmarks => _store?.Change(clip.Id, current => current with { Bookmarks = bookmarks }),
+                Path.Combine(_root, "thumbnails")) { Owner = this };
             if (editor.ShowDialog() == true && editor.SavedPath is { } path)
             {
                 if (editor.ReplaceRequested && _store is { } store && _archiveGate.Wait(0))

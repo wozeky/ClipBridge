@@ -66,7 +66,7 @@ jobs:
           $marker = Join-Path $env:RUNNER_TEMP "rollclip-window.txt"
           Remove-Item -LiteralPath $marker -ErrorAction SilentlyContinue
           $app = Start-Process -FilePath "./artifacts/win-x64/RollClip.exe" -ArgumentList "--smoke-test", "`"$marker`"" -PassThru
-          if (-not $app.WaitForExit(30000)) {
+          if (-not $app.WaitForExit(55000)) {
             Stop-Process -Id $app.Id -Force
             throw "RollClip did not exit after rendering the window."
           }
@@ -75,7 +75,8 @@ jobs:
             throw "RollClip did not render the window successfully. Exit code: $($app.ExitCode)"
           }
           $screenshot = [IO.Path]::ChangeExtension($marker, ".png")
-          if (-not (Test-Path -LiteralPath $screenshot)) {
+          $editor = [IO.Path]::ChangeExtension($marker, ".editor.png")
+          if (-not (Test-Path -LiteralPath $screenshot) -or -not (Test-Path -LiteralPath $editor)) {
             throw "WPF did not export the real application screenshot."
           }
       - name: Verify animated chrome and pause lifecycle on hosted Windows
