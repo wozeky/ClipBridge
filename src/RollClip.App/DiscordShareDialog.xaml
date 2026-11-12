@@ -1,33 +1,41 @@
 <Window x:Class="RollClip.App.DiscordShareDialog"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Title="Discord'a gönder" Width="510" SizeToContent="Height" ResizeMode="NoResize"
- WindowStartupLocation="CenterOwner" Background="#151715" Foreground="#F1F5EF" FontSize="13">
- <StackPanel Margin="22">
-  <TextBlock x:Name="Heading" Text="Discord'a gönder" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,10"/>
-  <TextBlock x:Name="Description" Text="Bir sunucu kanalı seç. Dosya kanalın webhook'u adına gönderilir."
-    TextWrapping="Wrap" Margin="0,0,0,8"/>
-  <ComboBox x:Name="Channels" DisplayMemberPath="Name" SelectionChanged="ChannelChanged" Margin="0,0,0,8"
-    AutomationProperties.Name="Kayıtlı Discord kanalları"/>
-  <WrapPanel Margin="0,0,0,14">
-   <Button x:Name="Send" Content="MP4'ü gönder" Click="Send_Click" IsEnabled="False" Padding="12,5" Margin="0,0,7,0"/>
-   <Button x:Name="Remove" Content="Kanalı kaldır" Click="Remove_Click" IsEnabled="False" Padding="10,5"/>
-  </WrapPanel>
-  <TextBlock x:Name="AddLabel" Text="Kanal ekle" FontWeight="SemiBold" Margin="0,0,0,6"/>
-  <TextBlock x:Name="Help" Text="Discord → Sunucu Ayarları → Entegrasyonlar → Webhook'lar. Kanal için oluşturduğun webhook'un adresini aşağıya gir."
-    TextWrapping="Wrap" Margin="0,0,0,7"/>
-  <TextBlock x:Name="NameLabel" Text="Kanal adı (örnek: Sunucum · #klipler)" Margin="0,0,0,4"/>
-  <TextBox x:Name="ChannelName" MaxLength="70" AutomationProperties.Name="Kanal adı" Margin="0,0,0,7"/>
-  <TextBlock x:Name="AddressLabel" Text="Discord webhook adresi" Margin="0,0,0,4"/>
-  <PasswordBox x:Name="Address" MaxLength="260" AutomationProperties.Name="Discord webhook adresi" Margin="0,0,0,7"/>
-  <Button x:Name="Add" Content="Kanalı kaydet" Click="Add_Click" HorizontalAlignment="Left" Padding="10,5" Margin="0,0,0,10"/>
-  <Separator/>
-  <TextBlock x:Name="DirectHelp" Text="Arkadaş veya grup sohbeti için dosyayı panoya hazırla ve Discord'da gönder."
-    TextWrapping="Wrap" Margin="0,8,0,8"/>
-  <WrapPanel>
-   <Button x:Name="Direct" Content="Discord'u aç ve MP4'ü kopyala" Click="Direct_Click" Padding="10,5" Margin="0,0,7,0"/>
-   <Button x:Name="Cancel" Content="Vazgeç" IsCancel="True" Padding="10,5"/>
-  </WrapPanel>
-  <TextBlock x:Name="Status" TextWrapping="Wrap" Margin="0,9,0,0" AutomationProperties.LiveSetting="Polite"/>
- </StackPanel>
+ Title="Discord'a gönder" Icon="pack://application:,,,/Assets/RollClip.ico"
+ Width="520" SizeToContent="Height" ResizeMode="NoResize"
+ WindowStartupLocation="CenterOwner" Background="#0C0F0D" Foreground="#F0F3F0"
+ FontFamily="Segoe UI Variable, Segoe UI" FontSize="13"
+ UseLayoutRounding="True" SnapsToDevicePixels="True">
+ <Window.Resources>
+  <ResourceDictionary Source="GlassTheme.xaml"/>
+ </Window.Resources>
+ <Border Margin="18" Padding="20" Background="#121714" BorderBrush="{StaticResource MetalRim}" BorderThickness="1" CornerRadius="16">
+  <StackPanel>
+   <TextBlock x:Name="Heading" Text="Discord'a gönder" FontFamily="{StaticResource HeadingFont}" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,8"/>
+   <TextBlock x:Name="Description" Text="Bir sunucu kanalı seç. Dosya kanalın webhook'u adına gönderilir."
+     Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+   <ComboBox x:Name="Channels" DisplayMemberPath="Name" SelectionChanged="ChannelChanged" Margin="0,0,0,8"
+     AutomationProperties.Name="Kayıtlı Discord kanalları"/>
+   <WrapPanel Margin="0,0,0,14">
+    <Button x:Name="Send" Style="{StaticResource NeonButton}" Content="MP4'ü gönder" Click="Send_Click" IsEnabled="False" Padding="14,6" Margin="0,0,8,0"/>
+    <Button x:Name="Remove" Style="{StaticResource GlassButton}" Content="Kanalı kaldır" Click="Remove_Click" IsEnabled="False" Padding="12,6"/>
+   </WrapPanel>
+   <TextBlock x:Name="AddLabel" Text="KANAL EKLE" Style="{StaticResource SectionLabel}" Margin="0,0,0,6"/>
+   <TextBlock x:Name="Help" Text="Discord → Sunucu Ayarları → Entegrasyonlar → Webhook'lar. Kanal için oluşturduğun webhook'un adresini aşağıya gir."
+     Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+   <TextBlock x:Name="NameLabel" Text="Kanal adı (örnek: Sunucum · #klipler)" Style="{StaticResource Caption}" Margin="0,0,0,4"/>
+   <TextBox x:Name="ChannelName" MaxLength="70" AutomationProperties.Name="Kanal adı" Margin="0,0,0,8"/>
+   <TextBlock x:Name="AddressLabel" Text="Discord webhook adresi" Style="{StaticResource Caption}" Margin="0,0,0,4"/>
+   <PasswordBox x:Name="Address" MaxLength="260" Background="#B80C100D" Foreground="#F0F3F0" BorderBrush="{StaticResource MetalRim}" Padding="10,7" AutomationProperties.Name="Discord webhook adresi" Margin="0,0,0,10"/>
+   <Button x:Name="Add" Style="{StaticResource GlassButton}" Content="Kanalı kaydet" Click="Add_Click" HorizontalAlignment="Left" Padding="12,6" Margin="0,0,0,12"/>
+   <Border Height="1" Background="#22FFFFFF" Margin="0,0,0,10"/>
+   <TextBlock x:Name="DirectHelp" Text="Arkadaş veya grup sohbeti için dosyayı panoya hazırla ve Discord'da gönder."
+     Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+   <WrapPanel>
+    <Button x:Name="Direct" Style="{StaticResource NeonButton}" Content="Discord'u aç ve MP4'ü kopyala" Click="Direct_Click" Padding="14,6" Margin="0,0,8,0"/>
+    <Button x:Name="Cancel" Style="{StaticResource GlassButton}" Content="Vazgeç" IsCancel="True" Padding="12,6"/>
+   </WrapPanel>
+   <TextBlock x:Name="Status" Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,10,0,0" AutomationProperties.LiveSetting="Polite"/>
+  </StackPanel>
+ </Border>
 </Window>

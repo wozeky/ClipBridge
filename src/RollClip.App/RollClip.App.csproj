@@ -10,7 +10,7 @@
     <AssemblyName>RollClip</AssemblyName>
     <ApplicationIcon>Assets\RollClip.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>0.4.7</Version>
+    <Version>0.4.6</Version>
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Assets/RollClip.ico" />

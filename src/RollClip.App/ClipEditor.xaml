@@ -2,57 +2,144 @@
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:local="clr-namespace:RollClip.App"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Title="RollClip · Klibi hazırla" Width="720" Height="620" MinWidth="560" MinHeight="540"
- WindowStartupLocation="CenterOwner" Background="#151715" Foreground="#F1F5EF" FontSize="13">
- <Grid Margin="20">
+ Title="RollClip · Klibi hazırla" Icon="pack://application:,,,/Assets/RollClip.ico"
+ Width="1080" Height="680" MinWidth="860" MinHeight="560"
+ WindowStartupLocation="CenterOwner" Background="#0A0D0B" Foreground="#F0F3F0"
+ FontFamily="Segoe UI Variable, Segoe UI" FontSize="13"
+ UseLayoutRounding="True" SnapsToDevicePixels="True">
+ <Window.Resources>
+  <ResourceDictionary Source="GlassTheme.xaml"/>
+ </Window.Resources>
+
+ <Grid>
   <Grid.RowDefinitions>
-   <RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-   <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+   <RowDefinition Height="52"/>
+   <RowDefinition Height="*"/>
+   <RowDefinition Height="138"/>
   </Grid.RowDefinitions>
-  <Border Background="#080908" CornerRadius="8">
-   <MediaElement x:Name="Preview" LoadedBehavior="Manual" UnloadedBehavior="Close" Stretch="Uniform"
-    Volume="{Binding ElementName=PreviewVolume, Path=Value}" MediaOpened="Preview_Opened" MediaFailed="Preview_Failed" MediaEnded="Preview_Ended"/>
-  </Border>
-  <DockPanel Grid.Row="1" Margin="0,10,0,0">
-   <Button x:Name="PlayButton" Content="Oynat" Width="78" Click="Play_Click" IsEnabled="False" Margin="0,0,12,0"/>
-   <Button x:Name="PreviewRangeButton" Content="Seçimi oynat" IsEnabled="False" Click="PreviewRange_Click" Margin="0,0,8,0" Padding="8,3"/>
-   <Slider x:Name="PreviewVolume" DockPanel.Dock="Right" Width="64" Minimum="0" Maximum="1" Value=".7" Margin="6,0,0,0"
-    AutomationProperties.Name="Önizleme ses seviyesi" ToolTip="Önizleme ses seviyesi"/>
-   <TextBlock x:Name="PositionText" DockPanel.Dock="Right" Width="90" Margin="12,0,0,0" VerticalAlignment="Center"/>
-   <Slider x:Name="Timeline" Minimum="0" IsMoveToPointEnabled="True" ValueChanged="Timeline_Changed"
-    AutomationProperties.Name="Önizleme konumu"/>
-  </DockPanel>
-  <StackPanel Grid.Row="2" Margin="0,6,0,0">
-   <Canvas x:Name="BookmarkRail" Height="14" Background="#262A26" SizeChanged="BookmarkRail_Resized"
-    AutomationProperties.Name="Zaman çizelgesi yer imleri"/>
-   <DockPanel Margin="0,5,0,0">
-    <Button local:UiSounds.Cue="AddBookmark1" Content="Yer imi ekle" Click="AddBookmark_Click" DockPanel.Dock="Left" Padding="8,4" Margin="0,0,8,0"/>
-    <Button local:UiSounds.Cue="RemoveBookmark1" Content="Sil" Click="RemoveBookmark_Click" DockPanel.Dock="Right" Padding="8,4" Margin="8,0,0,0"/>
-    <ComboBox x:Name="BookmarkChoice" SelectionChanged="Bookmark_Changed" AutomationProperties.Name="Yer imine git"/>
+
+  <!-- STUDIO TOP HEADER BAR -->
+  <Border Grid.Row="0" Background="#101512" BorderBrush="#1FFFFFFF" BorderThickness="0,0,0,1" Padding="18,0">
+   <DockPanel>
+    <!-- Top-Right Action & Render Buttons -->
+    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+     <Button x:Name="CancelButton" Style="{StaticResource GlassButton}" Content="İptal" Click="Cancel_Click" Padding="12,5" Margin="0,0,8,0" IsEnabled="False"/>
+     <Button x:Name="SaveButton" Style="{StaticResource GlassButton}" Content="Kırpılmış kopyayı kaydet" Click="Save_Click" Padding="14,6" Margin="0,0,8,0"/>
+     <Button x:Name="DiscordButton" Style="{StaticResource GlassButton}" Content="Paylaşım dosyasını kopyala" Click="Discord_Click" Padding="14,6" Margin="0,0,8,0"/>
+     <Button x:Name="SendDiscordButton" Style="{StaticResource NeonButton}" Content="Discord'a gönder" FontWeight="SemiBold" Click="SendDiscord_Click" Padding="16,6"/>
+    </StackPanel>
+
+    <!-- Top-Left Studio Title -->
+    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+     <Border Width="32" Height="32" CornerRadius="8" Background="#B8162E0D" BorderBrush="#608FFF39" BorderThickness="1" Margin="0,0,12,0">
+      <ContentControl Style="{StaticResource FluentIcon}" FontSize="15" Foreground="{StaticResource NeonBrush}" Tag="{StaticResource FluentVideoClip}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+     </Border>
+     <TextBlock Text="RollClip Studio · Klibi hazırla" FontFamily="{StaticResource HeadingFont}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+    </StackPanel>
    </DockPanel>
-  </StackPanel>
-  <WrapPanel Grid.Row="3" Margin="0,12,0,0">
-   <Button local:UiSounds.Cue="SetStart1" Content="Başlangıcı burada yap" Click="SetStart_Click" Padding="8,4" Margin="0,0,8,5"/>
-   <TextBox x:Name="StartBox" Width="65" Margin="0,0,14,5" AutomationProperties.Name="Başlangıç, saniye"/>
-   <Button local:UiSounds.Cue="SetEnd1" Content="Bitişi burada yap" Click="SetEnd_Click" Padding="8,4" Margin="0,0,8,5"/>
-   <TextBox x:Name="EndBox" Width="65" Margin="0,0,14,5" AutomationProperties.Name="Bitiş, saniye"/>
-   <CheckBox x:Name="IncludeMic" Content="Mikrofonu ekle" IsChecked="True" Foreground="#F1F5EF" Margin="0,4,12,5"/>
-   <CheckBox x:Name="Mute" Content="Sesi kapat" Foreground="#F1F5EF" Margin="0,4,0,5"/>
-  </WrapPanel>
-  <WrapPanel Grid.Row="4" Margin="0,9,0,0">
-   <ComboBox x:Name="ExportSizeChoice" Width="112" Margin="0,0,8,5" AutomationProperties.Name="Dosya boyutu hedefi"/>
-   <Button x:Name="DiscordButton" Content="Paylaşım dosyasını kopyala" Click="Discord_Click" Padding="12,6" Margin="0,0,8,5"/>
-   <Button x:Name="SendDiscordButton" Content="Discord'a gönder" Click="SendDiscord_Click" Padding="12,6" Margin="0,0,8,5"/>
-   <Button x:Name="OpenDiscordMessage" Content="Mesajı aç" Click="OpenDiscordMessage_Click" Padding="10,6" Margin="0,0,8,5" Visibility="Collapsed"/>
-   <Button x:Name="SaveButton" Content="Kırpılmış kopyayı kaydet" Click="Save_Click" Padding="12,6" Margin="0,0,8,5"/>
-   <Button x:Name="OpenCopyButton" Content="Paylaşım kopyasını aç" Click="OpenCopy_Click" Padding="10,6" Margin="0,0,8,5" IsEnabled="False"/>
-   <Button x:Name="CancelButton" Content="İptal" Click="Cancel_Click" Padding="10,6" IsEnabled="False"/>
-  </WrapPanel>
-  <StackPanel Grid.Row="5" Margin="0,6,0,0">
-   <CheckBox x:Name="ReplaceOriginal" Content="Yerel orijinalin yerine kaydet" Foreground="#F1F5EF" Margin="0,0,0,6"/>
-   <ProgressBar x:Name="ExportProgress" Height="4" Minimum="0" Maximum="100" Visibility="Collapsed" AutomationProperties.Name="Dışa aktarma ilerlemesi"/>
-   <TextBlock x:Name="Feedback" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"
-    Text="Başlangıç ve bitiş saniye cinsinden. Paylaşım kopyası seçilen boyut sınırına uyar."/>
-  </StackPanel>
+  </Border>
+
+  <!-- MIDDLE WORKSPACE: Center Video Canvas + Right Inspector Sidebar -->
+  <Grid Grid.Row="1">
+   <Grid.ColumnDefinitions>
+    <ColumnDefinition Width="*"/>
+    <ColumnDefinition Width="300"/>
+   </Grid.ColumnDefinitions>
+
+   <!-- Center Video Preview Stage -->
+   <Border Grid.Column="0" Background="#050706" Margin="18,16,12,12" CornerRadius="12" BorderBrush="#1CFFFFFF" BorderThickness="1" ClipToBounds="True">
+    <Grid>
+     <MediaElement x:Name="Preview" LoadedBehavior="Manual" UnloadedBehavior="Close" Stretch="Uniform"
+      Volume="{Binding ElementName=PreviewVolume, Path=Value}" MediaOpened="Preview_Opened" MediaFailed="Preview_Failed" MediaEnded="Preview_Ended"/>
+    </Grid>
+   </Border>
+
+   <!-- Right Inspector Panel (Audio, Trim & Export Options) -->
+   <Border Grid.Column="1" Background="#101512" BorderBrush="#1FFFFFFF" BorderThickness="1,0,0,0" Padding="18,16">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+     <StackPanel>
+      <TextBlock Text="SES &amp; MİKROFON" Style="{StaticResource SectionLabel}" Margin="0,0,0,10"/>
+
+      <DockPanel Margin="0,0,0,10">
+       <TextBlock DockPanel.Dock="Left" Text="Önizleme sesi" VerticalAlignment="Center" Margin="0,0,10,0"/>
+       <Slider x:Name="PreviewVolume" Minimum="0" Maximum="1" Value=".7" AutomationProperties.Name="Önizleme ses seviyesi" ToolTip="Önizleme ses seviyesi"/>
+      </DockPanel>
+
+      <CheckBox x:Name="IncludeMic" Content="Mikrofonu ekle" IsChecked="True" Margin="0,4,0,4"/>
+      <CheckBox x:Name="Mute" Content="Sesi kapat" Margin="0,4,0,8"/>
+
+      <TextBlock Text="KIRPMA ARALIĞI (SN)" Style="{StaticResource SectionLabel}"/>
+      <Grid Margin="0,0,0,8">
+       <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="10"/>
+        <ColumnDefinition Width="*"/>
+       </Grid.ColumnDefinitions>
+       <StackPanel>
+        <TextBlock Text="Başlangıç" Style="{StaticResource Caption}" Margin="0,0,0,4"/>
+        <TextBox x:Name="StartBox" AutomationProperties.Name="Başlangıç, saniye"/>
+        <Button local:UiSounds.Cue="SetStart1" Style="{StaticResource GlassButton}" Content="Başlangıcı burada yap" Click="SetStart_Click" FontSize="11" Padding="8,5" Margin="0,6,0,0"/>
+       </StackPanel>
+       <StackPanel Grid.Column="2">
+        <TextBlock Text="Bitiş" Style="{StaticResource Caption}" Margin="0,0,0,4"/>
+        <TextBox x:Name="EndBox" AutomationProperties.Name="Bitiş, saniye"/>
+        <Button local:UiSounds.Cue="SetEnd1" Style="{StaticResource GlassButton}" Content="Bitişi burada yap" Click="SetEnd_Click" FontSize="11" Padding="8,5" Margin="0,6,0,0"/>
+       </StackPanel>
+      </Grid>
+
+      <TextBlock Text="YER İMLERİ" Style="{StaticResource SectionLabel}"/>
+      <ComboBox x:Name="BookmarkChoice" SelectionChanged="Bookmark_Changed" AutomationProperties.Name="Yer imine git" Margin="0,0,0,6"/>
+      <WrapPanel>
+       <Button local:UiSounds.Cue="AddBookmark1" Style="{StaticResource GlassButton}" Content="Yer imi ekle" Click="AddBookmark_Click" FontSize="12" Padding="10,5" Margin="0,0,6,6"/>
+       <Button local:UiSounds.Cue="RemoveBookmark1" Style="{StaticResource GlassButton}" Content="Sil" Click="RemoveBookmark_Click" FontSize="12" Padding="10,5" Margin="0,0,0,6"/>
+      </WrapPanel>
+
+      <TextBlock Text="DIŞA AKTARMA HEDEFİ" Style="{StaticResource SectionLabel}"/>
+      <ComboBox x:Name="ExportSizeChoice" AutomationProperties.Name="Dosya boyutu hedefi" Margin="0,0,0,8"/>
+      <CheckBox x:Name="ReplaceOriginal" Content="Yerel orijinalin yerine kaydet" Margin="0,2,0,8"/>
+
+      <WrapPanel>
+       <Button x:Name="OpenCopyButton" Style="{StaticResource GlassButton}" Content="Paylaşım kopyasını aç" Click="OpenCopy_Click" FontSize="12" Padding="10,5" Margin="0,0,6,6" IsEnabled="False"/>
+       <Button x:Name="OpenDiscordMessage" Style="{StaticResource NeonButton}" Content="Mesajı aç" Click="OpenDiscordMessage_Click" FontSize="12" Padding="10,5" Margin="0,0,0,6" Visibility="Collapsed"/>
+      </WrapPanel>
+     </StackPanel>
+    </ScrollViewer>
+   </Border>
+  </Grid>
+
+  <!-- BOTTOM TIMELINE DOCK (Video Studio Timeline + Transport Controls) -->
+  <Border Grid.Row="2" Background="#0D110F" BorderBrush="#1FFFFFFF" BorderThickness="0,1,0,0" Padding="20,12">
+   <Grid>
+    <Grid.RowDefinitions>
+     <RowDefinition Height="Auto"/>
+     <RowDefinition Height="Auto"/>
+     <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <!-- Transport Controls Bar -->
+    <DockPanel Grid.Row="0" Margin="0,0,0,10">
+     <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+      <Button x:Name="PlayButton" Style="{StaticResource NeonButton}" Content="Oynat" Width="88" Click="Play_Click" IsEnabled="False" Margin="0,0,8,0" Padding="12,5"/>
+      <Button x:Name="PreviewRangeButton" Style="{StaticResource GlassButton}" Content="Seçimi oynat" IsEnabled="False" Click="PreviewRange_Click" Padding="12,5" Margin="0,0,14,0"/>
+      <Border Background="#161C18" CornerRadius="6" Padding="10,4" VerticalAlignment="Center">
+       <TextBlock x:Name="PositionText" Text="0 sn" FontFamily="Consolas, Segoe UI" FontSize="12" Foreground="{StaticResource NeonBrush}" VerticalAlignment="Center"/>
+      </Border>
+     </StackPanel>
+
+     <TextBlock x:Name="Feedback" DockPanel.Dock="Right" Text="Başlangıç ve bitiş saniye cinsinden. Paylaşım kopyası seçilen boyut sınırına uyar."
+      Style="{StaticResource Caption}" VerticalAlignment="Center" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" MaxWidth="520" AutomationProperties.LiveSetting="Polite"/>
+    </DockPanel>
+
+    <!-- Scrubber & Filmstrip Bookmark Rail -->
+    <StackPanel Grid.Row="1">
+     <Slider x:Name="Timeline" Minimum="0" IsMoveToPointEnabled="True" ValueChanged="Timeline_Changed" AutomationProperties.Name="Önizleme konumu" Margin="0,0,0,6"/>
+     <Border Background="#161B18" BorderBrush="#24FFFFFF" BorderThickness="1" CornerRadius="6" Padding="2">
+      <Canvas x:Name="BookmarkRail" Height="18" Background="Transparent" SizeChanged="BookmarkRail_Resized" AutomationProperties.Name="Zaman çizelgesi yer imleri"/>
+     </Border>
+    </StackPanel>
+
+    <ProgressBar Grid.Row="2" x:Name="ExportProgress" Height="4" Minimum="0" Maximum="100" Visibility="Collapsed" Foreground="{StaticResource NeonBrush}" Background="#182019" BorderThickness="0" Margin="0,8,0,0" AutomationProperties.Name="Dışa aktarma ilerlemesi"/>
+   </Grid>
+  </Border>
  </Grid>
 </Window>
