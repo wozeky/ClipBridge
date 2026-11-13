@@ -36,7 +36,12 @@ internal static class EnglishUi
         ["Klip kaydedilince hafif bildirim sesi çal"] = "Play a subtle sound when a clip is saved",
         ["Son klibi paylaş"] = "Share latest clip",
         ["KAYIT VE SES"] = "CAPTURE & AUDIO",
-        ["PAYLAŞIM VE GÖRÜNÜM"] = "SHARING & APPEARANCE",
+        ["SES"] = "AUDIO", ["KLİP KAYDEDİLDİĞİNDE"] = "WHEN A CLIP IS SAVED",
+        ["GÖRÜNÜM VE BAŞLANGIÇ"] = "APPEARANCE & STARTUP",
+        ["Kaydedilen MP4 dosyasını panoya kopyala"] = "Copy saved MP4 file to clipboard",
+        ["Discord sohbetinde Ctrl+V ile dosyayı ekleyin. Bu seçenek otomatik yüklemeyi kapatır."] =
+            "Press Ctrl+V in Discord to attach the file. This option turns off automatic uploading.",
+        ["Akıcı ekran geçişleri"] = "Smooth page transitions",
         ["Gelişmiş kayıt, profiller ve ek kısayollar"] = "Advanced capture, profiles & shortcuts",
         ["Arşiv yedekleme ve depolama"] = "Backup & storage",
         ["Güncellemeler ve tanılama"] = "Updates & diagnostics",

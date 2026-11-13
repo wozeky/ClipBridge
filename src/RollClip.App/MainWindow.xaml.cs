@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
@@ -205,17 +206,21 @@ public partial class MainWindow : Window
         HomePanel.Visibility = target == HomePanel ? Visibility.Visible : Visibility.Collapsed;
         SettingsPanel.Visibility = target == SettingsPanel ? Visibility.Visible : Visibility.Collapsed;
         LibraryPanel.Visibility = target == LibraryPanel ? Visibility.Visible : Visibility.Collapsed;
-        if (!CanAnimateInterface)
+        TitleBarLogo.Visibility = HomePanel.Visibility;
+        HomeNav.Style = (Style)FindResource(target == HomePanel ? "NeonButton" : "GlassButton");
+        LibraryNav.Style = (Style)FindResource(target == LibraryPanel ? "NeonButton" : "GlassButton");
+        SettingsNav.Style = (Style)FindResource(target == SettingsPanel ? "NeonButton" : "GlassButton");
+        if (target == HomePanel)
+            CenterReplayLength();
+        if (!CanAnimateInterface || !_settings.SmoothTransitions)
             return;
 
-        var duration = TimeSpan.FromMilliseconds(200);
+        var duration = TimeSpan.FromMilliseconds(240);
         var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
-        var fade = new DoubleAnimation(0.0, 1.0, duration)
+        var fade = new DoubleAnimation(0.55, 1.0, duration)
             { EasingFunction = ease, FillBehavior = FillBehavior.Stop };
-        var slide = new DoubleAnimation(12, 0, duration)
+        var slide = new DoubleAnimation(8, 0, duration)
             { EasingFunction = ease, FillBehavior = FillBehavior.Stop };
-        Timeline.SetDesiredFrameRate(fade, 30);
-        Timeline.SetDesiredFrameRate(slide, 30);
         target.BeginAnimation(OpacityProperty, fade);
         ((TranslateTransform)target.RenderTransform).BeginAnimation(TranslateTransform.YProperty, slide);
     }
@@ -240,6 +245,31 @@ public partial class MainWindow : Window
         UpdateInterfaceMotion();
     }
 
+    private void ReplayLength_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs args)
+    {
+        if (ReplayLength.Items.Count == 0 || args.Delta == 0)
+            return;
+
+        ReplayLength.SelectedIndex = Math.Clamp(
+            ReplayLength.SelectedIndex - Math.Sign(args.Delta), 0, ReplayLength.Items.Count - 1);
+        args.Handled = true;
+    }
+
+    private void ReplayLength_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs args)
+        => CenterReplayLength();
+
+    private void CenterReplayLength()
+    {
+        Dispatcher.InvokeAsync(() =>
+        {
+            if (!ReplayLength.IsVisible || ReplayLength.SelectedIndex < 0)
+                return;
+
+            if (ReplayLength.Template.FindName("DurationScroll", ReplayLength) is System.Windows.Controls.ScrollViewer scroll)
+                scroll.ScrollToVerticalOffset(36 * ReplayLength.SelectedIndex);
+        }, System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
     private void Home_Click(object sender, RoutedEventArgs args) => ShowPanel("home");
     private void Library_Click(object sender, RoutedEventArgs args) => ShowPanel("library");
     private void Settings_Click(object sender, RoutedEventArgs args)
@@ -252,6 +282,19 @@ public partial class MainWindow : Window
     private void Maximize_Click(object sender, RoutedEventArgs args) =>
         WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
     private void Close_Click(object sender, RoutedEventArgs args) => Close();
+    private void CopySavedClip_Click(object sender, RoutedEventArgs args)
+    {
+        UpdateSaveActionControls();
+    }
+
+    private void UpdateSaveActionControls()
+    {
+        var copy = CopySavedClip.IsChecked == true;
+        if (copy)
+            AutoUpload.IsChecked = false;
+        AutoUpload.IsEnabled = !copy;
+    }
+
     private void QuickSettings_Click(object sender, RoutedEventArgs args) => SaveSettings();
     private void Motion_Click(object sender, RoutedEventArgs args)
     {
@@ -377,6 +420,17 @@ public partial class MainWindow : Window
                     { ReplayKey: 9, Quality: RecordingQuality.Light, Motion: true } saved
                 || saved.ArchiveFolder != backupFolder || !ArchiveExistingButton.IsEnabled)
                 throw new InvalidOperationException("Recording controls did not persist or update the hotkey label.");
+            AutoUpload.IsChecked = true;
+            CopySavedClip.IsChecked = true;
+            SmoothTransitions.IsChecked = false;
+            UpdateSaveActionControls();
+            if (AutoUpload.IsEnabled || !SaveSettings() ||
+                AtomicJson.Read<ClipSettings>(Path.Combine(_root, "settings.json")) is not
+                    { CopySavedClip: true, AutoUpload: false, SmoothTransitions: false })
+                throw new InvalidOperationException("Clip clipboard and transition settings did not persist.");
+            CopySavedClip.IsChecked = false;
+            SmoothTransitions.IsChecked = true;
+            UpdateSaveActionControls();
             InterfaceSounds.IsChecked = true;
             ReplayKeyChoice.SelectedIndex = 2;
             RecordingQualityChoice.SelectedIndex = 0;
@@ -396,6 +450,8 @@ public partial class MainWindow : Window
             var secondReplay = Path.Combine(fixtureFolder, "replay-1.mp4");
             if (File.Exists(firstReplay) && File.Exists(secondReplay))
             {
+                if (!await TryCopySavedClipAsync(firstReplay) || !Clipboard.GetFileDropList().Contains(firstReplay))
+                    throw new InvalidOperationException("The clipboard did not contain the MP4 file.");
                 var first = new Clip(Guid.NewGuid(), firstReplay, "Antrenman klibi", DateTimeOffset.UtcNow,
                     new FileInfo(firstReplay).Length, Mp4.ReadDuration(firstReplay), Game: "Test oyunu", Favorite: true);
                 var second = new Clip(Guid.NewGuid(), secondReplay, "Maç özeti", first.CreatedAt.AddMinutes(-2),
@@ -536,6 +592,9 @@ public partial class MainWindow : Window
             ProviderChoice.SelectedIndex = _settings.Provider switch { Provider.Gofile => 1, Provider.Catbox => 2, _ => 0 };
             SpeedLimit.Text = _settings.SpeedLimit.ToString(CultureInfo.InvariantCulture);
             AutoUpload.IsChecked = _settings.AutoUpload;
+            CopySavedClip.IsChecked = _settings.CopySavedClip;
+            SmoothTransitions.IsChecked = _settings.SmoothTransitions;
+            UpdateSaveActionControls();
             AutoCopy.IsChecked = _settings.AutoCopy;
             AutoFallback.IsChecked = _settings.AutoFallback;
             StorageLimit.Text = (_settings.QuotaBytes / 1_000_000_000d).ToString("0.###", CultureInfo.CurrentCulture);
@@ -781,6 +840,7 @@ public partial class MainWindow : Window
         }
         if (!_armed || _store is null || _capture is not { } capture)
             return;
+        var copyToClipboard = !test && _settings.CopySavedClip;
         var saveStartedAt = Stopwatch.GetTimestamp();
         _diagnostics.BeginSave(viaHotkey, ReplayKeyLabel);
         var mp4Ready = false;
@@ -799,7 +859,14 @@ public partial class MainWindow : Window
             mp4Ready = true;
             NotifyClipSaved(test);
             var saved = await AddClipAsync(path, name, id, _activeGameLabel,
-                allowUpload: !test, separateMicrophone: capture.SeparateMicrophone);
+                allowUpload: !test && !copyToClipboard, separateMicrophone: capture.SeparateMicrophone);
+            if (copyToClipboard)
+            {
+                var copied = await TryCopySavedClipAsync(saved.FilePath);
+                StatusMessage.Text = copied
+                    ? T("MP4 panoda. Discord sohbetinde Ctrl+V ile ekleyin.", "MP4 copied. Press Ctrl+V in Discord to attach it.")
+                    : T("Klip kaydedildi ancak dosya panoya kopyalanamadı.", "Clip saved, but the file could not be copied to the clipboard.");
+            }
             if (test)
                 testClip = saved;
         }
@@ -1126,7 +1193,7 @@ public partial class MainWindow : Window
             var seconds = ReplayLength.SelectedItem as int? ?? ReplayDurations.Default;
             var game = GameName.Text.Trim();
             var settings = new ClipSettings(ProviderChoice.SelectedIndex switch { 1 => Provider.Gofile, 2 => Provider.Catbox, _ => Provider.Litterbox },
-                AutoUpload.IsChecked == true, AutoCopy.IsChecked == true, limit, seconds,
+                AutoUpload.IsChecked == true && CopySavedClip.IsChecked != true, AutoCopy.IsChecked == true, limit, seconds,
                 game.Length == 0 ? null : game, AutoFallback.IsChecked == true, DesktopAudio.IsChecked == true,
                 Microphone.IsChecked == true, MotionEnabled.IsChecked == true,
                 RecordingQualityChoice.SelectedIndex is >= 0 and <= 2
@@ -1138,7 +1205,8 @@ public partial class MainWindow : Window
                     ?? _settings.AutoGameProcess, SelectedCaptureMethod, SaveSound.IsChecked == true,
                 false, LanguageChoice.SelectedIndex == 1, _shortcutDraft.ToArray(), ReadAudioControls(), (long)(storageGb * 1_000_000_000),
                 AutoCleanup.IsChecked == true, KeepUnshared.IsChecked == true,
-                AutoUpdates.IsChecked == true, IncludePreviews.IsChecked == true, InterfaceSounds.IsChecked == true);
+                AutoUpdates.IsChecked == true, IncludePreviews.IsChecked == true, InterfaceSounds.IsChecked == true,
+                CopySavedClip.IsChecked == true, SmoothTransitions.IsChecked == true);
             AtomicJson.Write(Path.Combine(_root, "settings.json"), settings);
             if (_settings.ArchiveFolder != settings.ArchiveFolder)
                 ArchiveStatus.Text = "";
@@ -1302,6 +1370,24 @@ public partial class MainWindow : Window
             ? "Tanılama raporu panoya kopyalandı." : "Tanılama raporu kopyalanamadı.";
     }
 
+    private static async Task<bool> TryCopySavedClipAsync(string path)
+    {
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            try
+            {
+                Clipboard.SetFileDropList(new StringCollection { path });
+                return true;
+            }
+            catch (ExternalException)
+            {
+                if (attempt < 2)
+                    await Task.Delay(50);
+            }
+        }
+        return false;
+    }
+
     private static bool TryCopyAutomaticLink(string? url)
     {
         try { return !Clipboard.ContainsFileDropList() && TryCopy(url); }
@@ -1457,7 +1543,8 @@ public partial class MainWindow : Window
         string? ImportFolder = null, DateTimeOffset? ImportSince = null, bool GameOnlyAudio = false,
         bool AutoGame = false, string? AutoGameProcess = null, CaptureMethod Method = CaptureMethod.Auto,
         bool SaveSound = true, bool SaveNotice = false, bool English = false, ReplayShortcut[]? Shortcuts = null, CaptureAudio? Audio = null,
-        long QuotaBytes = 0, bool AutoCleanup = false, bool KeepUnshared = true, bool AutoUpdates = false, bool IncludePreviews = false, bool InterfaceSounds = true)
+        long QuotaBytes = 0, bool AutoCleanup = false, bool KeepUnshared = true, bool AutoUpdates = false, bool IncludePreviews = false, bool InterfaceSounds = true,
+        bool CopySavedClip = false, bool SmoothTransitions = true)
     {
         [System.Text.Json.Serialization.JsonIgnore]
         public Provider? FallbackProvider => AutoFallback

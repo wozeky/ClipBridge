@@ -209,7 +209,7 @@ jobs:
   release:
     name: Publish verified Windows preview
     needs: windows
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release v0.4.7]')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release v0.4.8]')
     runs-on: windows-2025
     permissions:
       contents: write
@@ -232,7 +232,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          $tag = 'v0.4.7'
+          $tag = 'v0.4.8'
           $asset = 'RollClip-win-x64.zip'
           Compress-Archive -Path './release/win-x64/*' -DestinationPath $asset
           $installer = 'RollClip-Setup-win-x64.exe'
@@ -251,13 +251,12 @@ jobs:
             Copy-Item -LiteralPath "./release/screenshots/$($entry.Key)" -Destination $entry.Value -ErrorAction Stop
           }
           @'
-          - Ana ekran, ayarlar ve klip galerisi yenilendi. Arayüze animasyon, simge ve etkileşim sesleri eklendi.
-          - Pencere sistem tepsisine gizlenebilir. Kısayolu yeniden açmak veya tepsi simgesine çift tıklamak pencereyi öne getirir.
-          - Kısayollar tuşa basarak ayarlanabilir ve kayıt açıkken güncellenir.
-          - Klip galerisinde hızlı önizleme ve paylaşım için Catbox seçeneği eklendi.
+          - Ayarlar kayıt, ses, klip kaydetme, paylaşım, görünüm ve depolama başlıkları altında düzenlendi.
+          - İsteğe bağlı MP4 pano modu, yeni klibi otomatik yüklemeden dosya olarak panoya alır. Discord sohbetinde Ctrl+V ile eklenebilir.
+          - Sol menü, tambur tipi süre seçici ve ayarlardan kapatılabilen akıcı ekran geçişleri eklendi.
 
           Windows 11 x64 için Setup ve taşınabilir ZIP, SHA-256 dosyalarıyla birlikte sunulur.
           '@ | Set-Content -LiteralPath release-notes.md -Encoding utf8
           $releaseAssets = @($asset, "$asset.sha256", $installer, "$installer.sha256") + @($screens.Values)
-          gh release create $tag @releaseAssets --target $env:GITHUB_SHA --title "RollClip $tag · Arayüz ve kısayollar" --notes-file release-notes.md --prerelease
+          gh release create $tag @releaseAssets --target $env:GITHUB_SHA --title "RollClip $tag · MP4 pano modu" --notes-file release-notes.md --prerelease
           if ($LASTEXITCODE -ne 0) { throw "GitHub prerelease could not be published." }
