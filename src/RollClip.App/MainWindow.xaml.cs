@@ -205,6 +205,12 @@ public partial class MainWindow : Window
         HomePanel.Visibility = target == HomePanel ? Visibility.Visible : Visibility.Collapsed;
         SettingsPanel.Visibility = target == SettingsPanel ? Visibility.Visible : Visibility.Collapsed;
         LibraryPanel.Visibility = target == LibraryPanel ? Visibility.Visible : Visibility.Collapsed;
+        TitleBarLogo.Visibility = HomePanel.Visibility;
+        HomeNav.Style = (Style)FindResource(target == HomePanel ? "NeonButton" : "GlassButton");
+        LibraryNav.Style = (Style)FindResource(target == LibraryPanel ? "NeonButton" : "GlassButton");
+        SettingsNav.Style = (Style)FindResource(target == SettingsPanel ? "NeonButton" : "GlassButton");
+        if (target == HomePanel)
+            CenterReplayLength();
         if (!CanAnimateInterface)
             return;
 
@@ -238,6 +244,31 @@ public partial class MainWindow : Window
             CloseChromeMovie();
         }
         UpdateInterfaceMotion();
+    }
+
+    private void ReplayLength_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs args)
+    {
+        if (ReplayLength.Items.Count == 0 || args.Delta == 0)
+            return;
+
+        ReplayLength.SelectedIndex = Math.Clamp(
+            ReplayLength.SelectedIndex - Math.Sign(args.Delta), 0, ReplayLength.Items.Count - 1);
+        args.Handled = true;
+    }
+
+    private void ReplayLength_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs args)
+        => CenterReplayLength();
+
+    private void CenterReplayLength()
+    {
+        Dispatcher.InvokeAsync(() =>
+        {
+            if (!ReplayLength.IsVisible || ReplayLength.SelectedIndex < 0)
+                return;
+
+            if (ReplayLength.Template.FindName("DurationScroll", ReplayLength) is System.Windows.Controls.ScrollViewer scroll)
+                scroll.ScrollToVerticalOffset(36 * ReplayLength.SelectedIndex);
+        }, System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     private void Home_Click(object sender, RoutedEventArgs args) => ShowPanel("home");

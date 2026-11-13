@@ -37,7 +37,7 @@
   <!-- Custom Windows 11 Title Bar -->
   <Grid Height="38" VerticalAlignment="Top" Panel.ZIndex="10">
    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="16,0,0,0" IsHitTestVisible="False">
-    <TextBlock Text="RollClip" FontFamily="{StaticResource HeadingFont}" FontSize="12" FontWeight="SemiBold" Foreground="#9EA69F"/>
+    <ContentControl x:Name="TitleBarLogo" Style="{StaticResource FluentIcon}" FontSize="17" Foreground="{StaticResource NeonBrush}" Tag="{StaticResource FluentVideo}" AutomationProperties.Name="RollClip"/>
    </StackPanel>
    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" WindowChrome.IsHitTestVisibleInChrome="True" Margin="0,4,6,0">
     <Button x:Name="MinimizeWindowButton" Style="{StaticResource TitleBarButton}" Click="Minimize_Click" ToolTip="Küçült" AutomationProperties.Name="Küçült">
@@ -52,13 +52,31 @@
    </StackPanel>
   </Grid>
 
-  <!-- Main Responsive Content Area -->
-  <Grid Margin="36,48,36,28">
+  <!-- Navigation is shared by the three desktop views. -->
+  <Border Margin="0,38,0,0" Width="64" HorizontalAlignment="Left" Background="#D90A0E0B" BorderBrush="#32C9E1CB" BorderThickness="0,0,1,0">
+   <DockPanel Margin="10,14">
+    <Button x:Name="SettingsNav" DockPanel.Dock="Bottom" Style="{StaticResource GlassButton}" Click="Settings_Click"
+     Width="42" Height="42" ToolTip="Ayarlar" AutomationProperties.Name="Ayarlar">
+     <ContentControl Style="{StaticResource FluentIcon}" FontSize="17" Tag="{StaticResource FluentSettings}"/>
+    </Button>
+    <StackPanel>
+     <Button x:Name="HomeNav" local:UiSounds.Cue="Home2" Style="{StaticResource NeonButton}" Click="Home_Click"
+      Width="42" Height="42" Margin="0,0,0,10" ToolTip="Ana ekran" AutomationProperties.Name="Ana ekran">
+      <ContentControl Style="{StaticResource FluentIcon}" FontSize="17" Tag="{StaticResource FluentHome}"/>
+     </Button>
+     <Button x:Name="LibraryNav" local:UiSounds.Cue="Library2" Style="{StaticResource GlassButton}" Click="Library_Click"
+      Width="42" Height="42" ToolTip="Klip arşivi" AutomationProperties.Name="Klip arşivi">
+      <ContentControl Style="{StaticResource FluentIcon}" FontSize="17" Tag="{StaticResource FluentVideoClip}"/>
+     </Button>
+    </StackPanel>
+   </DockPanel>
+  </Border>
+
+  <Grid Margin="84,48,24,24">
    <Grid.RowDefinitions>
     <RowDefinition Height="*"/>
     <RowDefinition Height="Auto"/>
    </Grid.RowDefinitions>
-
    <!-- HOME PANEL -->
    <Grid x:Name="HomePanel" MaxWidth="920" MaxHeight="560" VerticalAlignment="Center" HorizontalAlignment="Stretch">
     <Grid.RenderTransform><TranslateTransform/></Grid.RenderTransform>
@@ -66,8 +84,6 @@
      <RowDefinition Height="Auto"/>
      <RowDefinition Height="20"/>
      <RowDefinition Height="*"/>
-     <RowDefinition Height="20"/>
-     <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
     <!-- Brand Header (redundant top utility buttons removed) -->
@@ -77,7 +93,6 @@
      </Border>
      <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
       <TextBlock x:Name="RollClipHeading" Text="RollClip" FontFamily="{StaticResource HeadingFont}" FontSize="21" FontWeight="SemiBold"/>
-      <TextBlock Text="Klip al, kes, Discord’a gönder." Style="{StaticResource Caption}" Margin="0,1,0,0"/>
      </StackPanel>
     </StackPanel>
 
@@ -120,10 +135,22 @@
         </Grid.RowDefinitions>
         <TextBlock Text="Klip süresi" FontFamily="{StaticResource HeadingFont}" FontWeight="SemiBold" FontSize="17"/>
         <TextBlock Grid.Row="1" Text="Son anları tek tuşla kaydet." Style="{StaticResource Caption}" Margin="0,4,0,0"/>
-        <ListBox x:Name="ReplayLength" Grid.Row="2" Background="Transparent" BorderThickness="0" VerticalAlignment="Bottom" Margin="0,16,0,0"
-         ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled"
-         HorizontalContentAlignment="Center" AutomationProperties.Name="Klip süresi, saniye">
-         <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate></ListBox.ItemsPanel>
+        <ListBox x:Name="ReplayLength" Grid.Row="2" Background="#28101812" BorderBrush="#32B8FFA8"
+         BorderThickness="1" Height="110" MaxWidth="216" HorizontalAlignment="Stretch" VerticalAlignment="Center"
+         Padding="0" Margin="0,8,0,0" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+         ScrollViewer.VerticalScrollBarVisibility="Hidden" ScrollViewer.CanContentScroll="False"
+         PreviewMouseWheel="ReplayLength_MouseWheel" SelectionChanged="ReplayLength_SelectionChanged"
+         AutomationProperties.Name="Klip süresi, saniye">
+         <ListBox.Template>
+          <ControlTemplate TargetType="ListBox">
+           <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10">
+            <ScrollViewer x:Name="DurationScroll" Focusable="False" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" CanContentScroll="False">
+             <ItemsPresenter/>
+            </ScrollViewer>
+           </Border>
+          </ControlTemplate>
+         </ListBox.Template>
+         <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel Margin="6,36"/></ItemsPanelTemplate></ListBox.ItemsPanel>
          <ListBox.ItemContainerStyle>
           <Style TargetType="ListBoxItem">
            <Setter Property="Foreground" Value="#88918A"/>
@@ -132,12 +159,12 @@
            <Setter Property="Template">
             <Setter.Value>
              <ControlTemplate TargetType="ListBoxItem">
-              <Border x:Name="DurationFace" Height="54" CornerRadius="12" Background="Transparent">
+              <Border x:Name="DurationFace" Height="36" CornerRadius="8" Background="Transparent">
                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
               </Border>
               <ControlTemplate.Triggers>
                <Trigger Property="IsSelected" Value="True">
-                <Setter Property="FontSize" Value="26"/>
+                <Setter Property="FontSize" Value="20"/>
                 <Setter Property="FontWeight" Value="SemiBold"/>
                 <Setter Property="Foreground" Value="#F1F5EF"/>
                 <Setter TargetName="DurationFace" Property="Background">
@@ -229,29 +256,6 @@
      </Grid>
     </Grid>
 
-    <!-- Clean 3-Item Bottom Navigation Capsule -->
-    <local:ChromeGlass Grid.Row="4" Radius="24" HorizontalAlignment="Center" Padding="8,6">
-     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-      <Button local:UiSounds.Cue="Home2" ToolTip="Ana ekran" Style="{StaticResource NeonButton}" Click="Home_Click" Height="42" Padding="18,0" Margin="0,0,6,0">
-       <StackPanel Orientation="Horizontal">
-        <ContentControl Style="{StaticResource FluentMeasuredIcon}" Tag="{StaticResource FluentHome}" Content="&#xE80F;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{StaticResource NeonBrush}" Margin="0,0,8,0"/>
-        <TextBlock Text="Ana ekran" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
-       </StackPanel>
-      </Button>
-      <Button local:UiSounds.Cue="Library2" Style="{StaticResource GlassButton}" Click="Library_Click" Height="42" Padding="16,0" Margin="0,0,6,0" ToolTip="Klip arşivi" AutomationProperties.Name="Klip arşivi">
-       <StackPanel Orientation="Horizontal">
-        <ContentControl Style="{StaticResource FluentIcon}" FontSize="16" Tag="{StaticResource FluentVideoClip}" Margin="0,0,8,0"/>
-        <TextBlock Text="Klip arşivi" FontSize="13" VerticalAlignment="Center"/>
-       </StackPanel>
-      </Button>
-      <Button x:Name="SettingsNav" Style="{StaticResource GlassButton}" Click="Settings_Click" Height="42" Padding="16,0" ToolTip="Ayarlar" AutomationProperties.Name="Ayarlar">
-       <StackPanel Orientation="Horizontal">
-        <ContentControl Style="{StaticResource FluentIcon}" FontSize="16" Tag="{StaticResource FluentSettings}" Margin="0,0,8,0"/>
-        <TextBlock Text="Ayarlar" FontSize="13" VerticalAlignment="Center"/>
-       </StackPanel>
-      </Button>
-     </StackPanel>
-    </local:ChromeGlass>
    </Grid>
 
    <!-- SETTINGS PANEL -->
@@ -455,7 +459,7 @@
    </Grid>
 
    <!-- LIBRARY PANEL -->
-   <Grid x:Name="LibraryPanel" Visibility="Collapsed" MaxWidth="960" MaxHeight="620" VerticalAlignment="Center" HorizontalAlignment="Stretch">
+   <Grid x:Name="LibraryPanel" Visibility="Collapsed" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
     <Grid.RenderTransform><TranslateTransform/></Grid.RenderTransform>
     <local:ChromeGlass Radius="24">
      <Grid Margin="28,24">
